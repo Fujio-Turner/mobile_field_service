@@ -97,17 +97,17 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 4 — Copy-on-write
 
-- [ ] `StartWork`: copy `workordersin` → `workordersout` (new `woout:<ulid>`, `role: primary`, `owner: technician`)
-- [ ] Reject start if inbound `assignedTo.employeeId` ≠ session
-- [ ] Clone inbound `taskIds` templates into `type:'task'` instances
-- [ ] Idempotent reopen via `idx_woout_source` (`employeeId`, `source.id`, `role=primary`)
-- [ ] Race: duplicate copy discarded; oldest `audit.cr.dt` wins
-- [ ] Provenance `source.*` with **full body snapshot** minus `embedding` / blobs
-- [ ] **No writes** to `workordersin`
-- [ ] Today screen routes started rows to `app/wo/out/[id]` using `openCollection`
-- [ ] Metric `mfs_copy_on_write_total`
-- [ ] `StartWork` rejects inbound `cancelled` / `superseded`
-- [ ] `CreateWorkOrderIn`: new `woin:` `origin: field`, assigned to self; never patch dispatch inbound
+- [x] `StartWork`: copy `workordersin` → `workordersout` (new `woout:<ulid>`, `role: primary`, `owner: technician`)
+- [x] Reject start if inbound `assignedTo.employeeId` ≠ session
+- [x] Clone inbound `taskIds` templates into `type:'task'` instances
+- [x] Idempotent reopen via `idx_woout_source` (`employeeId`, `source.id`, `role=primary`)
+- [x] Race: duplicate copy discarded; oldest `audit.cr.dt` wins
+- [x] Provenance `source.*` with **full body snapshot** minus `embedding` / blobs
+- [x] **No writes** to `workordersin` (dispatch)
+- [x] Today screen routes started rows to `app/wo/out/[id]` using `openCollection`
+- [x] Metric `mfs_copy_on_write_total`
+- [x] `StartWork` rejects inbound `cancelled` / `superseded`
+- [x] `CreateWorkOrderIn`: new `woin:` `origin: field`, assigned to self; never patch dispatch inbound
 
 **Exit:** double-tap Start opens one outbound id; dispatch inbound JSON unchanged; field-created inbound pushes; Today tap on a started job KV-gets the out doc.
 

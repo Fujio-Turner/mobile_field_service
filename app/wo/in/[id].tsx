@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { getWorkOrderIn } from '@/src/ops/getWorkOrderIn';
 import { findOutboundForSources } from '@/src/ops/findOutboundForSources';
+import { getWorkOrderIn } from '@/src/ops/getWorkOrderIn';
+import { StartWorkError, startWork } from '@/src/ops/startWork';
 import type { WorkOrderIn } from '@/src/ops/workOrderIn';
 import { useAuth } from '@/src/session/AuthContext';
 import { theme } from '@/src/theme';
@@ -28,6 +29,7 @@ export default function WorkOrderInScreen() {
   const { session } = useAuth();
   const [doc, setDoc] = useState<WorkOrderIn | null | undefined>(undefined);
   const [outId, setOutId] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -158,12 +160,36 @@ export default function WorkOrderInScreen() {
         ) : canStart ? (
           <Pressable
             accessibilityRole="button"
-            style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
+            disabled={starting}
+            style={({ pressed }) => [styles.primary, pressed && styles.pressed, starting && styles.pressed]}
             onPress={() => {
-              Alert.alert('Start work', 'Copy-on-write starts in the next slice. This ticket was not changed.');
+              if (!session) return;
+              setStarting(true);
+              void (async () => {
+                try {
+                  const result = await startWork(doc.id, {
+                    employeeId: session.employeeId,
+                    email: session.email,
+                    username: session.username,
+                  });
+                  setOutId(result.wooutId);
+                  router.push(`/wo/out/${result.wooutId}`);
+                } catch (e) {
+                  const code = e instanceof StartWorkError ? e.code : 'missing';
+                  const msg =
+                    code === 'inbound_not_assigned'
+                      ? 'This job is not assigned to you.'
+                      : code === 'inbound_not_startable'
+                        ? 'This job cannot be started.'
+                        : 'Could not start work.';
+                  Alert.alert('Start work', msg);
+                } finally {
+                  setStarting(false);
+                }
+              })();
             }}
           >
-            <Text style={styles.primaryLabel}>Start work</Text>
+            <Text style={styles.primaryLabel}>{starting ? 'Starting…' : 'Start work'}</Text>
           </Pressable>
         ) : (
           <Text style={styles.muted}>This job is not assigned to you.</Text>

@@ -3,6 +3,7 @@ import { runQuery } from '../db/query';
 import { deviceLocalDay } from '../ids';
 import { collapseTodayPage, sourceIdsFromRows } from './collapseToday';
 import { findOutboundForSources } from './findOutboundForSources';
+import { memoryActiveOutbound, memoryInboundHits, memoryOutboundRefs } from './memoryToday';
 import { seedInboundAsHits } from './todaySeedFallback';
 import { ACTIVE_OUTBOUND_SQL, INBOUND_TODAY_SQL } from './todaySql';
 import {
@@ -64,18 +65,26 @@ export async function listTodayWork(input: ListTodayInput): Promise<ListTodayRes
   const includeActiveOutbound = offset === 0;
 
   if (!nativeDbAvailable() || !getOpenedDatabase()) {
-    const inbound = seedInboundAsHits(input.employeeId, day);
+    const inbound = [
+      ...seedInboundAsHits(input.employeeId, day),
+      ...memoryInboundHits(input.employeeId, day),
+    ];
     const sliced = inbound.slice(offset, offset + limit);
+    const activeOutbound = includeActiveOutbound ? memoryActiveOutbound(input.employeeId) : [];
+    const outboundBySource = memoryOutboundRefs(
+      input.employeeId,
+      sliced.map((h) => h.id),
+    );
     return {
       preview: true,
       inboundCount: sliced.length,
       rows: collapseTodayPage({
         employeeId: input.employeeId,
         inbound: sliced,
-        activeOutbound: [],
-        outboundBySource: new Map(),
+        activeOutbound,
+        outboundBySource,
         skipSourceIds: input.skipSourceIds,
-        includeActiveOutbound: false,
+        includeActiveOutbound,
       }),
     };
   }

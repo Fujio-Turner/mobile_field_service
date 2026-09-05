@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
@@ -77,6 +78,12 @@ export default function TodayScreen() {
       watchRef.current = null;
     };
   }, [employeeId, day, dbStatus, applyPage0]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (preview) void loadPage0();
+    }, [preview, loadPage0]),
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

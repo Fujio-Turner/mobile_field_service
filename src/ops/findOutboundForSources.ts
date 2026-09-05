@@ -1,5 +1,6 @@
 import { getOpenedDatabase } from '../db/database';
 import { runQuery } from '../db/query';
+import { memoryOutboundRefs } from './memoryToday';
 import { outboundForSourcesSql } from './todaySql';
 import type { OutboundRef } from './todayTypes';
 
@@ -27,7 +28,7 @@ export async function findOutboundForSources(
 ): Promise<Map<string, OutboundRef>> {
   if (sourceIds.length === 0) return new Map();
   const db = getOpenedDatabase();
-  if (!db) return new Map();
+  if (!db) return memoryOutboundRefs(employeeId, sourceIds);
   const bounded = sourceIds.slice(0, 20);
   const params: Record<string, string | number> = { employeeId };
   bounded.forEach((id, i) => {
