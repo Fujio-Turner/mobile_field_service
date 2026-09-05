@@ -17,12 +17,13 @@ function formatTime(startDt: number): string {
   });
 }
 
-export function TodayRowView({ row }: { row: TodayRow }) {
+export function TodayRowView({ row, onPress }: { row: TodayRow; onPress?: (row: TodayRow) => void }) {
   const label = badgeLabel(row.badge);
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${row.number}, ${row.siteName}`}
+      onPress={() => onPress?.(row)}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
       <View style={styles.main}>

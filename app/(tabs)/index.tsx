@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   FlatList,
@@ -19,6 +20,7 @@ import { NativeBanner } from '@/src/ui/NativeBanner';
 import { theme } from '@/src/theme';
 
 export default function TodayScreen() {
+  const router = useRouter();
   const { session } = useAuth();
   const { status: dbStatus } = useDatabase();
   const day = deviceLocalDay();
@@ -107,7 +109,16 @@ export default function TodayScreen() {
       <FlatList
         data={rows}
         keyExtractor={(item) => item.key}
-        renderItem={({ item }) => <TodayRowView row={item} />}
+        renderItem={({ item }) => (
+          <TodayRowView
+            row={item}
+            onPress={(row) => {
+              const path =
+                row.openCollection === 'workordersout' ? `/wo/out/${row.openId}` : `/wo/in/${row.openId}`;
+              router.push(path);
+            }}
+          />
+        )}
         contentContainerStyle={styles.list}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={theme.color.accent} />

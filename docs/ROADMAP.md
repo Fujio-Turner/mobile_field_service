@@ -85,8 +85,8 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 - [x] Live query on inbound page 0 only; re-run active-outbound on those callbacks and pull-to-refresh
 - [x] Empty / error / stale-sync states (stale-sync waits on replicator)
 - [x] Batched `FindOutboundForSources` → `openId` + `openCollection` on each row
-- [ ] Row tap → **one** KV get on `openCollection` (S04)
-- [ ] Read-only inbound detail screen (S04)
+- [x] Row tap → **one** KV get on `openCollection` (S04)
+- [x] Read-only inbound detail screen (S04)
 - [x] `query.explain()` debug on today list (index `idx_woin_today`)
 
 **Exit:** scrolling 40+ seed jobs stays on the indexed plan; tap does not re-query the list.
