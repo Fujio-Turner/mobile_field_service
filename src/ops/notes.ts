@@ -25,6 +25,8 @@ const NOTES_FTS_SQL = `
 SELECT META().id AS id, kind, title, body, workOrderOutId
 FROM field.notes
 WHERE MATCH(idx_nte_fts, $q)
+ORDER BY RANK(idx_nte_fts)
+LIMIT 50
 `;
 
 export type NoteItem = {

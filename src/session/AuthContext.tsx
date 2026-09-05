@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { log } from '../log/logger';
 import { authStrategy, buildDemoSession, sessionIsLive } from './strategy';
 import { clearAuthKeys, readSession, writeSession } from './enclave';
 import type { Session } from './types';
@@ -59,30 +60,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const result = buildDemoSession(identifier, nowSec());
         if (!result.ok) {
           setError(result.error);
+          log.warn('mfs.auth.login_fail', { op: 'LoginRemote' });
           return false;
         }
         await writeSession(result.session);
         setSession(result.session);
+        log.info('mfs.auth.login_ok', { op: 'LoginRemote', employeeId: result.session.employeeId });
         return true;
       }
       if (strategy === 'basic') {
         const sgUrl = process.env.EXPO_PUBLIC_SG_URL ?? '';
         if (!identifier.trim() || !password) {
           setError('Enter an email or username and a password.');
+          log.warn('mfs.auth.login_fail', { op: 'LoginRemote' });
           return false;
         }
         if (!sgUrl) {
           setError("Can't reach the server. You can still open last session if it hasn't expired.");
+          log.warn('mfs.auth.login_fail', { op: 'LoginRemote' });
           return false;
         }
         // HTTP mint of POST /_session lands in a later slice (replicator).
         setError("Can't reach the server. You can still open last session if it hasn't expired.");
+        log.warn('mfs.auth.login_fail', { op: 'LoginRemote' });
         return false;
       }
       setError('This sign-in method is not in this build.');
+      log.warn('mfs.auth.login_fail', { op: 'LoginRemote' });
       return false;
     } catch {
       setError("Can't reach the server. You can still open last session if it hasn't expired.");
+      log.warn('mfs.auth.login_fail', { op: 'LoginRemote' });
       return false;
     } finally {
       setBusy(false);

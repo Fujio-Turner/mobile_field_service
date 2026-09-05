@@ -9,7 +9,8 @@ import {
   PHOTO_CAP,
   photoBlobKeys,
 } from '../../src/ops/photoKeys';
-import { commitPhoto, stagePhoto } from '../../src/ops/photos';
+import { clearCompactSchedule, compactIsScheduled } from '../../src/ops/compactDb';
+import { commitPhoto, deletePhoto, stagePhoto } from '../../src/ops/photos';
 import { OutError } from '../../src/ops/outError';
 import { startWork } from '../../src/ops/startWork';
 import { completeTask, listTasksForWork } from '../../src/ops/tasks';
@@ -25,6 +26,11 @@ const session = {
 beforeEach(() => {
   memoryReset();
   resetCopyOnWriteTotals();
+  clearCompactSchedule();
+});
+
+afterEach(() => {
+  clearCompactSchedule();
 });
 
 function meta(i: number) {
@@ -90,6 +96,9 @@ describe('stage and commit', () => {
     const out = memoryGet('workordersout', wooutId)!;
     expect((out.photos as { id: string }[])[0].id).toBe(row.id);
     expect(out.embedding).toBeUndefined();
+    expect(compactIsScheduled()).toBe(false);
+    await deletePhoto(wooutId, row.id, session);
+    expect(compactIsScheduled()).toBe(true);
   });
 });
 

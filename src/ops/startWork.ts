@@ -6,6 +6,7 @@ import { memoryAll, memoryDelete, memoryGet, memorySave } from '../db/memoryStor
 import { purgeJsonDoc, saveJsonDoc } from '../db/saveJson';
 import { seedInboundJobs, seedTaskTemplates } from '../db/seedData';
 import { newDocId } from '../ids';
+import { log } from '../log/logger';
 import { bumpCopyOnWrite } from '../metrics/copyOnWrite';
 import { appVersion } from '../version';
 import { cloneTaskIds, shouldCloneTask, buildTaskInstance } from './cloneTasks';
@@ -185,9 +186,11 @@ async function persistCopy(fns: PersistFns): Promise<StartWorkResult> {
     await fns.deleteOut('workordersout', outId);
     for (const inst of cloned.instances) await fns.deleteTask('tasks', inst.id);
     bumpCopyOnWrite('idempotent_hit');
+    log.info('mfs.wo.start', { op: 'StartWork', collection: 'workordersout', docId: keep });
     return { wooutId: keep, created: false };
   }
   bumpCopyOnWrite('created');
+  log.info('mfs.wo.start', { op: 'StartWork', collection: 'workordersout', docId: outId });
   return { wooutId: outId, created: true };
 }
 

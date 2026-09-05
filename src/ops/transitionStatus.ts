@@ -1,4 +1,5 @@
 import { nowSec, stampAuditUpdate, stampHistory } from '../audit';
+import { log } from '../log/logger';
 import { appVersion } from '../version';
 import type { StartSession } from './copyInbound';
 import { OutError } from './outError';
@@ -87,6 +88,7 @@ export async function completeWork(id: string, session: StartSession): Promise<v
   if (!doc) throw new OutError('missing');
   const tasks = await listTasksForWork(id);
   await saveOutboundRaw(id, applyTransition(doc, 'CompleteWork', session, { tasks }));
+  log.info('mfs.wo.complete', { op: 'CompleteWork', collection: 'workordersout', docId: id });
 }
 
 export async function cancelWork(id: string, session: StartSession, cancelledReason: string): Promise<void> {

@@ -4,6 +4,7 @@ const PRODUCTS_FTS_SQL = `
 SELECT META().id AS id, sku, name, uom, description, category, active, defaultRateId
 FROM field.products
 WHERE MATCH(idx_prd_fts, $q)
+ORDER BY RANK(idx_prd_fts)
 LIMIT 50
 `;
 

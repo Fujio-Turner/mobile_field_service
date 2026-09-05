@@ -1,3 +1,4 @@
+import { configureCblLogSinks } from '../log/cblSinks';
 import { isCblNativeAvailable } from './native';
 
 type Engine = { _brand: 'CblReactNativeEngine' };
@@ -14,6 +15,7 @@ export function getCblEngine(): Engine {
       CblReactNativeEngine: new () => Engine;
     };
     engine = new CblReactNativeEngine();
+    void configureCblLogSinks();
   }
   return engine;
 }

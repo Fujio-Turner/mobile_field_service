@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useDatabase } from '@/src/db/DatabaseProvider';
 import { deviceLocalDay } from '@/src/ids';
@@ -10,6 +11,7 @@ import { theme } from '@/src/theme';
 import { appVersion } from '@/src/version';
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const { session, logout, busy } = useAuth();
   const { dbName, status } = useDatabase();
   const [crumbToday, setCrumbToday] = useState<number | null>(null);
@@ -46,6 +48,15 @@ export default function ProfileScreen() {
 
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel="Search"
+        onPress={() => router.push('/search')}
+        style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
+      >
+        <Text style={styles.secondaryLabel}>Search</Text>
+      </Pressable>
+
+      <Pressable
+        accessibilityRole="button"
         accessibilityLabel="Sign out"
         onPress={() => {
           void logout();
@@ -75,5 +86,16 @@ const styles = StyleSheet.create({
     backgroundColor: theme.color.surface,
   },
   dangerLabel: { color: theme.color.danger, fontSize: theme.type.lg, fontWeight: '600' },
+  secondary: {
+    marginTop: theme.space.lg,
+    minHeight: 48,
+    borderRadius: theme.radius,
+    borderWidth: 1,
+    borderColor: theme.color.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.color.surface,
+  },
+  secondaryLabel: { color: theme.color.accent, fontSize: theme.type.lg, fontWeight: '600' },
   pressed: { opacity: 0.85 },
 });

@@ -244,11 +244,11 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 11 — Search, polish, observability
 
-- [ ] FTS notes / products / assets
-- [ ] Structured logs (no PII/doc dumps)
-- [ ] Metrics: query latency, copy-on-write, blob bytes, replicator
-- [ ] Database compact on idle after photo deletes
-- [ ] Customer history (local complete `workordersout`)
+- [x] FTS notes / products / assets
+- [x] Structured logs (no PII/doc dumps)
+- [x] Metrics: query latency, copy-on-write, blob bytes (replicator → S11)
+- [x] Database compact on idle after photo deletes
+- [x] Customer history (local complete `workordersout`)
 
 ---
 

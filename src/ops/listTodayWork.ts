@@ -1,4 +1,5 @@
 import { getOpenedDatabase, nativeDbAvailable } from '../db/database';
+import { timeQuery } from '../metrics';
 import { runQuery } from '../db/query';
 import { deviceLocalDay } from '../ids';
 import { collapseTodayPage, sourceIdsFromRows } from './collapseToday';
@@ -92,12 +93,14 @@ export async function listTodayWork(input: ListTodayInput): Promise<ListTodayRes
   const db = getOpenedDatabase();
   if (!db) return { preview: false, rows: [], inboundCount: 0 };
 
-  const inboundRows = await runQuery(db, INBOUND_TODAY_SQL, {
-    employeeId: input.employeeId,
-    day,
-    limit,
-    offset,
-  });
+  const inboundRows = await timeQuery('today', () =>
+    runQuery(db, INBOUND_TODAY_SQL, {
+      employeeId: input.employeeId,
+      day,
+      limit,
+      offset,
+    }),
+  );
   const inbound = parseInboundHits(inboundRows);
 
   let activeOutbound: OutboundHit[] = [];

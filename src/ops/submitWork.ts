@@ -1,3 +1,4 @@
+import { log } from '../log/logger';
 import { loadChild, saveChild } from './childStore';
 import type { StartSession } from './copyInbound';
 import { listInventoryTxForWork } from './inventory';
@@ -32,4 +33,5 @@ export async function submitWork(id: string, session: StartSession): Promise<voi
   if (status !== 'complete' && status !== 'cancelled') throw new OutError('not_terminal');
   await setSyncState(id, 'ready_to_push', session);
   await markJobChildrenReadyToPush(id);
+  log.info('mfs.wo.submit', { op: 'SubmitWork', collection: 'workordersout', docId: id });
 }

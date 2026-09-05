@@ -1,9 +1,11 @@
-import { deviceLocalDay, trackingDocId } from '../ids';
+import { nowSec, stampAuditCreate, stampAuditUpdate } from '../audit';
 import { haversineM } from '../geo/haversine';
+import { deviceLocalDay, trackingDocId } from '../ids';
+import { log } from '../log/logger';
+import { recordMetric } from '../metrics';
+import { appVersion } from '../version';
 import { loadChild, saveChild } from './childStore';
 import type { StartSession } from './copyInbound';
-import { nowSec, stampAuditCreate, stampAuditUpdate } from '../audit';
-import { appVersion } from '../version';
 
 export const TRACK_POINT_CAP = 4000;
 
@@ -140,17 +142,20 @@ export async function recordTrackPoint(
   }
   const { next, wrote, reason } = applyTrackPoint(raw, { ...fix, ts }, thresholdM);
   if (!wrote) {
+    const result: TrackPointResult = reason === 'capped' ? 'capped' : 'skipped';
     if (reason === 'capped') totals.capped += 1;
     else totals.skipped += 1;
-    return { id, wrote, reason, result: reason === 'capped' ? 'capped' : 'skipped' };
+    recordMetric('mfs_track_point_total', 1, { result });
+    log.warn('mfs.track.point', { op: 'RecordTrackPoint', docId: id, ts, result });
+    return { id, wrote, reason, result };
   }
   delete (next as { history?: unknown }).history;
   const saved = stampAuditUpdate(next as never, { by: session.username, ver, dt });
   delete (saved as { history?: unknown }).history;
   await saveChild('tracking', id, saved as Record<string, unknown>);
   totals.recorded += 1;
-  // Never log the tracking map — docId + ts only.
-  console.info(JSON.stringify(trackPointLogFields(id, ts)));
+  recordMetric('mfs_track_point_total', 1, { result: 'recorded' });
+  log.info('mfs.track.point', { op: 'RecordTrackPoint', docId: id, ts });
   return { id, wrote: true, result: 'recorded' };
 }
 

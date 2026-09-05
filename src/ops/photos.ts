@@ -1,5 +1,8 @@
 import { nowSec, stampAuditUpdate, stampHistory } from '../audit';
+import { log } from '../log/logger';
+import { recordMetric } from '../metrics';
 import { appVersion } from '../version';
+import { scheduleCompactSoon } from './compactDb';
 import type { StartSession } from './copyInbound';
 import { OutError } from './outError';
 import { loadOutboundRaw, saveOutboundRaw } from './outboundStore';
@@ -75,6 +78,9 @@ export async function commitPhoto(
   delete next.embedding;
   await saveOutboundRaw(wooutId, next);
   await purgeTmp(tmpId);
+  recordMetric('mfs_blob_bytes_total', row.byteLength, { op: 'commit' });
+  recordMetric('mfs_photo_commit_total', 1, { kind: row.kind });
+  log.info('mfs.blob.commit', { op: 'CommitPhoto', docId: wooutId, byteLength: row.byteLength });
   return row;
 }
 
@@ -91,6 +97,8 @@ export async function deletePhoto(wooutId: string, photoId: string, session: Sta
     changes: [{ path: 'photos', from: photoId }],
   });
   await saveOutboundRaw(wooutId, next);
+  recordMetric('mfs_blob_bytes_total', 0, { op: 'delete' });
+  scheduleCompactSoon();
 }
 
 export function photosFromDoc(doc: Record<string, unknown>): PhotoMeta[] {

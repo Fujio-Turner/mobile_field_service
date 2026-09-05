@@ -1,3 +1,4 @@
+import { timeQuery } from '../metrics';
 import { listChildrenMemory, loadChild, queryChildRowsIfNative } from './childStore';
 import type { StartSession } from './copyInbound';
 import { OutError } from './outError';
@@ -60,6 +61,14 @@ export function sortAssetsByDistance(items: AssetItem[], from?: { lat: number; l
 }
 
 export async function queryAssetsInBBox(
+  box: BBox,
+  center?: { lat: number; lon: number },
+  filter?: { assetType?: string },
+): Promise<AssetItem[]> {
+  return timeQuery('bbox', () => runAssetsBBox(box, center, filter));
+}
+
+async function runAssetsBBox(
   box: BBox,
   center?: { lat: number; lon: number },
   filter?: { assetType?: string },

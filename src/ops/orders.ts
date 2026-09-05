@@ -1,4 +1,5 @@
 import { nowSec, stampAuditCreate, stampAuditUpdate, stampHistory } from '../audit';
+import { log } from '../log/logger';
 import { newDocId, ulid } from '../ids';
 import { appVersion } from '../version';
 import { listChildrenMemory, loadChild, queryChildRowsIfNative, saveChild } from './childStore';
@@ -267,7 +268,7 @@ export async function submitOrder(ordId: string, session: StartSession): Promise
   next = stampAuditUpdate(next as never, { by: session.username, ver, dt });
   // SetSyncState does not append history
   await saveOrder(ordId, next);
-  void session;
+  log.info('mfs.order.submit', { op: 'SubmitOrder', collection: 'orders', docId: ordId, syncState: 'ready_to_push' });
 }
 
 export async function createOrderAmendment(ordId: string, session: StartSession): Promise<string> {
