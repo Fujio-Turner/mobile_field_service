@@ -33,7 +33,7 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 - [x] This roadmap + PR plan
 - [x] Engineering guides: logging, UI, release, replication ([guides/](../guides/README.md))
 - [x] [AGENT.md](../AGENT.md); tests live in `tests/`; local slices in gitignored `work/`
-- [ ] README: EE license, Expo **development builds**, iOS/Android only, CBL **3.3.3 EE** (lands with first code PR)
+- [x] README: EE license, Expo **development builds**, iOS/Android only, CBL **3.3.3 EE** (lands with first code PR)
 
 **Exit:** an engineer can implement without inventing field names, prefixes, or SQL++.
 
@@ -41,16 +41,16 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 1 — App shell and session UI
 
-- [ ] Expo SDK **52**, RN **0.76.6**, Node ≥ 20, `newArchEnabled: true`
-- [ ] iOS **15.1+**, Android **API 24+**
-- [ ] Expo Router: Login, Today placeholder, Profile
-- [ ] Login UI (email or username + password) — [AUTH.md](./AUTH.md)
-- [ ] `EXPO_PUBLIC_AUTH_STRATEGY=basic|oidc_implicit|oidc_code|demo` (default **basic**)
-- [ ] Keychain/Keystore session + expiry; `RefreshAuth`; replicator 401/404 → re-auth
-- [ ] Phone-first tabs; large-phone / small-tablet safe areas
-- [ ] Camera / location **usage strings** in `app.json` (runtime prompts in later PRs)
-- [ ] Jest (or equivalent) test runner wired
-- [ ] “Development build required” if the native module is missing
+- [x] Expo SDK **52**, RN **0.76.9** (SDK 52 pin; DESIGN cited 0.76.6), Node ≥ 20, `newArchEnabled: true`
+- [x] iOS **15.1+**, Android **API 24+** (`expo-build-properties`)
+- [x] Expo Router: Login, Today placeholder, Profile
+- [x] Login UI (email or username + password) — [AUTH.md](./AUTH.md)
+- [x] `EXPO_PUBLIC_AUTH_STRATEGY=basic|oidc_implicit|oidc_code|demo` (default **basic**; `.env.example` uses **demo**)
+- [ ] Keychain/Keystore session + expiry; `RefreshAuth`; replicator 401/404 → re-auth (session write/restore/logout in PR-01; mint + 401 path with replicator)
+- [x] Phone-first tabs; large-phone / small-tablet safe areas
+- [x] Camera / location **usage strings** in `app.json` (runtime prompts in later PRs)
+- [x] Jest (or equivalent) test runner wired
+- [ ] “Development build required” if the native module is missing (PR-02)
 
 **Exit:** installable iOS/Android binary; login navigates to an empty Today screen.
 
