@@ -7,6 +7,7 @@ import { canTransition, completeBlockedReason, isFrozen } from '../../src/ops/ou
 import { applySyncState } from '../../src/ops/setSyncState';
 import { startWork } from '../../src/ops/startWork';
 import { submitWork } from '../../src/ops/submitWork';
+import { completeTask, listTasksForWork } from '../../src/ops/tasks';
 import { cancelWork, completeWork, startOrResumeWork } from '../../src/ops/transitionStatus';
 import { applyOutPatch } from '../../src/ops/updateWorkOrderOut';
 
@@ -37,6 +38,14 @@ function markRequiredDone(raw: Record<string, unknown>): Record<string, unknown>
     done: c.required ? true : c.done,
   }));
   return applyOutPatch(raw, { operations, checklist }, session, 20, '1');
+}
+
+async function finishRequired(wooutId: string): Promise<void> {
+  await startOrResumeWork(wooutId, session);
+  memorySave('workordersout', wooutId, markRequiredDone(memoryGet('workordersout', wooutId)!));
+  for (const t of await listTasksForWork(wooutId)) {
+    if (t.required && t.status !== 'done') await completeTask(t.id, session);
+  }
 }
 
 describe('status machine', () => {
@@ -78,8 +87,7 @@ describe('setSyncState', () => {
 describe('freeze submit amend', () => {
   it('complete freezes, submit sets ready_to_push, amendment is a new id', async () => {
     const id = await started();
-    await startOrResumeWork(id, session);
-    memorySave('workordersout', id, markRequiredDone(memoryGet('workordersout', id)!));
+    await finishRequired(id);
     await completeWork(id, session);
     const frozen = memoryGet('workordersout', id)!;
     expect(isFrozen(frozen)).toBe(true);

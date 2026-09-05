@@ -6,6 +6,24 @@ export const SEED_CUSTOMER_ID = 'cus:01K4Q6CCC00000000000000001';
 export const SEED_EMPLOYEE_ID = 'E-4412';
 export const SEED_EMAIL = 'jon.hale@example.com';
 export const SEED_USERNAME = 'tech.jon';
+export const SEED_TASK_TEMPLATE_ID = 'tsk:01K4Q6TTT00000000000000001';
+
+export function seedTaskTemplates(ver: string, dt: number) {
+  return [
+    {
+      id: SEED_TASK_TEMPLATE_ID,
+      doc: stampAuditCreate(
+        {
+          type: 'task_template',
+          title: 'Lockout / tagout',
+          required: true,
+          sort: 10,
+        },
+        { by: 'dispatch.maya', ver: 'server-dispatch', dt },
+      ),
+    },
+  ];
+}
 
 const assignedTo = {
   userId: SEED_USER_ID,
@@ -103,6 +121,7 @@ export function seedInboundJobs(ver: string, dt: number, day = deviceLocalDay())
           { id: 'op-2', name: 'Close out', required: false, status: 'pending' },
         ],
         checklist: [{ id: 'cl-ppe', label: 'PPE on', required: true, done: false }],
+        taskIds: [SEED_TASK_TEMPLATE_ID],
       },
       { by: 'dispatch.maya', ver: 'server-dispatch', dt },
     ),

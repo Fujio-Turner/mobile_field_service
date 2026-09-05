@@ -148,10 +148,10 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 7 — Tasks and notes
 
-- [ ] `tasks` instances + templates; `CompleteWork` gains required-task predicate
-- [ ] `notes` job/general; FTS on notes; **409 on frozen parent**
-- [ ] New notes/tasks copy parent `readyToPush` if parent already submitted (editable only)
-- [ ] Push-filter expressions for notes/tasks documented for the replicator PR
+- [x] `tasks` instances + templates; `CompleteWork` gains required-task predicate
+- [x] `notes` job/general; FTS on notes; **409 on frozen parent**
+- [x] New notes/tasks copy parent `readyToPush` if parent already submitted (editable only)
+- [x] Push-filter expressions for notes/tasks documented for the replicator PR
 
 **Exit:** CompleteWork refuses a job with an open required task; notes cannot land on a frozen WO.
 

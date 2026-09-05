@@ -6,6 +6,7 @@ import {
   SEED_USER_ID,
   seedCustomerDoc,
   seedInboundJobs,
+  seedTaskTemplates,
   seedUserDoc,
 } from './seedData';
 
@@ -44,6 +45,7 @@ export async function seedIfNeeded(database: DbLike): Promise<void> {
   const users = (await database.collection('users', FIELD_SCOPE)) as CollectionLike | null;
   const customers = (await database.collection('customers', FIELD_SCOPE)) as CollectionLike | null;
   const woin = (await database.collection('workordersin', FIELD_SCOPE)) as CollectionLike | null;
+  const tasks = (await database.collection('tasks', FIELD_SCOPE)) as CollectionLike | null;
   if (!users || !customers || !woin) return;
 
   await saveIfMissing(users, SEED_USER_ID, seedUserDoc(ver, dt) as unknown as Record<string, unknown>);
@@ -52,6 +54,11 @@ export async function seedIfNeeded(database: DbLike): Promise<void> {
     SEED_CUSTOMER_ID,
     seedCustomerDoc(ver, dt) as unknown as Record<string, unknown>,
   );
+  if (tasks) {
+    for (const row of seedTaskTemplates(ver, dt)) {
+      await saveIfMissing(tasks, row.id, row.doc as unknown as Record<string, unknown>);
+    }
+  }
   for (const row of seedInboundJobs(ver, dt)) {
     await saveIfMissing(woin, row.id, row.doc as unknown as Record<string, unknown>);
   }

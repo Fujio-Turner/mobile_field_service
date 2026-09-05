@@ -34,7 +34,9 @@ export function cycleOpStatus(current: string): OpStatus {
   return OP_STATUSES[(i + 1) % OP_STATUSES.length];
 }
 
-export function completeBlockedReason(doc: Record<string, unknown>): string | null {
+export type TaskLike = { required?: boolean; status?: string; title?: string; type?: string };
+
+export function completeBlockedReason(doc: Record<string, unknown>, tasks: TaskLike[] = []): string | null {
   const ops = Array.isArray(doc.operations) ? doc.operations : [];
   for (const op of ops) {
     const rec = op as { required?: boolean; status?: string; name?: string };
@@ -49,7 +51,19 @@ export function completeBlockedReason(doc: Record<string, unknown>): string | nu
       return `Required checklist open: ${rec.label ?? 'item'}`;
     }
   }
+  for (const t of tasks) {
+    if (t.type === 'task_template') continue;
+    if (t.required && t.status !== 'done') {
+      return `Required task open: ${t.title ?? 'task'}`;
+    }
+  }
   return null;
+}
+
+export function childReadyToPush(parent: Record<string, unknown>): boolean {
+  if (isFrozen(parent)) return false;
+  const s = String(parent.syncState ?? '');
+  return s === 'ready_to_push' || s === 'pushed' || s === 'push_error';
 }
 
 export function isBlockReason(v: string): v is BlockReason {

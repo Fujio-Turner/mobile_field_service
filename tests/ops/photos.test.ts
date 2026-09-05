@@ -12,6 +12,7 @@ import {
 import { commitPhoto, stagePhoto } from '../../src/ops/photos';
 import { OutError } from '../../src/ops/outError';
 import { startWork } from '../../src/ops/startWork';
+import { completeTask, listTasksForWork } from '../../src/ops/tasks';
 import { completeWork, startOrResumeWork } from '../../src/ops/transitionStatus';
 import { applyOutPatch } from '../../src/ops/updateWorkOrderOut';
 
@@ -114,6 +115,9 @@ describe('frozen job cannot stage via commit path', () => {
     }));
     const { memorySave } = require('../../src/db/memoryStore') as typeof import('../../src/db/memoryStore');
     memorySave('workordersout', wooutId, applyOutPatch(raw, { operations, checklist }, session, 20, '1'));
+    for (const t of await listTasksForWork(wooutId)) {
+      if (t.required && t.status !== 'done') await completeTask(t.id, session);
+    }
     await completeWork(wooutId, session);
     await expect(stagePhoto(wooutId, 'file://x.jpg', session)).rejects.toBeInstanceOf(OutError);
   });

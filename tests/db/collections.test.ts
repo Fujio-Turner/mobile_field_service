@@ -1,6 +1,6 @@
 import { FIELD_COLLECTIONS, TMP_COLLECTION, isReplicatorCollection, replicatorAllowList } from '../../src/db/collections';
 import { tmpExpiryDate, TMP_TTL_MS } from '../../src/db/tmp';
-import { VALUE_INDEXES } from '../../src/db/indexes';
+import { FTS_INDEXES, VALUE_INDEXES } from '../../src/db/indexes';
 import { trackingDocId } from '../../src/ids';
 import { bytesToBase64, dbKeyItem } from '../../src/session/dbKeyCodec';
 
@@ -20,6 +20,12 @@ describe('collections', () => {
   it('defines today-list index keys', () => {
     const today = VALUE_INDEXES.find((i) => i.name === 'idx_woin_today');
     expect(today?.properties).toEqual(['assignedTo.employeeId', 'scheduled.day', 'scheduled.startDt']);
+  });
+
+  it('defines notes FTS on body and title', () => {
+    const fts = FTS_INDEXES.find((i) => i.name === 'idx_nte_fts');
+    expect(fts?.collection).toBe('notes');
+    expect(fts?.properties).toEqual(['body', 'title']);
   });
 });
 

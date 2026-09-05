@@ -4,7 +4,7 @@ import { getOpenedDatabase, nativeDbAvailable } from '../db/database';
 import { runQuery } from '../db/query';
 import { memoryAll, memoryDelete, memoryGet, memorySave } from '../db/memoryStore';
 import { purgeJsonDoc, saveJsonDoc } from '../db/saveJson';
-import { seedInboundJobs } from '../db/seedData';
+import { seedInboundJobs, seedTaskTemplates } from '../db/seedData';
 import { newDocId } from '../ids';
 import { bumpCopyOnWrite } from '../metrics/copyOnWrite';
 import { appVersion } from '../version';
@@ -33,6 +33,13 @@ function auditCrDt(doc: Record<string, unknown>): number {
 
 function inboundRawFromSeed(woinId: string): Record<string, unknown> | null {
   const hit = seedInboundJobs(appVersion(), nowSec()).find((j) => j.id === woinId);
+  return hit ? (hit.doc as unknown as Record<string, unknown>) : null;
+}
+
+function loadTaskMemory(id: string): Record<string, unknown> | null {
+  const existing = memoryGet('tasks', id);
+  if (existing) return existing;
+  const hit = seedTaskTemplates(appVersion(), 0).find((row) => row.id === id);
   return hit ? (hit.doc as unknown as Record<string, unknown>) : null;
 }
 
@@ -68,7 +75,7 @@ async function startWorkMemory(woinId: string, session: StartSession): Promise<S
     return { wooutId: winner, created: false };
   }
 
-  return persistCopy({ inbound, woinId, session, saveOut: memorySave, saveTask: memorySave, deleteOut: memoryDelete, deleteTask: memoryDelete, listPrimary: () => findPrimaryOutIds(memoryAll('workordersout'), session.employeeId, woinId), loadTask: (id) => memoryGet('tasks', id) });
+  return persistCopy({ inbound, woinId, session, saveOut: memorySave, saveTask: memorySave, deleteOut: memoryDelete, deleteTask: memoryDelete, listPrimary: () => findPrimaryOutIds(memoryAll('workordersout'), session.employeeId, woinId), loadTask: loadTaskMemory });
 }
 
 async function startWorkCbl(woinId: string, session: StartSession): Promise<StartWorkResult> {

@@ -23,8 +23,11 @@ import {
   startOrResumeWork,
 } from '@/src/ops/transitionStatus';
 import { captureAndCommitPhoto } from '@/src/ops/capturePhoto';
+import { listNotes, type NoteItem } from '@/src/ops/notes';
 import { deletePhoto } from '@/src/ops/photos';
+import { listTasksForWork, type TaskItem } from '@/src/ops/tasks';
 import { updateWorkOrderOutFields } from '@/src/ops/updateWorkOrderOut';
+import { JobTasksNotes } from '@/src/features/work/JobTasksNotes';
 import { useAuth } from '@/src/session/AuthContext';
 import { theme } from '@/src/theme';
 
@@ -60,15 +63,26 @@ export default function WorkOrderOutScreen() {
   const [cancelReason, setCancelReason] = useState('');
   const [banner, setBanner] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [notes, setNotes] = useState<NoteItem[]>([]);
 
   const reload = useCallback(async () => {
     if (!id) {
       setDoc(null);
+      setTasks([]);
+      setNotes([]);
       return;
     }
     const wo = await getWorkOrderOut(id);
     setDoc(wo);
-    if (wo) setSummary(wo.summary);
+    if (wo) {
+      setSummary(wo.summary);
+      setTasks(await listTasksForWork(wo.id));
+      setNotes(await listNotes({ workOrderOutId: wo.id }));
+    } else {
+      setTasks([]);
+      setNotes([]);
+    }
     if (wo && session) {
       const inbound = await getWorkOrderIn(wo.sourceId);
       if (inbound && inbound.assignedTo.employeeId !== session.employeeId) {
@@ -202,6 +216,16 @@ export default function WorkOrderOutScreen() {
             ))}
           </>
         ) : null}
+
+        <JobTasksNotes
+          wooutId={doc.id}
+          editable={doc.editable}
+          busy={busy}
+          session={s}
+          tasks={tasks}
+          notes={notes}
+          onMutate={(fn) => void run(fn)}
+        />
 
         <Text style={styles.section}>Photos {doc.photos.length}/20</Text>
         {doc.photos.map((p) => (

@@ -85,6 +85,27 @@ SG user example (email): [README.md](../README.md).
 | `field.assets` products rates taxes users (dispatch) | **never** (filter false) |
 | `local.tmp` | **omitted** from `CollectionConfiguration[]` |
 
+### Notes and tasks (PR-08)
+
+Documented here for the replicator PR. RN push filters must be **pure** with `"show source"`.
+
+```ts
+function tasksPushFilter(document: any, _flags: any): boolean {
+  "show source";
+  return document["type"] === "task" && document["readyToPush"] === true;
+}
+
+function notesPushFilter(document: any, _flags: any): boolean {
+  "show source";
+  return document["readyToPush"] === true;
+}
+```
+
+- Templates (`type == 'task_template'`) never push.
+- Job notes/tasks start `readyToPush: false`. `SubmitWork` flips existing children. New children on an **editable** parent that is already submitted copy `readyToPush: true`.
+- General notes (no parent) set `readyToPush: true` on create.
+- Frozen parent → 409; do not push a follow-up onto the frozen copy.
+
 Channels: `emp:{employeeId}` (SG username is **email**). See DESIGN matrix.
 
 ---

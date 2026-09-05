@@ -8,14 +8,16 @@ import {
   isBlockReason,
   isFrozen,
   nextStatus,
+  type TaskLike,
 } from './outStatus';
 import { loadOutboundRaw, saveOutboundRaw } from './outboundStore';
+import { listTasksForWork } from './tasks';
 
 export function applyTransition(
   doc: Record<string, unknown>,
   op: 'StartOrResumeWork' | 'BlockWork' | 'CompleteWork' | 'CancelWork',
   session: StartSession,
-  extra?: { blockedReason?: string; blockedNote?: string; cancelledReason?: string },
+  extra?: { blockedReason?: string; blockedNote?: string; cancelledReason?: string; tasks?: TaskLike[] },
   dt = nowSec(),
   ver = appVersion(),
 ): Record<string, unknown> {
@@ -29,7 +31,7 @@ export function applyTransition(
   }
   if (op === 'CancelWork' && !extra?.cancelledReason?.trim()) throw new OutError('reason_required');
   if (op === 'CompleteWork') {
-    const why = completeBlockedReason(doc);
+    const why = completeBlockedReason(doc, extra?.tasks);
     if (why) throw new OutError('incomplete', why);
   }
   const to = nextStatus(op);
@@ -83,7 +85,8 @@ export async function blockWork(
 export async function completeWork(id: string, session: StartSession): Promise<void> {
   const doc = await loadOutboundRaw(id);
   if (!doc) throw new OutError('missing');
-  await saveOutboundRaw(id, applyTransition(doc, 'CompleteWork', session));
+  const tasks = await listTasksForWork(id);
+  await saveOutboundRaw(id, applyTransition(doc, 'CompleteWork', session, { tasks }));
 }
 
 export async function cancelWork(id: string, session: StartSession, cancelledReason: string): Promise<void> {
