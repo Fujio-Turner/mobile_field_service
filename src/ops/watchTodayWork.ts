@@ -4,7 +4,7 @@ import { deviceLocalDay } from '../ids';
 import { collapseTodayPage } from './collapseToday';
 import { findOutboundForSources } from './findOutboundForSources';
 import { listTodayWork, parseInboundHits, parseOutboundHits } from './listTodayWork';
-import { ACTIVE_OUTBOUND_SQL, INBOUND_TODAY_SQL } from './todaySql';
+import { ACTIVE_OUTBOUND_SQL, inboundTodaySql } from './todaySql';
 import { TODAY_PAGE_SIZE, type TodayRow } from './todayTypes';
 
 export type WatchTodayHandle = {
@@ -31,12 +31,10 @@ export async function watchTodayWork(
     return { stop: async () => undefined };
   }
 
-  const inboundQuery = db.createQuery(INBOUND_TODAY_SQL);
+  const inboundQuery = db.createQuery(inboundTodaySql(TODAY_PAGE_SIZE, 0));
   await applyParams(inboundQuery, {
     employeeId: input.employeeId,
     day,
-    limit: TODAY_PAGE_SIZE,
-    offset: 0,
   });
 
   const refresh = async (inboundRaw: unknown) => {

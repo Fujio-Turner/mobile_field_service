@@ -24,7 +24,7 @@ const OPEN_JOBS_SQL = `
 SELECT META().id AS id, number, status, site.name AS siteName, site.geo.lat AS lat, site.geo.lon AS lon
 FROM field.workordersout
 WHERE assignedTo.employeeId = $employeeId
-  AND status IN ['assigned', 'in_progress', 'blocked']
+  AND (status = 'assigned' OR status = 'in_progress' OR status = 'blocked')
 `;
 
 export type AssetItem = {

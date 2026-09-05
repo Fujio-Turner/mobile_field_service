@@ -5,12 +5,13 @@ export async function saveJsonDoc(
 ): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { MutableDocument } = require('cbl-reactnative') as {
-    MutableDocument: new (id: string) => {
+    MutableDocument: new (id: string, data?: Record<string, unknown>) => {
       setData?: (data: Record<string, unknown>) => void;
       setJSON?: (json: string) => void;
     };
   };
-  const doc = new MutableDocument(id);
+  const doc = typeof MutableDocument === 'function' ? new MutableDocument(id, body) : null;
+  if (!doc) throw new Error('MutableDocument missing');
   if (typeof doc.setData === 'function') doc.setData(body);
   else if (typeof doc.setJSON === 'function') doc.setJSON(JSON.stringify(body));
   await collection.save(doc);

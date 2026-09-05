@@ -164,3 +164,7 @@ temp/
 
 # --- Local build slices (checklists). Keep files tiny. AGENT.md is at repo root. ---
 /work/
+
+# --- Expo prebuild (npx expo run:ios / run:android) ---
+/ios/
+/android/

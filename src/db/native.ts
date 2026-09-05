@@ -4,7 +4,8 @@ import { NativeModules } from 'react-native';
 export function isCblNativeAvailable(): boolean {
   const mods = NativeModules as Record<string, unknown>;
   return Boolean(
-    mods.CblReactNative ||
+    mods.CblReactnative ||
+      mods.CblReactNative ||
       mods.CBLReactNative ||
       mods.CblReactNativeEngine ||
       mods.CBLIteReactNative,

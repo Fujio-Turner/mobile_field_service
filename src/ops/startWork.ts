@@ -80,6 +80,16 @@ async function startWorkMemory(woinId: string, session: StartSession): Promise<S
 }
 
 async function startWorkCbl(woinId: string, session: StartSession): Promise<StartWorkResult> {
+  try {
+    return await startWorkCblInner(woinId, session);
+  } catch (e) {
+    if (e instanceof StartWorkError) throw e;
+    log.error('mfs.wo.start', { op: 'StartWork', err: e, collection: 'workordersout', docId: woinId });
+    throw e;
+  }
+}
+
+async function startWorkCblInner(woinId: string, session: StartSession): Promise<StartWorkResult> {
   const db = getOpenedDatabase();
   if (!db) throw new StartWorkError('missing');
   const inCol = (await db.collection('workordersin', FIELD_SCOPE)) as {

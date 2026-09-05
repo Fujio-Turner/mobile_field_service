@@ -3,6 +3,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { findOutboundForSources } from '@/src/ops/findOutboundForSources';
 import { getWorkOrderIn } from '@/src/ops/getWorkOrderIn';
+import { log } from '@/src/log/logger';
 import { StartWorkError, startWork } from '@/src/ops/startWork';
 import type { WorkOrderIn } from '@/src/ops/workOrderIn';
 import { useAuth } from '@/src/session/AuthContext';
@@ -175,13 +176,16 @@ export default function WorkOrderInScreen() {
                   setOutId(result.wooutId);
                   router.push(`/wo/out/${result.wooutId}`);
                 } catch (e) {
-                  const code = e instanceof StartWorkError ? e.code : 'missing';
+                  const code = e instanceof StartWorkError ? e.code : 'error';
+                  log.error('mfs.wo.start', { op: 'StartWork', err: e, errCode: code, docId: doc.id });
                   const msg =
                     code === 'inbound_not_assigned'
                       ? 'This job is not assigned to you.'
                       : code === 'inbound_not_startable'
                         ? 'This job cannot be started.'
-                        : 'Could not start work.';
+                        : e instanceof Error
+                          ? e.message
+                          : 'Could not start work.';
                   Alert.alert('Start work', msg);
                 } finally {
                   setStarting(false);

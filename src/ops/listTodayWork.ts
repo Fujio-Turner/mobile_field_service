@@ -6,7 +6,7 @@ import { collapseTodayPage, sourceIdsFromRows } from './collapseToday';
 import { findOutboundForSources } from './findOutboundForSources';
 import { memoryActiveOutbound, memoryInboundHits, memoryOutboundRefs } from './memoryToday';
 import { seedInboundAsHits } from './todaySeedFallback';
-import { ACTIVE_OUTBOUND_SQL, INBOUND_TODAY_SQL } from './todaySql';
+import { ACTIVE_OUTBOUND_SQL, inboundTodaySql } from './todaySql';
 import {
   TODAY_PAGE_SIZE,
   type InboundHit,
@@ -94,11 +94,9 @@ export async function listTodayWork(input: ListTodayInput): Promise<ListTodayRes
   if (!db) return { preview: false, rows: [], inboundCount: 0 };
 
   const inboundRows = await timeQuery('today', () =>
-    runQuery(db, INBOUND_TODAY_SQL, {
+    runQuery(db, inboundTodaySql(limit, offset), {
       employeeId: input.employeeId,
       day,
-      limit,
-      offset,
     }),
   );
   const inbound = parseInboundHits(inboundRows);

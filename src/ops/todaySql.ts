@@ -1,4 +1,8 @@
-export const INBOUND_TODAY_SQL = `
+/** CBL SQL++ does not accept `IN ['a','b']` or parameterized LIMIT/OFFSET. */
+export function inboundTodaySql(limit = 20, offset = 0): string {
+  const lim = Math.max(0, Math.min(100, Math.floor(Number(limit)) || 0));
+  const off = Math.max(0, Math.floor(Number(offset)) || 0);
+  return `
 SELECT
   META().id AS id,
   number,
@@ -12,11 +16,15 @@ SELECT
 FROM field.workordersin
 WHERE assignedTo.employeeId = $employeeId
   AND scheduled.day = $day
-  AND status NOT IN ['cancelled', 'superseded']
+  AND status != 'cancelled'
+  AND status != 'superseded'
 ORDER BY scheduled.startDt DESC
-LIMIT $limit
-OFFSET $offset
+LIMIT ${lim}
+OFFSET ${off}
 `;
+}
+
+export const INBOUND_TODAY_SQL = inboundTodaySql(20, 0);
 
 export const ACTIVE_OUTBOUND_SQL = `
 SELECT
@@ -33,7 +41,7 @@ SELECT
   scheduled.endDt AS endDt
 FROM field.workordersout
 WHERE assignedTo.employeeId = $employeeId
-  AND status IN ['assigned', 'in_progress', 'blocked']
+  AND (status = 'assigned' OR status = 'in_progress' OR status = 'blocked')
 `;
 
 export function outboundForSourcesSql(count: number): string {
