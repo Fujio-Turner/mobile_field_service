@@ -18,7 +18,7 @@ This app is **general**. One Couchbase Lite database, one Expo binary. A company
 | **Customer** | Field service at a customer site | `workorders*` + `orders` + `products` + `customers` + `rates` + `taxes` | Deliver or service a work order, then take a **new order** (maybe a **new customer**) on site |
 | **Sales** | Route sales | `orders` + `products` + `customers` + `rates` + `taxes` | Sell, deliver, next stop |
 
-Shared on every mode: `users`, `messages`, `inventory` (van), `tmp`, `emp:{employeeId}` channels, copy-on-write, freeze-on-complete, amendments, `lastAction` geo/time.
+Shared on every mode: `users`, `messages`, `inventory` (van), `tracking`, `tmp`, `emp:{employeeId}` channels, copy-on-write, freeze-on-complete, amendments, `history[]` (what changed + geo/time), movement crumbs in `tracking`.
 
 ---
 
@@ -37,6 +37,7 @@ Shared on every mode: `users`, `messages`, `inventory` (van), `tmp`, `emp:{emplo
 | `orders` | [schema/SCHEMA_ORDERS.md](./schema/SCHEMA_ORDERS.md) | `ord:` |
 | `rates` | [schema/SCHEMA_RATES.md](./schema/SCHEMA_RATES.md) | `rate:` |
 | `taxes` | [schema/SCHEMA_TAXES.md](./schema/SCHEMA_TAXES.md) | `tax:` |
+| `tracking` | [schema/SCHEMA_TRACKING.md](./schema/SCHEMA_TRACKING.md) | `track:{day}:{employeeId}` |
 
 `products` and `customers` already exist. Field-created **customers** (walk-up at a site) are new `cus:` documents with `origin: field` — pulled customer master is never mutated.
 

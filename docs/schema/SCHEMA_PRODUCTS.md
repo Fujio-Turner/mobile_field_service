@@ -4,7 +4,7 @@
 | --- | --- |
 | Id | `prd:<ULID>` |
 | `type` | `product` |
-| Envelope | [SCHEMA_COMMON.md](./SCHEMA_COMMON.md) |
+| Envelope | [SCHEMA_COMMON.md](./SCHEMA_COMMON.md) (no `history[]`; pull catalog) |
 
 **Required:** `type`, `audit`, `sku`, `name`, `uom`.
 

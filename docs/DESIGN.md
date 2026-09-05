@@ -27,11 +27,11 @@ The phone is a **general field app**. One database, three company modes (`users.
 
 Technicians work with poor or no radio. Today’s board is work orders and/or orders. Open by document ID, capture photos, consume van stock, map assets, price lines from catalogs — all offline. Sync when the network returns.
 
-The app is **React Native + Expo (development builds)** with **Couchbase Lite 3.3.3 Enterprise** via `@couchbase/couchbase-lite-react-native` **1.1.x** (Turbo Module). Native CBL **4.x** exists (version vectors, LWW default) but the RN plugin does **not** wrap it; 4.x is a future bump when the plugin ships it. Local data lives in scope `field` (**thirteen** synced collections) plus scope `local` collection `tmp`.
+The app is **React Native + Expo (development builds)** with **Couchbase Lite 3.3.3 Enterprise** via `@couchbase/couchbase-lite-react-native` **1.1.x** (Turbo Module). Native CBL **4.x** exists (version vectors, LWW default) but the RN plugin does **not** wrap it; 4.x is a future bump when the plugin ships it. Local data lives in scope `field` (**fourteen** synced collections, including `tracking`) plus scope `local` collection `tmp`.
 
 **Pulled dispatch inbound is never mutated on the device.** The phone **may create** new inbound work orders/jobs (`origin: field`, new `woin:`). Sync channels by **`emp:{employeeId}`** (SG login username = **email**; see README example). Starting a job **copies** inbound into `workordersout` (new id). The tech works **that copy** offline and pushes it back. When `workordersout.status` becomes `complete` (or `cancelled`), the **body is frozen** and **ownership moves to the backend** — the backend may spawn follow-up tasks and processes. The technician cannot edit that document again. Forgotten details become a **new** `workordersout` (`role: amendment`) that **references** the frozen original (another sheet of paper). The backend consolidates documents that share a work-order number / `source.id`. Multiple outbound documents per work order are expected (eventual consistency). Dispatch may **reassign** inbound while the tech is offline; the Today list badges it **Reassigned**; the tech’s copy still syncs.
 
-Every mutation stamps `lastAction` (`dt` unix seconds, plus `lat`/`lon` when GPS is available).
+User/device mutations append `history[]` (path + from/to + lat/lon/dt). Breadcrumb GPS (moved ≥ N meters) goes to `field.tracking` keyed `track:{day}:{employeeId}` — last 7 days is seven KV gets.
 
 Vector similarity (on-device **mobile-CLIP** embeddings + CBL vector index) is a **Phase EE** capability. The React Native plugin **does not currently expose vector indexes or `APPROX_VECTOR_DISTANCE()`**. The schema allows optional `embedding.clip512` (512 floats); v1 **does not write** embeddings until PR-13 when a native model exists. The similarity UI is feature-flagged (`VECTOR_SEARCH_ENABLED && nativeVectorApi`).
 
@@ -51,7 +51,7 @@ A sibling repo (`utility_field_service`) demonstrates field-ops UX with a **mock
 2. **Reassignment while offline.** Dispatch may give the inbound job to someone else while the tech is in a basement. The tech still pushes **their** paper; Today shows **Reassigned**. Many documents, one WO number, eventual consistency.
 3. **Offline photo, parts, and chat.** Photos are CBL blobs on the outbound job the tech owns. Parts write a movement plus a line on `workordersout`. Chat is `field.messages`, channeled by `employeeId`.
 4. **Today list at field speed.** After login the first screen is today’s jobs, `ORDER BY` scheduled time `DESC`, `LIMIT 20 OFFSET n`, infinite scroll. Row tap is a **KV get**, not a second list query.
-5. **Place-time on every write.** Updates stamp `lastAction.dt` and lat/lon when GPS is available.
+5. **Place-time + field trail.** User writes append `history[]` (`path`, `from`, `to`, dt, lat/lon). Movement crumbs go to `tracking`.
 6. **Honest EE surface.** CBL RN requires an Enterprise license. Database encryption is in. Vector search is **not** in the RN plugin; we do not pretend it is.
 
 ### Expected load (device)
@@ -63,6 +63,7 @@ A sibling repo (`utility_field_service`) demonstrates field-ops UX with a **mock
 | Compressed JPEG size | 200–800 KB |
 | Photo bytes per job | ~1–16 MB |
 | Photo bytes per day (typical 15×10×400 KB) | ~60 MB |
+| Tracking points per day (100 m threshold) | hundreds (hard cap **4000**) |
 | Local DB after several days | **hundreds of MB** (photos dominate) |
 | Today list page size `X` | **20** |
 | Today list local query | p50 &lt; 20 ms, p95 &lt; 50 ms |
@@ -172,7 +173,7 @@ await db.open();
 
 A database encrypted with this RN plugin is **not portable** to other CBL language SDKs.
 
-4. `await database.createCollection(name, 'field')` for the **thirteen** synced collections (including `messages`, `orders`, `rates`, `taxes`). `await database.createCollection('tmp', 'local')` for scratch. Create is idempotent.
+4. `await database.createCollection(name, 'field')` for the **fourteen** synced collections (including `tracking`). `await database.createCollection('tmp', 'local')` for scratch. Create is idempotent.
 5. Create value + FTS indexes (idempotent by name).
 6. Optional: copy a **pre-built** seed database on first run (demo).
 7. Start **one** replicator from an **explicit allow-list** of `field.*` collections. **Never** add `local.tmp`. Lint: any helper that “replicate all collections in a scope” must take a deny-list or allow-list that cannot include `tmp`.
@@ -196,7 +197,7 @@ v1 is **one active device per employeeId**. A second phone of the same employee 
 app/                          Expo Router screens
 src/db/                       engine, open, collections, indexes, seed
 src/ids.ts                    prefixes + ULID
-src/audit.ts                  stampAuditCreate / stampAuditUpdate / stampLastAction
+src/audit.ts                  stampAuditCreate / stampAuditUpdate / stampHistory
 src/ops/                      one file per operation (catalog below)
 src/session/                  SG session, keychain, logout
 src/features/                 UI hooks
@@ -273,7 +274,7 @@ Show customer, site, geo, window, priority, assigned tech, operations, planned m
 
 ### Work order out (editor)
 
-Sections: header/status, site, operations, checklist, tasks, materials consume, photos, job chat. **v1 push sequence:** edit while `assigned` / `in_progress` / `blocked` → **Complete or Cancel** → **Submit** (required to push). Submit is not a mid-job checkpoint. After `complete` / `cancelled`, the **body is frozen** (`owner: backend`). No field edits, no photos, no notes on **that** document. Forgotten information → **Add follow-up** (`CreateAmendment`) — a new `workordersout` with `amends.id`. Cannot navigate to an “edit inbound” path. Save is debounced; status transitions are explicit operations. Every save stamps `lastAction`.
+Sections: header/status, site, operations, checklist, tasks, materials consume, photos, job chat. **v1 push sequence:** edit while `assigned` / `in_progress` / `blocked` → **Complete or Cancel** → **Submit** (required to push). Submit is not a mid-job checkpoint. After `complete` / `cancelled`, the **body is frozen** (`owner: backend`). No field edits, no photos, no notes on **that** document. Forgotten information → **Add follow-up** (`CreateAmendment`) — a new `workordersout` with `amends.id`. Cannot navigate to an “edit inbound” path. Save is debounced; status transitions are explicit operations. Every user save appends `history[]`.
 
 If inbound `source.id` KV get differs from `source.snapshot`, show a read-only **Dispatch updated** banner (no auto-merge).
 
@@ -291,7 +292,7 @@ Short job notes stay on the outbound document (`notesPreview` / `notes` collecti
 
 ### Chat
 
-**Employees only** (tech ↔ dispatch). No customer-facing thread in v1. Job thread (`threadId = thr:wo:{woinId}`) and direct (`thr:dm:{empA}:{empB}` with employee ids sorted). Composer writes `field.messages` and stamps `lastAction`. Messages `readyToPush = true` on create (chat is not gated on job Submit). Channels: `emp:{from}` and `emp:{to}` (and `wo:{woinId}` when job-scoped).
+**Employees only** (tech ↔ dispatch). No customer-facing thread in v1. Job thread (`threadId = thr:wo:{woinId}`) and direct (`thr:dm:{empA}:{empB}` with employee ids sorted). Composer writes `field.messages` and appends `history[]`. Messages `readyToPush = true` on create (chat is not gated on job Submit). Channels: `emp:{from}` and `emp:{to}` (and `wo:{woinId}` when job-scoped).
 
 ### Profile + sync
 
@@ -414,7 +415,7 @@ Conventions:
 - **CBL API** is the RN plugin surface: `get` = `collection.document(id)`, `save` = `collection.save`, `query` = SQL++ `createQuery`/`execute` or live listener, `blob` = `setBlob`/`getBlob`, `expire` = `setDocumentExpiration`.
 - **Offline:** all local ops succeed without network except `LoginRemote` (needs HTTP) and the first replicator start. Failures are CBL/IO/validation, not HTTP. `RestoreSession` works offline **only if** a session cookie is still in Keychain (process death / background, **not** after Logout).
 - **Audit:** every `save` of a product document calls `stampAuditCreate` or `stampAuditUpdate`.
-- **Action geo:** every mutation also calls `stampLastAction(doc)` → `lastAction: { dt, lat?, lon?, accuracyM? }`. `dt` is unix seconds. Lat/lon omitted when GPS is denied, unavailable, or the call is `SetSyncState` (no physical action). Status transitions also append `statusHistory[]` with the same stamp.
+- **History:** user/device saves call `stampHistory(doc, { op, changes, geo })` → append `history[]` ([schema/SCHEMA_COMMON.md](./schema/SCHEMA_COMMON.md)). Cap 100. Skip `SetSyncState`. Movement without a field edit → [schema/SCHEMA_TRACKING.md](./schema/SCHEMA_TRACKING.md), not `history`.
 - **Identity:** session carries `employeeId` + `email` + `username`. Channels and assignment use **`employeeId`**. `audit.*.by` stays username (human-readable).
 - **App version** string: Expo `Application.nativeApplicationVersion` + build number, e.g. `"0.1.0+12"`. Written to `audit.cr.ver` / `audit.up.ver`.
 
@@ -507,7 +508,7 @@ The phone **creates jobs**. New document only — never patch dispatch inbound.
 | --- | --- |
 | Inputs | `kind`, `summary`, `site?`, `scheduled?`, `customerId?`, `assetIds?`, `orderId?` |
 | CBL | `save` `workordersin` |
-| Success | `{ woinId }` `woin:<ulid>`, `origin: field`, `status: assigned`, `assignedTo` = session employee, `readyToPush: true`, `lastAction` |
+| Success | `{ woinId }` `woin:<ulid>`, `origin: field`, `status: assigned`, `assignedTo` = session employee, `readyToPush: true`, first `history` row |
 | Failure | validation (summary empty) |
 | Offline | yes; pushes when replicator is authorized |
 
@@ -543,7 +544,7 @@ Algorithm:
 5. `outId = 'woout:' + ulid()`.
 6. Build body from inbound JSON **except** `type`, `audit`, `photos`, `syncState`, `source`, `embedding`.
 7. Set `type = 'workorderout'`, `role = 'primary'`, `owner = 'technician'`, `status = 'assigned'`, `syncState = 'local_draft'`, `source` (full body snapshot minus `embedding` and blob stubs), `assignedTo` from session (include `employeeId` + `email`). Do not copy `embedding`.
-8. `stampAuditCreate`; `stampLastAction`; `workordersout.save`.
+8. `stampAuditCreate`; `stampHistory` (op `StartWork`); `workordersout.save`.
 9. **Instantiate tasks:** for each inbound `taskIds` entry, `get` the `tasks` doc. If `type === 'task_template'` **or** it has no `workOrderOutId`, `save` a new `tsk:<ulid>` with `type: 'task'`, `templateId` = source id, `workOrderOutId` = `outId`, `status: 'open'`, `required` copied, `title` copied, `readyToPush: false`. Replace `taskIds` on the woout with the new instance ids. Do **not** mutate the template or inbound docs.
 10. Re-lookup; if another id won the race, delete/purge this woout **and** its new task instances; return the winner.
 
@@ -596,7 +597,7 @@ PR-06 ships CompleteWork with operations + checklist only; PR-08 adds the requir
 
 `CancelWork`: technician, from `assigned` | `in_progress` | `blocked`, requires `cancelledReason`. Dispatch cancellation is inbound-only.
 
-Each transition stamps `audit.up`, `statusChangedAt`, `lastAction`, and appends `statusHistory[]`. `CompleteWork` / `CancelWork` also set `completedAt` (or `cancelledAt`), `owner: 'backend'`, and freeze the body.
+Each transition stamps `audit.up`, `statusChangedAt`, and `history` (`path: status`, from/to). `CompleteWork` / `CancelWork` also set `completedAt` (or `cancelledAt`), `owner: 'backend'`, and freeze the body.
 
 #### `SubmitWork`
 
@@ -618,7 +619,7 @@ Algorithm:
 3. Copy `number`, `priority`, `customerId`, `site`, `scheduled`, `summary`, `source` (same inbound pointer + snapshot).
 4. Set `role: 'amendment'`, `owner: 'technician'`, `status: 'assigned'`, `syncState: 'local_draft'`, `amends: { id: originalId, number, completedAt }`.
 5. Empty `photos[]`, empty `operations` actuals (tech fills what they forgot). Optional: copy checklist as unchecked “follow-up” items — v1 starts empty + a free-text `summary`.
-6. `stampAuditCreate`; `stampLastAction`; save.
+6. `stampAuditCreate`; `stampHistory` (op `CreateAmendment`); save.
 7. Return new id. Today lists it as badge **Amendment**.
 
 This is the **only** way to add information after complete. Not a reopen of the same id.
@@ -699,9 +700,39 @@ SQL++ / get / save on `tasks`. Completing a required task is a precondition of `
 - Job: `thr:wo:{woinId}` (stable even when there are several `woout` copies).
 - Direct: `thr:dm:{empA}:{empB}` with the two `employeeId`s sorted.
 
-Document `from.employeeId` / `from.email` / `from.username`. `toEmployeeIds[]` lists everyone who should receive the channel (job thread: tech + dispatch role users). `stampLastAction` on send.
+Document `from.employeeId` / `from.email` / `from.username`. `toEmployeeIds[]` lists everyone who should receive the channel (job thread: tech + dispatch role users). `stampHistory` on send.
 
 Chat is **not** a work-order body field. Completing a WO does not freeze the job thread.
+
+### Tracking (`field.tracking`)
+
+Breadcrumb GPS while the tech moves. Separate from `history[]` (field diffs). Schema: [schema/SCHEMA_TRACKING.md](./schema/SCHEMA_TRACKING.md).
+
+#### `RecordTrackPoint`
+
+| | |
+| --- | --- |
+| Inputs | current fix `{ lat, lon, accuracyM, ts }` (unix seconds) |
+| CBL | `get`/`save` `tracking` id `track:{deviceLocalDay}:{employeeId}` |
+| Success | point stored, or no-op if below threshold / poor accuracy / capped |
+| Failure | permission denied → warn, do not block other ops |
+| Offline | yes; doc pushes on its own (filter always true) |
+
+Algorithm:
+
+1. If location permission is denied or `accuracyM` > `EXPO_PUBLIC_TRACK_MIN_MOVE_M` (default **100**), return.
+2. `day` = device-local `YYYY-MM-DD`. Id = `track:` + day + `:` + employeeId. `employeeId` must not contain `:`.
+3. `get` or create `{ type, employeeId, email, day, thresholdM, last: null, capped: false, tracking: {} }`. `stampAuditCreate` on create (**no** `history[]`).
+4. If `capped` or `Object.keys(tracking).length >= 4000`, set `capped: true` and return.
+5. If `last` exists and haversine(`last`, fix) < `thresholdM`, return. If `ts === last[2]`, overwrite that key.
+6. `tracking[String(ts)] = [lat, lon, ts]`; `last = [lat, lon, ts]`; `stampAuditUpdate`; `save`.
+7. Metric `mfs_track_point_total`. Log `mfs.track.point` with `docId` + `ts` only — **never** the `tracking` map.
+
+Do not sample on a timer if the user is still. v1 is **foreground / while-using**. Background always-on is a later ROADMAP item.
+
+#### `GetTrackingDay` / `GetTrackingLastNDays`
+
+KV only. `GetTrackingLastNDays(employeeId, n=7)` loops `lastNLocalDays(n)` and `tracking.document("track:" + day + ":" + employeeId)`. Missing docs are skipped. That is the shotgun for “last week for employee xyz.”
 
 ### Assets map
 
@@ -836,7 +867,7 @@ Per-collection field lists: **[schema/](./schema/README.md)**. Shared envelope: 
 | Database name | `mfs_<safe>_<hash8>` — `safe` = username with non `[a-zA-Z0-9_-]` → `_`; `hash8` = first 8 hex chars of SHA-256(username). Avoids `tech.jon` colliding with `techjon`. |
 | Synced scope | `field` |
 | Local scope | `local` (device-only; plugin-recommended pattern for non-synced data) |
-| Collections (exact names) | `workordersin`, `workordersout`, `assets`, `products`, `inventory`, `users`, `customers`, `tasks`, `notes`, `messages`, `orders`, `rates`, `taxes` in **`field`**; `tmp` in **`local`** |
+| Collections (exact names) | `workordersin`, `workordersout`, `assets`, `products`, `inventory`, `users`, `customers`, `tasks`, `notes`, `messages`, `orders`, `rates`, `taxes`, `tracking` in **`field`**; `tmp` in **`local`** |
 
 ```typescript
 for (const name of FIELD_COLLECTIONS) {
@@ -845,13 +876,15 @@ for (const name of FIELD_COLLECTIONS) {
 await database.createCollection('tmp', 'local');
 ```
 
-SG/App Services must have scope `field` and the **thirteen** synced collection names. **Do not** create `tmp` on SG. Replicator start errors if a configured collection is missing on the gateway.
+SG/App Services must have scope `field` and the **fourteen** synced collection names. **Do not** create `tmp` on SG. Replicator start errors if a configured collection is missing on the gateway.
 
 **SQL++ date functions:** `scheduled.startDt` and `audit.*.dt` are unix **seconds**. CBL SQL++ `MILLIS_TO_STR` / `STR_TO_MILLIS` are **milliseconds**. Do not pass these fields to SQL++ date functions unless multiplied by 1000. Today-list filtering uses the stamped `scheduled.day` string, not `MILLIS_TO_STR`.
 
 ### Document IDs
 
 Format: `<prefix>:<ulid>`. **ULID** (Crockford base32, 26 characters, 48-bit time + 80-bit randomness, lexicographically sortable). No extra colons in the unique part.
+
+**Exception — `tracking`:** `track:{YYYY-MM-DD}:{employeeId}` (device-local day). Extra colons are the access path so last-N-days is N KV gets. Email is on the body, never the id.
 
 | Collection | Prefix | Example |
 | --- | --- | --- |
@@ -869,6 +902,7 @@ Format: `<prefix>:<ulid>`. **ULID** (Crockford base32, 26 characters, 48-bit tim
 | `orders` | `ord` | `ord:01K…` |
 | `rates` | `rate` | `rate:01K…` |
 | `taxes` | `tax` | `tax:01K…` |
+| `tracking` | `track` | `track:2026-01-15:E-4412` |
 | `tmp` | `tmp` | `tmp:01K…` |
 
 IDs are unique **within a collection**. Do not reuse a prefix across collections except `inv` / `invtx` which share `inventory`.
@@ -887,12 +921,22 @@ export interface Audit {
   up: AuditActorStamp;
 }
 
-/** Physical/time stamp for a mutation. Omit lat/lon when GPS is unavailable. */
-export interface LastAction {
-  dt: number;          // unix seconds
-  lat?: number;        // WGS84
+/** Field trail on user/device docs. Newest last. Cap 100. See SCHEMA_COMMON. */
+export interface HistoryChange {
+  path: string;
+  from?: unknown;
+  to?: unknown;
+}
+
+export interface HistoryEntry {
+  dt: number;            // unix seconds
+  lat?: number;          // omit if no GPS
   lon?: number;
   accuracyM?: number;
+  by: string;
+  ver: string;
+  op: string;            // catalog name
+  changes?: HistoryChange[];
 }
 
 export type DocType =
@@ -911,6 +955,7 @@ export type DocType =
   | 'order'
   | 'rate'
   | 'tax'
+  | 'tracking'
   | 'tmp';
 
 export interface Embedding {
@@ -929,7 +974,7 @@ export interface GeoPoint {
 
 On create, `up` **may equal** `cr` (same object values). Never mix milliseconds. UI converts with `new Date(dt * 1000)`. Example timestamps in this doc are **2026-09-04** (e.g. `1788480000` = 2026-09-04T00:00:00Z, `1788523200` = 2026-09-04T12:00:00Z).
 
-Every product `save` (except `SetSyncState`) writes `lastAction`. GPS is best-effort: if `expo-location` has no fix, persist `dt` only. Do not block a save on GPS.
+Every user/device `save` (except `SetSyncState`) appends `history[]`. GPS is best-effort. Do not block a save on GPS. Breadcrumbs: `RecordTrackPoint` → `field.tracking`.
 
 Reserved top-level keys (do not use): `_id`, `_rev`, `_sequence`, `_attachments`, `_deleted`, `_removed`.
 
@@ -1026,9 +1071,9 @@ Do not persist `embedding` until a producer writes a real 512-float vector. Miss
 
 ### `workordersout` — type `workorderout` — push + pull
 
-**Required:** `type`, `audit`, `lastAction`, `number`, `priority`, `status`, `syncState`, `role` (`primary` \| `amendment`), `owner` (`technician` \| `backend`), `assignedTo`, `customerId`, `site`, `scheduled`, `summary`, `source`.
+**Required:** `type`, `audit`, `history`, `number`, `priority`, `status`, `syncState`, `role` (`primary` \| `amendment`), `owner` (`technician` \| `backend`), `assignedTo`, `customerId`, `site`, `scheduled`, `summary`, `source`.
 
-**Optional:** same kit fields as inbound plus `blockedReason`, `blockedNote`, `statusChangedAt`, `completedAt`, `photos`, `readyToPush`, `amends`, `statusHistory[]`.
+**Optional:** same kit fields as inbound plus `blockedReason`, `blockedNote`, `statusChangedAt`, `completedAt`, `photos`, `readyToPush`, `amends`, `historyTruncated`. Status transitions are `history[]` rows (`path: "status"`), not a separate `statusHistory`.
 
 Editable on device **only while** `owner === 'technician'` and status not terminal: operations status/actuals, checklist, materials `qtyUsed`, `photos`, `site.geo` check-in, `summary` (tech header), `blocked*`. Not editable: `number`, `priority`, `source`, `customerId`, `role`, `amends`. After complete/cancel the **entire body** is frozen; use `CreateAmendment`.
 
@@ -1039,7 +1084,18 @@ Editable on device **only while** `owner === 'technician'` and status not termin
     "cr": { "dt": 1788523500, "ver": "0.1.0+12", "by": "tech.jon" },
     "up": { "dt": 1788526100, "ver": "0.1.0+12", "by": "tech.jon" }
   },
-  "lastAction": { "dt": 1788526100, "lat": 41.7659, "lon": -72.6735, "accuracyM": 8 },
+  "history": [
+    {
+      "dt": 1788526100,
+      "lat": 41.7659,
+      "lon": -72.6735,
+      "accuracyM": 8,
+      "by": "tech.jon",
+      "ver": "0.1.0+12",
+      "op": "UpdateWorkOrderOutFields",
+      "changes": [{ "path": "materials.0.qtyUsed", "from": 0, "to": 1 }]
+    }
+  ],
   "role": "primary",
   "owner": "technician",
   "number": "WO-10482",
@@ -1412,7 +1468,7 @@ Template: `type: "task_template"`, no `workOrderOutId`, pull-only.
 
 ### `messages` — type `message` — push + pull
 
-**Required:** `type`, `audit`, `lastAction`, `threadId`, `kind` (`job` \| `direct`), `from`, `body`, `readyToPush`.
+**Required:** `type`, `audit`, `history`, `threadId`, `kind` (`job` \| `direct`), `from`, `body`, `readyToPush`.
 
 **Optional:** `workOrderInId`, `workOrderOutId`, `toEmployeeIds[]`.
 
@@ -1423,7 +1479,18 @@ Template: `type: "task_template"`, no `workOrderOutId`, pull-only.
     "cr": { "dt": 1788525000, "ver": "0.1.0+12", "by": "tech.jon" },
     "up": { "dt": 1788525000, "ver": "0.1.0+12", "by": "tech.jon" }
   },
-  "lastAction": { "dt": 1788525000, "lat": 41.7659, "lon": -72.6735, "accuracyM": 12 },
+  "history": [
+    {
+      "dt": 1788525000,
+      "lat": 41.7659,
+      "lon": -72.6735,
+      "accuracyM": 12,
+      "by": "tech.jon",
+      "ver": "0.1.0+12",
+      "op": "SendMessage",
+      "changes": [{ "path": "body", "to": "Need second tech for the lift at Riverside." }]
+    }
+  ],
   "threadId": "thr:wo:woin:01K4Q7H3R8N2M1K9P5T6V8W0XY",
   "kind": "job",
   "workOrderInId": "woin:01K4Q7H3R8N2M1K9P5T6V8W0XY",
@@ -1481,6 +1548,12 @@ Price book (labor / product / service / travel). **Never `save` on device.** Ord
 Jurisdictions, `rateBps` (basis points, integer). **Never `save` on device.** Orders store `lineTax` cents.
 
 **[schema/SCHEMA_TAXES.md](./schema/SCHEMA_TAXES.md)**. Prefix `tax:`. PULL. Channel `district:` / `public`.
+
+### `tracking` — type `tracking` — push + pull
+
+Per-employee, per-day GPS crumbs. Id `track:{YYYY-MM-DD}:{employeeId}` (device-local day). Map `tracking` keyed by unix seconds → `[lat, lon, ts]`. Threshold default 100 m (`EXPO_PUBLIC_TRACK_MIN_MOVE_M`). Cap 4000 points/day. **No** `history[]` on these docs.
+
+Last 7 days = seven KV gets of constructed ids. Full field list: **[schema/SCHEMA_TRACKING.md](./schema/SCHEMA_TRACKING.md)**.
 
 ---
 
@@ -1600,6 +1673,19 @@ LIMIT 50
 ```
 
 Same pattern for `idx_nte_fts`, `idx_ast_fts`.
+
+### Tracking last N days (KV, not SQL++)
+
+```typescript
+const days = lastNLocalDays(7); // device-local YYYY-MM-DD, newest first
+const docs = [];
+for (const day of days) {
+  const doc = await tracking.document(`track:${day}:${employeeId}`);
+  if (doc) docs.push(doc);
+}
+```
+
+No index. Missing day = no crumbs.
 
 ### Live vs pull-to-refresh
 
@@ -1725,6 +1811,11 @@ export interface FieldOps {
   submitOrder(id: string): Promise<void>;
   createOrderAmendment(orderId: string): Promise<{ orderId: string }>;
   createCustomer(input: CreateCustomerInput): Promise<string>;
+
+  // Tracking
+  recordTrackPoint(fix: { lat: number; lon: number; accuracyM?: number; ts: number }): Promise<'recorded' | 'skipped' | 'capped'>;
+  getTrackingDay(employeeId: string, day: string): Promise<TrackingDay | null>;
+  getTrackingLastNDays(employeeId: string, n?: number): Promise<TrackingDay[]>;
 }
 ```
 
@@ -1757,6 +1848,7 @@ flowchart LR
     msg[messages]
     ord[orders working]
     cusf[customers field]
+    track[tracking]
   end
   subgraph stockPull["PULL only via push-filter false"]
     inv[inventory stock]
@@ -1785,6 +1877,7 @@ flowchart LR
 | `field.tasks` | PUSH_AND_PULL | `emp:{employeeId}` | `type == 'task' && readyToPush` (templates never push) |
 | `field.notes` | PUSH_AND_PULL | `emp:{employeeId}` | `readyToPush === true` |
 | `field.messages` | PUSH_AND_PULL | `emp:{employeeId}`, `wo:{woinId}` | `readyToPush === true` |
+| `field.tracking` | PUSH_AND_PULL | `emp:{employeeId}` | **true** (always; device-owned crumbs) |
 | `local.tmp` | **none** | — | **Not in `CollectionConfiguration[]`** |
 
 `ReplicatorType` is **replicator-wide** (`PUSH_AND_PULL`), not per `CollectionConfiguration`. v1 uses **push filters only** (no pull filters — RN pull filters have a documented freeze around ~100 docs). One continuous replicator. Production URL `wss://`.
@@ -1840,6 +1933,11 @@ function customersPushFilter(document: any, _flags: any): boolean {
   return document["origin"] === "field" && document["readyToPush"] === true;
 }
 
+function alwaysPush(_document: any, _flags: any): boolean {
+  "show source";
+  return true;
+}
+
 const configs = [
   new CollectionConfiguration(col.workordersin).setPushFilter(woinPushFilter),
   new CollectionConfiguration(col.workordersout).setPushFilter(wooutPushFilter),
@@ -1854,6 +1952,7 @@ const configs = [
   new CollectionConfiguration(col.tasks).setPushFilter(tasksPushFilter),
   new CollectionConfiguration(col.notes).setPushFilter(notesPushFilter),
   new CollectionConfiguration(col.messages).setPushFilter(messagesPushFilter),
+  new CollectionConfiguration(col.tracking).setPushFilter(alwaysPush),
 ];
 const replConfig = new ReplicatorConfiguration(configs, new URLEndpoint(sgUrl));
 replConfig.setAuthenticator(new SessionAuthenticator(sessionId));
@@ -1865,7 +1964,7 @@ await replicator.addDocumentChangeListener(onReplicatedDoc); // SetSyncState onl
 await replicator.start(false);
 ```
 
-**Do not** add `local.tmp`. Replicator construction is an **explicit allow-list** of the **thirteen** `field` collections.
+**Do not** add `local.tmp`. Replicator construction is an **explicit allow-list** of the **fourteen** `field` collections.
 
 `onReplicatedDoc` **must** call `SetSyncState`, not `UpdateWorkOrderOutFields`:
 
@@ -1879,7 +1978,7 @@ Durable key is **`employeeId`**. Email is login / alias, not the channel name (e
 
 | Channel | Who | What |
 | --- | --- | --- |
-| `emp:{employeeId}` | That person | Inbound assigned to them, their outbound copies, van txs, their messages, their user profile |
+| `emp:{employeeId}` | That person | Inbound assigned to them, their outbound copies, van txs, their messages, their tracking day docs, their user profile |
 | `email:{lowercase email}` | Optional alias | SG user mapping at login only; documents still tagged `emp:` |
 | `wo:{woinId}` | Current + recent assignees, dispatch | Job chat thread |
 | `crew:{crewId}` | Crew | Directory slice |
@@ -1897,10 +1996,10 @@ v1 replicator may omit `setChannels` and rely on the SG sync function to grant t
 Not application code. Lab target is **either** Sync Gateway or Capella App Services (`wss` replicator is the same). Minimal contract:
 
 - Database name `mfs` (or Capella equivalent).
-- Scope `field` with collections: `workordersin`, `workordersout`, `assets`, `products`, `inventory`, `users`, `customers`, `tasks`, `notes`, `messages`, `orders`, `rates`, `taxes`. **No `tmp`.**
+- Scope `field` with collections: `workordersin`, `workordersout`, `assets`, `products`, `inventory`, `users`, `customers`, `tasks`, `notes`, `messages`, `orders`, `rates`, `taxes`, `tracking`. **No `tmp`.**
 - Guest disabled; `POST /mfs/_session` for `SessionAuthenticator` (login = email or username; session user metadata includes `employeeId`).
 - TLS: lab may use `ws://` + `acceptOnlySelfSignedServerCertificate = true`; production `wss://` + system CAs.
-- Sync function: require authenticated user; channel `emp:{employeeId}` on inbound assigned to that employee and on outbound/messages they create; `wo:{source.id}` on job messages; `district:{doc.districtId}` on assets/customers.
+- Sync function: require authenticated user; channel `emp:{employeeId}` on inbound assigned to that employee and on outbound/messages/tracking they create; `wo:{source.id}` on job messages; `district:{doc.districtId}` on assets/customers.
 
 ```json
 {
@@ -1955,6 +2054,7 @@ Map `ReplicatorActivityLevel` 0–4 to `stopped | offline | connecting | idle | 
 ### Data handling
 
 - Photos are top-level blobs on `workordersout` (synced after Submit).
+- Tracking crumbs are location PII. Never log the `tracking` map. Channel `emp:{employeeId}` only; id uses employeeId, not email.
 - Audit `by` is username, not a legal name field.
 - Logout deletes **auth.*** enclave keys (session, password, tokens) and keeps the DB. Offline re-entry after Logout is **not** supported. `RestoreSession` is process death with a **non-expired** credential. `LogoutAndWipe` is explicit.
 
@@ -1968,7 +2068,7 @@ CBL RN **requires a Couchbase Lite Enterprise license**. Builds must not ship CE
 
 Standard: [`guides/LOGGING.md`](../guides/LOGGING.md). CBL: `LogSinks` ([docs](https://cbl-reactnative.dev/Troubleshooting/using-logs)). Production: `LogLevel.INFO` + `REPLICATOR`/`NETWORK`/`DATABASE`. VERBOSE **debug only**.
 
-App logger (`src/log/logger.ts`): JSON `{ ts, level, event, op, durMs, collection, docId, errCode, appVer }`. **Never** log document JSON, photo bytes, session tokens, passwords, street-level customer notes.
+App logger (`src/log/logger.ts`): JSON `{ ts, level, event, op, durMs, collection, docId, errCode, appVer }`. **Never** log document JSON, photo bytes, session tokens, passwords, street-level customer notes, or the `tracking` map.
 
 ### Metrics (in-memory + optional file; not PII)
 
@@ -1981,6 +2081,7 @@ App logger (`src/log/logger.ts`): JSON `{ ts, level, event, op, durMs, collectio
 | `mfs_replicator_activity` | gauge | activity level |
 | `mfs_replicator_errors_total` | counter | `code` |
 | `mfs_photo_commit_total` | counter | `kind` |
+| `mfs_track_point_total` | counter | `result` (`recorded` \| `skipped` \| `capped`) |
 
 App version is on every audit stamp (`audit.*.ver`) and every log line.
 
@@ -2091,6 +2192,8 @@ Reopening `complete` → `in_progress` on the same id fights the backend that no
 | iOS background replicator killed | Medium | Restart replicator on foreground |
 | Expo Go used by mistake | Low | Missing native module screen |
 | Inbound auto-purge orphans outbound | Low | Keep outbound; active-outbound query (no day filter) |
+| Tracking map logged / leaked | High | Never log `tracking`; channel `emp:` only; no email in the id |
+| Location permission denied | Low | History still saves without lat/lon; crumbs simply skip |
 
 ---
 
@@ -2103,16 +2206,16 @@ Founder-owned / not required to implement v1:
 3. **Field-created assets** (push `assets`) vs pull-only catalog.
 4. **Thin native module vs wait for RN plugin** for vector indexes.
 5. **Pre-built seed content** for first demo (which district, how many jobs).
-Closed for v1: `scheduled.day` is device-local; CLIP **512**; tech may cancel outbound; inventory movements-only; **no reopen** — amendments; channels = `emp:{employeeId}`; SG user = email; chat employees only; snapshot prices; no CC; field-created inbound WOs; one person per device; CBL via Fujio-Turner/cbl-reactnative.
+Closed for v1: `scheduled.day` is device-local; CLIP **512**; tech may cancel outbound; inventory movements-only; **no reopen** — amendments; channels = `emp:{employeeId}`; SG user = email; chat employees only; snapshot prices; no CC; field-created inbound WOs; one person per device; CBL via Fujio-Turner/cbl-reactnative; **`history[]` not `lastAction`**; tracking id uses **employeeId** (not email); tracking v1 is foreground / while-using.
 
 ---
 
 ## Key Decisions
 
-1. **Synced scope `field`.** Thirteen collections via `createCollection(name, 'field')` including **`messages`**, **`orders`**, **`rates`**, **`taxes`**. **`tmp` is `local.tmp`**.
+1. **Synced scope `field`.** Fourteen collections via `createCollection(name, 'field')` including **`messages`**, **`orders`**, **`rates`**, **`taxes`**, **`tracking`**. **`tmp` is `local.tmp`**.
 2. **Copy-on-write:** never mutate `workordersin`; `StartWork` copies to `workordersout` with a new `woout:<ulid>` and clones task templates into instances.
 3. **Idempotent start:** existing **primary** `(assignedTo.employeeId, source.id)` wins; do not copy twice. Amendments are extra ids. v1 **one active device per employee**; pull duplicates keep oldest `audit.cr.dt` among primaries.
-4. **Document IDs:** `<prefix>:<ULID>` with prefixes `woin`, `woout`, `ast`, `prd`, `inv`, `invtx`, `usr`, `cus`, `tsk`, `nte`, `msg`, `ord`, `rate`, `tax`, `tmp`.
+4. **Document IDs:** `<prefix>:<ULID>` with prefixes `woin`, `woout`, `ast`, `prd`, `inv`, `invtx`, `usr`, `cus`, `tsk`, `nte`, `msg`, `ord`, `rate`, `tax`, `tmp`. **Exception:** tracking ids are `track:{YYYY-MM-DD}:{employeeId}` (device-local day; not email).
 5. **Timestamps:** unix **seconds** in `audit.*.dt` and all `*Dt` fields. Do not pass them to SQL++ millis date functions.
 6. **Auth:** [AUTH.md](./AUTH.md). Default **basic**; SG **username = email** (README example). OIDC: ID token → `POST /_session` Bearer → **session** (TTL). Do not put the JWT on the replicator by default. Keychain only. Honor expiry; pre-refresh; 401/404 → re-auth. One person per device.
 7. **Today list:** inbound `status NOT IN ('cancelled','superseded')`, `scheduled.day = device-local date of startDt`, `ORDER BY scheduled.startDt DESC LIMIT 20 OFFSET n`, keyed by **`assignedTo.employeeId`**. Page 0 **UNION ALL** active `workordersout` in `assigned|in_progress|blocked` (**no** `day` filter). Collapse one row per `source.id`, preferring outbound. Active outbound unpaged. Rows carry `openId` + `openCollection`; **tap is one KV get**. Live query on inbound page 0 only; re-run active-outbound on those callbacks. **Reassigned** badge when inbound assignee ≠ session but a local outbound exists.
@@ -2135,7 +2238,7 @@ Closed for v1: `scheduled.day` is device-local; CLIP **512**; tech may cancel ou
 24. **v1 storage cap:** 20 photos/job + JPEG budget only. Age-out of pushed complete jobs after 14 days is a follow-up.
 25. **Channels:** `emp:{employeeId}` is the durable grant. Email is login alias. Reassignment moves inbound access; outbound copies still push.
 26. **Complete freezes + transfers ownership** to the backend. Forgotten facts → `CreateAmendment` (`role: amendment`, `amends.id`). Many documents per WO are OK (eventual consistency).
-27. **`lastAction`:** every mutation (except `SetSyncState`) stamps unix `dt` and lat/lon when GPS is available.
+27. **`history[]`:** user/device saves (except `SetSyncState`) append path + from/to + dt + lat/lon. Cap 100. Pull catalogs omit it. **`tracking`:** per-day crumbs `track:{day}:{employeeId}`, map keyed by unix seconds → `[lat, lon, ts]`, write when moved ≥ `EXPO_PUBLIC_TRACK_MIN_MOVE_M` (default 100 m). Last 7 days = seven KV gets. No `lastAction` object.
 28. **Chat:** `field.messages`, **employees only**, push on create, job thread `thr:wo:{woinId}` / DM `thr:dm:{empA}:{empB}`.
 29. **Today Reassigned badge** when inbound `assignedTo.employeeId` ≠ session (or inbound purged) while a local outbound exists.
 30. **Project:** Fujio-Turner (`github.com/Fujio-Turner/mobile_field_service`), not koten-ai. Use-case SoT: [DAY_IN_LIFE.md](./DAY_IN_LIFE.md).

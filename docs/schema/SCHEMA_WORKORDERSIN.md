@@ -12,7 +12,7 @@
 
 `status` (dispatch-owned on pulled docs): `scheduled` \| `assigned` \| `cancelled` \| `superseded`.
 
-**Writes:** never patch `origin: dispatch`. Phone may **create** `origin: field` (`CreateWorkOrderIn`, assigned to self). Labor still uses [SCHEMA_WORKORDERSOUT.md](./SCHEMA_WORKORDERSOUT.md) after `StartWork`.
+**Writes:** never patch `origin: dispatch`. Phone may **create** `origin: field` (`CreateWorkOrderIn`, assigned to self) with `history[]`. Labor still uses [SCHEMA_WORKORDERSOUT.md](./SCHEMA_WORKORDERSOUT.md) after `StartWork`.
 
 **Indexes:** `idx_woin_today` (`assignedTo.employeeId`, `scheduled.day`, `scheduled.startDt`); `idx_woin_number`; `idx_woin_customer`.
 

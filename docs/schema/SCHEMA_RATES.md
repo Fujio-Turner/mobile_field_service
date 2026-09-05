@@ -16,7 +16,7 @@ Price book: labor, product, service, travel, surcharge. **Pull-only catalog.** T
 
 ## Envelope
 
-`type`, `audit.cr|up.{dt,ver,by}` (unix seconds). `lastAction` optional (server). No technician mutations → no GPS stamp required.
+`type`, `audit.cr|up.{dt,ver,by}` (unix seconds). No `history[]` (pull catalog).
 
 ---
 

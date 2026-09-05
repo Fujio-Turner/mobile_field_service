@@ -4,7 +4,7 @@
 | --- | --- |
 | Id | `ast:<ULID>` |
 | `type` | `asset` |
-| Envelope | [SCHEMA_COMMON.md](./SCHEMA_COMMON.md) |
+| Envelope | [SCHEMA_COMMON.md](./SCHEMA_COMMON.md) (no `history[]`; pull catalog) |
 
 **Required:** `type`, `audit`, `name`, `assetType`, `geo` `{ lat, lon }`.
 

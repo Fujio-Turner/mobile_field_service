@@ -6,7 +6,7 @@
 | `type` | `note` |
 | Envelope | [SCHEMA_COMMON.md](./SCHEMA_COMMON.md) |
 
-**Required:** `type`, `audit`, `body`, `kind` (`job` \| `general`).
+**Required:** `type`, `audit`, `history[]`, `body`, `kind` (`job` \| `general`).
 
 **Optional:** `title`, `workOrderOutId`, `readyToPush`.
 

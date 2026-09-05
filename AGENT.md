@@ -41,7 +41,8 @@ Canonical collection docs: **`docs/schema/SCHEMA_*.md`**. Index: `docs/schema/RE
 - One person, one device. Chat = employees only. No card processing. Snapshot prices. No stock reservation on quote.
 - Binding: [Fujio-Turner/cbl-reactnative](https://github.com/Fujio-Turner/cbl-reactnative). Not official plugin 1.1 as SoT.
 - `local.tmp` never in the replicator. Push filters: `"show source"` pure functions. [guides/REPLICATION.md](guides/REPLICATION.md)
-- Logs: [guides/LOGGING.md](guides/LOGGING.md) — no secrets/PII/doc bodies.
+- User/device docs append `history[]` (path + from/to + lat/lon/dt). No `lastAction`. Movement crumbs: `field.tracking` id `track:{YYYY-MM-DD}:{employeeId}` — last 7 days is seven KV gets. Never log the tracking map. [docs/schema/SCHEMA_COMMON.md](docs/schema/SCHEMA_COMMON.md), [docs/schema/SCHEMA_TRACKING.md](docs/schema/SCHEMA_TRACKING.md)
+- Logs: [guides/LOGGING.md](guides/LOGGING.md) — no secrets/PII/doc bodies / tracking maps.
 - UI: [guides/HTML_CSS.md](guides/HTML_CSS.md). Release: [guides/RELEASE.md](guides/RELEASE.md).
 
 ---

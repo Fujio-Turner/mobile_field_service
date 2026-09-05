@@ -19,7 +19,7 @@ When the radio comes back, the phone syncs with Couchbase (Sync Gateway or Capel
 1. **Sign in** with work email (or Sign in with your company IdP).
 2. **Today** shows the jobs (or orders) for this calendar day, newest first. Scroll for more.
 3. **Tap a row** to open it by document id. **Start** makes **your copy**.
-4. **Do the work** with no network: photos, parts, notes, employee chat, map of nearby assets.
+4. **Do the work** with no network: photos, parts, notes, employee chat, map of nearby assets. Each save keeps a **history** of what changed (qty 10 → 5) with time and place. Driving around writes **tracking** crumbs for that employee and day.
 5. **Complete.** That copy **freezes** and the office owns it. Forgot a photo? You add a **new sheet of paper** that points at the original — you do not reopen the frozen one.
 
 Walk through a real day:

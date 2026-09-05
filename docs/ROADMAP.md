@@ -60,10 +60,10 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 - [ ] `CblReactNativeEngine` singleton
 - [ ] Open `mfs_<safe>_<hash8>` with AES-256 **string** key from Keychain + `FileSystem.getDefaultPath()`
-- [ ] Create scope `field` (**thirteen** collections including `messages`, `orders`, `rates`, `taxes`) + `local.tmp`
+- [ ] Create scope `field` (**fourteen** collections including `messages`, `orders`, `rates`, `taxes`, `tracking`) + `local.tmp`
 - [ ] Value + FTS indexes from DESIGN.md
-- [ ] `stampAuditCreate` / `stampAuditUpdate` / `stampLastAction` (unix **seconds**, app version, lat/lon when GPS)
-- [ ] ULID + prefixes (`woin`, `woout`, `ast`, `prd`, `inv`, `invtx`, `usr`, `cus`, `tsk`, `nte`, `msg`, `ord`, `rate`, `tax`, `tmp`)
+- [ ] `stampAuditCreate` / `stampAuditUpdate` / `stampHistory` (unix **seconds**, app version, path from/to, lat/lon when GPS)
+- [ ] ULID + prefixes (`woin`, `woout`, `ast`, `prd`, `inv`, `invtx`, `usr`, `cus`, `tsk`, `nte`, `msg`, `ord`, `rate`, `tax`, `tmp`) + tracking `track:{day}:{employeeId}`
 - [ ] Users seed with `employeeId` + `email` (channel `emp:E-4412`)
 - [ ] Optional pre-built / JSON seed: ~12 inbound jobs, assets near sites, van stock, products, one user, one customer
 - [ ] `tmp` in scope `local`; replicator allow-list cannot include it; expiration helper
@@ -122,7 +122,7 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 - [ ] `SubmitWork` only after complete/cancel; sets `syncState=ready_to_push`
 - [ ] Complete/Cancel set `owner: backend` and **freeze the body** (no notes/photos on that id)
 - [ ] `CreateAmendment`: new `woout` with `role: amendment`, `amends.id`
-- [ ] `lastAction` + `statusHistory` on transitions (dt + lat/lon)
+- [ ] `history[]` on user saves (path + from/to + dt + lat/lon); skip `SetSyncState`
 - [ ] Dispatch-updated banner (inbound KV vs snapshot; no auto-merge)
 - [ ] Reassigned banner on an in-progress copy whose inbound assignee changed
 
@@ -179,6 +179,19 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 - [ ] Follow-up (not this phase): region MBTiles pack
 
 **Exit:** map shows seed pumps/sites; pin opens KV detail; airplane mode still shows pins.
+
+---
+
+## Phase 8b — Location crumbs (`tracking`)
+
+- [ ] Collection `field.tracking`, id `track:{YYYY-MM-DD}:{employeeId}` (device-local day; not email)
+- [ ] `RecordTrackPoint` when haversine ≥ `EXPO_PUBLIC_TRACK_MIN_MOVE_M` (default 100 m; `152` ≈ 500 ft)
+- [ ] Map `tracking` keyed by unix seconds → `[lat, lon, ts]`; cap 4000/day; `last` tuple for O(1) compare
+- [ ] `GetTrackingDay` / `GetTrackingLastNDays(n=7)` — seven KV gets, no query
+- [ ] Push filter always true; never log the map
+- [ ] Foreground / while-using only in v1 (background trail later)
+
+**Exit:** moving ~100 m+ writes a point; last 7 constructed ids KV-get; still docs do not dump crumbs.
 
 ---
 
@@ -290,7 +303,7 @@ Ordered, independently reviewable PRs. Each PR should build, typecheck, and leav
 | Title | `docs: field-service architecture, day-in-the-life, and roadmap` |
 | Files | `docs/DESIGN.md`, `docs/ROADMAP.md`, `docs/DAY_IN_LIFE*.md`, `docs/schema/*`, `guides/*`, `AGENT.md`, `README.md` |
 | Deps | none |
-| Description | Fujio-Turner architecture on https://github.com/Fujio-Turner/mobile_field_service: thirteen `field` collections, three modes, field-created inbound WOs, cbl-reactnative fork + vector, auth session TTL. No application code. |
+| Description | Fujio-Turner architecture on https://github.com/Fujio-Turner/mobile_field_service: fourteen `field` collections (including `tracking`), `history[]` audit trail, three modes, field-created inbound WOs, cbl-reactnative fork + vector, auth session TTL. No application code. |
 
 ### PR-01 — Expo app shell + login UI
 
@@ -308,7 +321,7 @@ Ordered, independently reviewable PRs. Each PR should build, typecheck, and leav
 | Title | `feat: encrypted CBL 3.3.3 database, field collections, local.tmp, seed` |
 | Files | `src/db/engine.ts`, `src/db/database.ts`, `src/db/collections.ts`, `src/db/indexes.ts`, `src/db/seed.ts`, `src/ids.ts`, `src/audit.ts`, `src/session/dbKey.ts` |
 | Deps | PR-01 |
-| Description | Singleton engine, per-employee encrypted DB (`mfs_<safe>_<hash8>`), `setDirectory(FileSystem.getDefaultPath())`, string `setEncryptionKey`, **thirteen** `field.*` collections (including `messages`, `orders`, `rates`, `taxes`) + `local.tmp`, value/FTS indexes, ULID helpers, audit + `lastAction`. Seed users with `employeeId`/`email`/`workModes`. Optional seed of today’s jobs + inbound order. Guard if native module missing. |
+| Description | Singleton engine, per-employee encrypted DB (`mfs_<safe>_<hash8>`), `setDirectory(FileSystem.getDefaultPath())`, string `setEncryptionKey`, **fourteen** `field.*` collections (including `messages`, `orders`, `rates`, `taxes`, `tracking`) + `local.tmp`, value/FTS indexes, ULID helpers, audit + `stampHistory`. Seed users with `employeeId`/`email`/`workModes`. Optional seed of today’s jobs + inbound order. Guard if native module missing. |
 
 ### PR-03 — Today list query + pagination
 
@@ -344,7 +357,7 @@ Ordered, independently reviewable PRs. Each PR should build, typecheck, and leav
 | Title | `feat: outbound editor, status machine, and submit` |
 | Files | `app/wo/out/[id].tsx`, `src/ops/updateWorkOrderOut.ts`, `src/ops/transitionStatus.ts`, `src/ops/submitWork.ts` |
 | Deps | PR-05 |
-| Description | Editor for operations/checklist; status transitions including tech cancel; CompleteWork ops+checklist gates; Complete/Cancel freeze body and set `owner: backend`; `CreateAmendment` for forgotten info; `lastAction` geo/time; Submit only after complete/cancel via `SetSyncState`. No camera. CompleteWork task gate is a documented hook for PR-08. |
+| Description | Editor for operations/checklist; status transitions including tech cancel; CompleteWork ops+checklist gates; Complete/Cancel freeze body and set `owner: backend`; `CreateAmendment` for forgotten info; `history[]` path/from/to + geo/time; Submit only after complete/cancel via `SetSyncState`. No camera. CompleteWork task gate is a documented hook for PR-08. |
 
 ### PR-07 — Photos + local.tmp
 
@@ -373,6 +386,15 @@ Ordered, independently reviewable PRs. Each PR should build, typecheck, and leav
 | Deps | **PR-05** (link-to-job needs `woout`); PR-02 is not sufficient |
 | Description | OpenFreeMap when online + MapLibre; bbox query; cluster; tap KV; link asset to open `woout`. Document offline pins vs online basemap. Location permission. |
 
+### PR-16 — Tracking crumbs
+
+| | |
+| --- | --- |
+| Title | `feat: per-day tracking collection and RecordTrackPoint` |
+| Files | `src/ops/tracking.ts`, `src/geo/haversine.ts`, location watch in app shell |
+| Deps | **PR-02** (collection); **PR-09** (location permission). Replicator allow-list in PR-11. |
+| Description | `field.tracking`, id `track:{YYYY-MM-DD}:{employeeId}`. Map keyed by unix seconds → `[lat, lon, ts]`. Write when moved ≥ `EXPO_PUBLIC_TRACK_MIN_MOVE_M` (default 100 m). `GetTrackingLastNDays` = N KV gets. Cap 4000/day. Never log the map. Foreground / while-using only. |
+
 ### PR-10 — Inventory and products
 
 | | |
@@ -389,7 +411,7 @@ Ordered, independently reviewable PRs. Each PR should build, typecheck, and leav
 | Title | `feat: collection replicator, RN push filters, and sync status` |
 | Files | `src/sync/replicator.ts`, `src/sync/filters.ts`, `app/(tabs)/profile.tsx`, `src/ops/syncSnapshot.ts` |
 | Deps | **PR-07, PR-08, PR-10, PR-14** (woout + photos + notes/tasks/tx + messages filters). Do not merge before those filters exist. |
-| Description | Session auth, `Replicator.create`, explicit allow-list of **ten** `field` collections, omit `local.tmp`, `"show source"` push filters, `emp:{employeeId}` channels, document listener calls **`SetSyncState`** for `pushed`/`push_error`, pending-count fallback, foreground restart, duplicate-outbound reconcile (primaries only). Lab `wss` URL via env. Lab SG collection list lives in DESIGN.md. |
+| Description | Session auth, `Replicator.create`, explicit allow-list of **fourteen** `field` collections (including `tracking`), omit `local.tmp`, `"show source"` push filters, `emp:{employeeId}` channels, document listener calls **`SetSyncState`** for `pushed`/`push_error`, pending-count fallback, foreground restart, duplicate-outbound reconcile (primaries only). Lab `wss` URL via env. Lab SG collection list lives in DESIGN.md. |
 
 ### PR-12 — Observability and FTS search chrome
 
@@ -407,7 +429,7 @@ Ordered, independently reviewable PRs. Each PR should build, typecheck, and leav
 | Title | `feat: messages collection and job/direct chat` |
 | Files | `src/ops/messages.ts`, `app/(tabs)/chat.tsx`, `app/chat/[threadId].tsx` |
 | Deps | PR-02 (collection); better after PR-05 so job threads have a `woin` |
-| Description | `field.messages`, `msg:<ulid>`, `SendMessage` with `readyToPush: true` and `lastAction`. Job `thr:wo:{woinId}` and DM threads. Completing a WO does not freeze chat. |
+| Description | `field.messages`, `msg:<ulid>`, `SendMessage` with `readyToPush: true` and `history[]`. Job `thr:wo:{woinId}` and DM threads. Completing a WO does not freeze chat. |
 
 ### PR-15 — Orders, rates, taxes, field customers
 
@@ -430,7 +452,7 @@ Ordered, independently reviewable PRs. Each PR should build, typecheck, and leav
 ### Merge notes
 
 - Spine: 00 → 01 → 02 → 03 → 04 → 05.
-- After 05: **06** (editor + freeze + amendment) then **07** (photos). **08** (tasks/notes) can parallel 07. **09** (map) depends on **05**, not 04. **10** (inventory) depends on **06**. **14** (chat) can parallel 06+ after 02/05.
+- After 05: **06** (editor + freeze + amendment) then **07** (photos). **08** (tasks/notes) can parallel 07. **09** (map) depends on **05**, not 04. **16** (tracking) after **09** location permission (collection exists from **02**). **10** (inventory) depends on **06**. **14** (chat) can parallel 06+ after 02/05.
 - **11** (sync) after **07 + 08 + 10 + 14 + 15**. If filters must land incrementally, extend `src/sync/filters.ts` — but prefer 11 last among them.
 - **15** (orders) after **02**; reuse freeze UX from **06**.
 - PR-06 CompleteWork ships without the required-task predicate; PR-08 adds it in the same operation.

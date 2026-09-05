@@ -16,7 +16,7 @@ Tax codes / jurisdictions. **Pull-only catalog.** Orders snapshot computed `line
 
 ## Envelope
 
-`type`, `audit.cr|up.{dt,ver,by}` (unix seconds).
+`type`, `audit.cr|up.{dt,ver,by}` (unix seconds). No `history[]` (pull catalog).
 
 ---
 

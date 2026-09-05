@@ -81,6 +81,7 @@ SG user example (email): [README.md](../README.md).
 | `field.orders` | not inbound; same syncState rule |
 | `field.customers` | only `origin == 'field' && readyToPush` |
 | `field.messages` / notes / task instances / inventory_tx | `readyToPush` |
+| `field.tracking` | **always** (device-owned crumbs; do not wait for Submit) |
 | `field.assets` products rates taxes users (dispatch) | **never** (filter false) |
 | `local.tmp` | **omitted** from `CollectionConfiguration[]` |
 

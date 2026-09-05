@@ -7,7 +7,7 @@
 
 ### Instance `type: task`
 
-**Required:** `type`, `audit`, `title`, `status` (`open` \| `done` \| `skipped`), `workOrderOutId`.
+**Required:** `type`, `audit`, `history[]`, `title`, `status` (`open` \| `done` \| `skipped`), `workOrderOutId`.
 
 **Optional:** `required`, `sort`, `templateId`, `readyToPush`.
 

@@ -66,7 +66,7 @@ sequenceDiagram
 
 Today lists inbound orders for `emp:E-8801`, `scheduled.day` today, `ORDER BY scheduled.startDt DESC LIMIT 20 OFFSET n`. Tap is KV. **Start order** copies inbound JSON to a new `ord:<ulid>` with `role: working`, `source.id` = inbound id. Inbound never written.
 
-She delivers the catalog lines already on the snapshot, adjusts qty only on **her** copy, stamps `lastAction`, photo POD. `CompleteOrder` freezes the working copy (`owner: backend`). `SubmitOrder` sets `ready_to_push`. Backend invoices from **that** document.
+She delivers the catalog lines already on the snapshot, adjusts qty only on **her** copy (qty 10 → 5 is a `history[]` row), photo POD. `CompleteOrder` freezes the working copy (`owner: backend`). `SubmitOrder` sets `ready_to_push`. Backend invoices from **that** document. Driving between stops writes `tracking` crumbs.
 
 ### 10:00 — Next stop, sell on the doorstep
 
@@ -91,7 +91,7 @@ Today badge **Reassigned**. Her working copy still submits. The new assignee may
 1. Sales can run **without** workorders. Delivery proof lives on the **order**.
 2. Inbound orders are pull-only; working copies are what push.
 3. Rates and taxes are catalogs; money on the order is a **snapshot**.
-4. Freeze, amendment, reassignment, `lastAction` — same as WOs.
+4. Freeze, amendment, reassignment, `history[]` — same as WOs. Movement crumbs in `tracking`.
 5. Next stop = new document or a new StartOrder, never reopen frozen.
 
 ## Beat sheet

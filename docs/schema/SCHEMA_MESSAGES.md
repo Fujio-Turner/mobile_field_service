@@ -6,7 +6,7 @@
 | `type` | `message` |
 | Envelope | [SCHEMA_COMMON.md](./SCHEMA_COMMON.md) |
 
-**Required:** `type`, `audit`, `lastAction`, `threadId`, `kind` (`job` \| `direct`), `from`, `body`, `readyToPush`.
+**Required:** `type`, `audit`, `history[]`, `threadId`, `kind` (`job` \| `direct`), `from`, `body`, `readyToPush`.
 
 **Optional:** `workOrderInId`, `workOrderOutId`, `toEmployeeIds[]`.
 

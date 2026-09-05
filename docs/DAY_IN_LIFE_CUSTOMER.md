@@ -65,7 +65,7 @@ sequenceDiagram
 
 ### 07:30 — Deliver against an existing order (WO-2201)
 
-Today: **Deliver** WO-2201 for Hartford Water Works, linked `orderId: ord:…` (inbound order, `role: inbound`, pull-only). Maya **StartWork** on the WO (not on the order). She confirms lines vs the order snapshot on the WO, hands over product, photos POD, `lastAction` at the dock. `CompleteWork` + `SubmitWork`. The **inbound order is untouched**. Backend will mark fulfillment from the completed WO.
+Today: **Deliver** WO-2201 for Hartford Water Works, linked `orderId: ord:…` (inbound order, `role: inbound`, pull-only). Maya **StartWork** on the WO (not on the order). She confirms lines vs the order snapshot on the WO, hands over product, photos POD, `history[]` at the dock (qty 10 → 5 is a row with from/to). `CompleteWork` + `SubmitWork`. The **inbound order is untouched**. Backend will mark fulfillment from the completed WO.
 
 ### 09:00 — Same site, more work later (new order)
 
@@ -84,7 +84,7 @@ She completes/submits the **order**. Freeze + backend ownership — same rule as
 Neighbor business wants the same service. **No customer master on the phone.**
 
 1. `CreateCustomer` → new `cus:<ulid>`, `origin: field`, `readyToPush: true`. She does **not** edit Hartford Water Works.
-2. `CreateOrder` against that new customer, lines + rates + taxes, `lastAction` at their doorway.
+2. `CreateOrder` against that new customer, lines + rates + taxes, first `history[]` row at their doorway.
 3. Either schedule later (`scheduled`) or convert to a same-day WO if dispatch / rules allow (`CreateWorkOrderFromOrder` is backend or a later op). v1: field creates the **order**; dispatch turns accepted orders into WOs.
 
 ### 15:00 — Radio back

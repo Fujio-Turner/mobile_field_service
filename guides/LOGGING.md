@@ -72,7 +72,7 @@ Screens may `console.warn` only while prototyping; any merged `src/ops/*` / `src
 | --- | --- |
 | `debug` | Query explain, replicator progress ticks, index create. **Dev only.** |
 | `info` | Successful mutations, copy-on-write, replicator start/stop, login success (no secrets), Submit. |
-| `warn` | Retry, stale session refresh, missing GPS on `lastAction`, push_error then retry. |
+| `warn` | Retry, stale session refresh, missing GPS on a `history[]` stamp, tracking skip (accuracy/capped), push_error then retry. |
 | `error` | Save failed, 401/404 stopped replicator, encryption open failed. Always `"err"`. |
 
 ---
@@ -91,6 +91,7 @@ Prefix `mfs.`. Keep a closed set; add in the same PR as the code.
 | `mfs.wo.start` / `mfs.wo.complete` / `mfs.wo.amend` | Work-order ops |
 | `mfs.order.create` / `mfs.order.submit` | Orders |
 | `mfs.blob.commit` | Photo commit: byteLength only |
+| `mfs.track.point` | RecordTrackPoint: `docId` + `ts` + result only — **never** the `tracking` map |
 
 ---
 
@@ -101,6 +102,7 @@ Prefix `mfs.`. Keep a closed set; add in the same PR as the code.
 | Password, session_id, cookie, Bearer / ID token | Auth |
 | DB encryption string | Device theft |
 | Full document JSON | PII + size |
+| `tracking` map / lat-lon series | Location PII + size |
 | Photo / blob bytes, local file paths with names | PII |
 | Customer phone, street address, note `body` | PII |
 | SQL++ with interpolated PII | Prefer parameterized queries; log query **name**, not string |

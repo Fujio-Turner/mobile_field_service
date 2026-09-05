@@ -6,7 +6,7 @@
 | `type` | `customer` |
 | Envelope | [SCHEMA_COMMON.md](./SCHEMA_COMMON.md) |
 
-**Required:** `type`, `audit`, `name`.
+**Required:** `type`, `audit`, `name`. Field-created also `history[]`.
 
 **Optional:** `origin` (`dispatch` \| `field`), `accountNumber`, `contacts[]`, `sites[]`, `readyToPush`, `assignedTo`.
 

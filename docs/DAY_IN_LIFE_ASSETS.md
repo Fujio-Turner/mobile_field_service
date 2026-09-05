@@ -90,7 +90,7 @@ Same pump. Start copy. Basement, no radio. Photo seized valve, consume `VLV-CHK-
 
 ### 11:00 — Move (WO-10490)
 
-Inbound kit: asset M-7, `from` geo (yard), `to` geo (Riverside). Start copy. Scan / confirm asset, photo on truck, photo at destination, stamp `lastAction` at both ends. Complete. Backend owns the completed move; CMMS updates location from **that document**, not from Jon mutating `assets`.
+Inbound kit: asset M-7, `from` geo (yard), `to` geo (Riverside). Start copy. Scan / confirm asset, photo on truck, photo at destination, `history[]` rows at both ends (lat/lon/dt). Driving between sites also writes `tracking` crumbs when he moves ≥ threshold. Complete. Backend owns the completed move; CMMS updates location from **that document**, not from Jon mutating `assets`.
 
 ### 14:00 — Reassigned leftover
 
@@ -106,7 +106,7 @@ Profile, sync idle, logout.
 
 1. Company assets are **pull catalogs**. Work (inspect / repair / move) is **workordersout**.
 2. Copy-on-write, freeze-on-complete, amendments, reassignment — same as the general design.
-3. `lastAction` lat/lon/time on inspect checks, consume, move drop-off.
+3. `history[]` lat/lon/time + field diffs on inspect checks, consume, move drop-off. Driving crumbs go to `tracking`.
 4. No `orders` / money on this mode unless the company also enabled customer/sales.
 
 ## Beat sheet
@@ -116,5 +116,5 @@ Profile, sync idle, logout.
 3. Inspect: Start → checklist + photo → complete → inbound JSON unchanged, asset JSON unchanged.
 4. Repair offline: photo, consume, complete, submit.
 5. Amendment after freeze.
-6. Move: from/to photos + two `lastAction` points.
+6. Move: from/to photos + two `history[]` points (and tracking crumbs in between).
 7. Reassigned row still submittable.

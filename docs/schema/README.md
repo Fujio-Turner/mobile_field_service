@@ -1,6 +1,6 @@
 # Schemas
 
-One file per collection (or pair). Shared envelope: [SCHEMA_COMMON.md](./SCHEMA_COMMON.md). Architecture: [DESIGN.md](../DESIGN.md).
+One file per collection (or pair). Shared envelope: [SCHEMA_COMMON.md](./SCHEMA_COMMON.md) (`audit` + `history[]` on user/device docs; **no** `lastAction`). Movement crumbs: [SCHEMA_TRACKING.md](./SCHEMA_TRACKING.md). Architecture: [DESIGN.md](../DESIGN.md).
 
 | Collection | File | Prefix |
 | --- | --- | --- |
@@ -18,4 +18,5 @@ One file per collection (or pair). Shared envelope: [SCHEMA_COMMON.md](./SCHEMA_
 | `orders` | [SCHEMA_ORDERS.md](./SCHEMA_ORDERS.md) | `ord:` |
 | `rates` | [SCHEMA_RATES.md](./SCHEMA_RATES.md) | `rate:` |
 | `taxes` | [SCHEMA_TAXES.md](./SCHEMA_TAXES.md) | `tax:` |
+| `tracking` | [SCHEMA_TRACKING.md](./SCHEMA_TRACKING.md) | `track:{day}:{employeeId}` |
 | `tmp` | [SCHEMA_TMP.md](./SCHEMA_TMP.md) | `tmp:` |

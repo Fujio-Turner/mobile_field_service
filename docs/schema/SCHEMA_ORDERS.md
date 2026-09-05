@@ -34,7 +34,7 @@ Commercial document: customer, lines, **snapshotted** prices and tax, fulfillmen
 
 ## Shared envelope
 
-Every document: `type`, `audit.cr|up.{dt,ver,by}` (unix **seconds**), `lastAction.{dt,lat?,lon?,accuracyM?}`.
+Every document: `type`, `audit.cr|up.{dt,ver,by}` (unix **seconds**), `history[]` on working copies ([SCHEMA_COMMON.md](./SCHEMA_COMMON.md)).
 
 `assignedTo` includes `employeeId`, `email`, `username`, `displayName`, `userId`. Channel: `emp:{employeeId}`.
 
@@ -42,7 +42,7 @@ Every document: `type`, `audit.cr|up.{dt,ver,by}` (unix **seconds**), `lastActio
 
 ## Fields
 
-**Required:** `type`, `audit`, `lastAction`, `role`, `origin`, `owner`, `status`, `syncState`, `number`, `currency`, `assignedTo`, `lines`, `totals`.
+**Required:** `type`, `audit`, `role`, `origin`, `owner`, `status`, `syncState`, `number`, `currency`, `assignedTo`, `lines`, `totals`. Working copies also `history[]`.
 
 **Optional:** `customerId`, `site`, `scheduled`, `kind`, `notesPreview`, `fulfillment`, `source`, `amends`, `taxIds` (header-level defaults), `photos[]` (POD on working copies; blobs top-level `photo:<id>`), `needsWorkOrder`, `workOrderOutId` (if taken during a WO).
 
@@ -90,7 +90,7 @@ Inclusive tax: still store `lineTax` as the extracted portion; see [SCHEMA_TAXES
     "cr": { "dt": 1788480000, "ver": "server-dispatch", "by": "dispatch.maya" },
     "up": { "dt": 1788480000, "ver": "server-dispatch", "by": "dispatch.maya" }
   },
-  "lastAction": { "dt": 1788480000 },
+  "history": [],
   "role": "inbound",
   "origin": "dispatch",
   "owner": "backend",

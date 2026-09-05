@@ -12,7 +12,7 @@ Device **never `save`s** stock rows. Display:
 
 ### Movement `type: inventory_tx` — id `invtx:<ULID>`
 
-**Required:** `type`, `audit`, `productId`, `locationId`, `qtyDelta`, `reason`, and **one of** `workOrderOutId` \| `orderId`.
+**Required:** `type`, `audit`, `history[]`, `productId`, `locationId`, `qtyDelta`, `reason`, and **one of** `workOrderOutId` \| `orderId`.
 
 **Optional:** `sku`, `readyToPush`, `appliedToWo`.
 

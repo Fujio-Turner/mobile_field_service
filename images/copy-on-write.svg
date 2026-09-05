@@ -58,6 +58,6 @@
     </marker>
   </defs>
 
-  <text x="480" y="328" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#64748b">Every save stamps lastAction: time + lat/lon when GPS is available.</text>
+  <text x="480" y="328" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#64748b">Every user save appends history[] (what changed + time + lat/lon when GPS is available).</text>
   <text x="480" y="352" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#64748b">Chat (employees only) is a separate collection and is not frozen with the job.</text>
 </svg>

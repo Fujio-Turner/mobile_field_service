@@ -4,7 +4,7 @@
 | --- | --- |
 | Id | `usr:<ULID>` |
 | `type` | `user` |
-| Envelope | [SCHEMA_COMMON.md](./SCHEMA_COMMON.md) |
+| Envelope | [SCHEMA_COMMON.md](./SCHEMA_COMMON.md) (no `history[]`; pull profile) |
 
 **Required:** `type`, `audit`, `employeeId`, `email`, `username`, `displayName`, `role`.
 

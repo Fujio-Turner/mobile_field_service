@@ -6,9 +6,9 @@
 | `type` | `workorderout` |
 | Envelope | [SCHEMA_COMMON.md](./SCHEMA_COMMON.md) |
 
-**Required:** `type`, `audit`, `lastAction`, `number`, `priority`, `status`, `syncState`, `role` (`primary` \| `amendment`), `owner` (`technician` \| `backend`), `assignedTo`, `site`, `scheduled`, `summary`, `source`.
+**Required:** `type`, `audit`, `history[]`, `number`, `priority`, `status`, `syncState`, `role` (`primary` \| `amendment`), `owner` (`technician` \| `backend`), `assignedTo`, `site`, `scheduled`, `summary`, `source`.
 
-**Optional:** kit fields from inbound, `blockedReason`, `photos[]` (metadata; blobs at `photo:<id>`), `amends`, `statusHistory[]`, `completedAt`.
+**Optional:** kit fields from inbound, `blockedReason`, `photos[]` (metadata; blobs at `photo:<id>`), `amends`, `completedAt`, `historyTruncated`.
 
 `status`: `assigned` \| `in_progress` \| `blocked` \| `complete` \| `cancelled`.  
 `syncState`: `local_draft` \| `ready_to_push` \| `pushed` \| `push_error`.
