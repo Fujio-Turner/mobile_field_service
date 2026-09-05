@@ -40,6 +40,13 @@
           "cameraPermission": "Take photos of work, parts, and proof of delivery."
         }
       ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Stamp where work happened and show assets near you while you are using the app."
+        }
+      ],
+      "@maplibre/maplibre-react-native",
       "./plugin.config.js",
       [
         "expo-build-properties",

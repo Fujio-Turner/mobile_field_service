@@ -258,6 +258,14 @@ export default function WorkOrderOutScreen() {
           </Pressable>
         ) : null}
 
+        <Pressable
+          disabled={busy}
+          style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
+          onPress={() => router.push(`/(tabs)/map?wooutId=${encodeURIComponent(doc.id)}`)}
+        >
+          <Text style={styles.secondaryLabel}>Nearby assets</Text>
+        </Pressable>
+
         {doc.editable && (doc.status === 'assigned' || doc.status === 'blocked') ? (
           <Pressable
             disabled={busy}

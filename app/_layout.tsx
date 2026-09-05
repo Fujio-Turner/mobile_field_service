@@ -20,6 +20,7 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="wo" />
           <Stack.Screen name="note" />
+          <Stack.Screen name="asset" />
         </Stack>
       </DatabaseProvider>
     </AuthProvider>

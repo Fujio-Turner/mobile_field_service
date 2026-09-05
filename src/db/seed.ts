@@ -4,8 +4,10 @@ import { FIELD_SCOPE } from './collections';
 import {
   SEED_CUSTOMER_ID,
   SEED_USER_ID,
+  seedAssets,
   seedCustomerDoc,
   seedInboundJobs,
+  seedProductsRatesTaxes,
   seedTaskTemplates,
   seedUserDoc,
 } from './seedData';
@@ -46,6 +48,11 @@ export async function seedIfNeeded(database: DbLike): Promise<void> {
   const customers = (await database.collection('customers', FIELD_SCOPE)) as CollectionLike | null;
   const woin = (await database.collection('workordersin', FIELD_SCOPE)) as CollectionLike | null;
   const tasks = (await database.collection('tasks', FIELD_SCOPE)) as CollectionLike | null;
+  const assets = (await database.collection('assets', FIELD_SCOPE)) as CollectionLike | null;
+  const products = (await database.collection('products', FIELD_SCOPE)) as CollectionLike | null;
+  const rates = (await database.collection('rates', FIELD_SCOPE)) as CollectionLike | null;
+  const taxes = (await database.collection('taxes', FIELD_SCOPE)) as CollectionLike | null;
+  const inventory = (await database.collection('inventory', FIELD_SCOPE)) as CollectionLike | null;
   if (!users || !customers || !woin) return;
 
   await saveIfMissing(users, SEED_USER_ID, seedUserDoc(ver, dt) as unknown as Record<string, unknown>);
@@ -57,6 +64,32 @@ export async function seedIfNeeded(database: DbLike): Promise<void> {
   if (tasks) {
     for (const row of seedTaskTemplates(ver, dt)) {
       await saveIfMissing(tasks, row.id, row.doc as unknown as Record<string, unknown>);
+    }
+  }
+  if (assets) {
+    for (const row of seedAssets(ver, dt)) {
+      await saveIfMissing(assets, row.id, row.doc as unknown as Record<string, unknown>);
+    }
+  }
+  const catalog = seedProductsRatesTaxes(ver, dt);
+  if (products) {
+    for (const row of catalog.products) {
+      await saveIfMissing(products, row.id, row.doc as unknown as Record<string, unknown>);
+    }
+  }
+  if (rates) {
+    for (const row of catalog.rates) {
+      await saveIfMissing(rates, row.id, row.doc as unknown as Record<string, unknown>);
+    }
+  }
+  if (taxes) {
+    for (const row of catalog.taxes) {
+      await saveIfMissing(taxes, row.id, row.doc as unknown as Record<string, unknown>);
+    }
+  }
+  if (inventory) {
+    for (const row of catalog.inventory) {
+      await saveIfMissing(inventory, row.id, row.doc as unknown as Record<string, unknown>);
     }
   }
   for (const row of seedInboundJobs(ver, dt)) {

@@ -27,6 +27,11 @@ describe('collections', () => {
     expect(fts?.collection).toBe('notes');
     expect(fts?.properties).toEqual(['body', 'title']);
   });
+
+  it('defines asset geo index', () => {
+    const geo = VALUE_INDEXES.find((i) => i.name === 'idx_ast_geo');
+    expect(geo?.properties).toEqual(['geo.lat', 'geo.lon']);
+  });
 });
 
 describe('tmp expiry', () => {

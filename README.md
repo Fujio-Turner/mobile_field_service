@@ -79,6 +79,8 @@ npm test
 npx expo start
 ```
 
+**Map.** Asset pins always come from local `field.assets` (bbox SQL++), including airplane mode. The basemap is OpenFreeMap Liberty via MapLibre and **needs network** (or MapLibre’s last style cache). Expo Go has no MapLibre native view — you get the pin list; a **development build** (`npx expo run:ios`) shows the map. Style URL: `EXPO_PUBLIC_MAP_STYLE_URL` (default `https://tiles.openfreemap.org/styles/liberty`). MBTiles is later.
+
 `.env.example` sets `EXPO_PUBLIC_AUTH_STRATEGY=demo`. Sign in with any email; you should land on **Today** (empty). Version on the login footer and Profile comes from `app.json`, not a hard-coded string.
 
 Couchbase Lite is wired but **not in Expo Go**. After login, Today shows a banner until you run a **development build**:

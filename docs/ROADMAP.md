@@ -171,12 +171,12 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 8 — Assets map
 
-- [ ] MapLibre RN + OpenFreeMap Liberty **when online**
-- [ ] Document: basemap needs network / last style cache; **pins from CBL work offline**
-- [ ] BBox query `idx_ast_geo`; cluster; tap → KV asset
-- [ ] Filters: type, near job, near GPS
-- [ ] “Use asset on this job” writes `assetIds` on `woout` (needs PR-05+)
-- [ ] Location permission
+- [x] MapLibre RN + OpenFreeMap Liberty **when online**
+- [x] Document: basemap needs network / last style cache; **pins from CBL work offline**
+- [x] BBox query `idx_ast_geo`; cluster; tap → KV asset
+- [x] Filters: type, near job, near GPS
+- [x] “Use asset on this job” writes `assetIds` on `woout` (needs PR-05+)
+- [x] Location permission
 - [ ] Follow-up (not this phase): region MBTiles pack
 
 **Exit:** map shows seed pumps/sites; pin opens KV detail; airplane mode still shows pins.
