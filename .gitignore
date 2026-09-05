@@ -161,3 +161,6 @@ windows/*/bundle/
 *.tmp
 tmp/
 temp/
+
+# --- Local build slices (checklists). Keep files tiny. AGENT.md is at repo root. ---
+/work/

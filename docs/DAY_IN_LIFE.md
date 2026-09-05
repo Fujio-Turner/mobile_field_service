@@ -34,9 +34,9 @@ Shared on every mode: `users`, `messages`, `inventory` (van), `tmp`, `emp:{emplo
 
 | Collection | Schema | Prefix |
 | --- | --- | --- |
-| `orders` | [SCHEMA_ORDERS.md](./SCHEMA_ORDERS.md) | `ord:` |
-| `rates` | [SCHEMA_RATES.md](./SCHEMA_RATES.md) | `rate:` |
-| `taxes` | [SCHEMA_TAXES.md](./SCHEMA_TAXES.md) | `tax:` |
+| `orders` | [schema/SCHEMA_ORDERS.md](./schema/SCHEMA_ORDERS.md) | `ord:` |
+| `rates` | [schema/SCHEMA_RATES.md](./schema/SCHEMA_RATES.md) | `rate:` |
+| `taxes` | [schema/SCHEMA_TAXES.md](./schema/SCHEMA_TAXES.md) | `tax:` |
 
 `products` and `customers` already exist. Field-created **customers** (walk-up at a site) are new `cus:` documents with `origin: field` — pulled customer master is never mutated.
 

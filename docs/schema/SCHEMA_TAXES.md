@@ -7,7 +7,7 @@
 | `type` | `tax` |
 | Repo | [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service) |
 | Date | 2026-09-04 |
-| Design | [DESIGN.md](./DESIGN.md) |
+| Design | [DESIGN.md](../DESIGN.md) |
 | Used by | [SCHEMA_ORDERS.md](./SCHEMA_ORDERS.md), [SCHEMA_RATES.md](./SCHEMA_RATES.md) |
 
 Tax codes / jurisdictions. **Pull-only catalog.** Orders snapshot computed `lineTax` in cents. The device never `save`s tax documents.

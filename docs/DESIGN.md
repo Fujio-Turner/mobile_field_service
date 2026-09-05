@@ -9,7 +9,7 @@
 | Status | Draft |
 | Audience | Senior engineers implementing the Expo + Couchbase Lite RN app |
 
-This is a **Fujio-Turner** project, not koten-ai. The architecture, data model, operations catalog, and query contract live here. Use cases: [DAY_IN_LIFE.md](./DAY_IN_LIFE.md) (assets / customer / sales). Auth: [AUTH.md](./AUTH.md). Phased delivery: [ROADMAP.md](./ROADMAP.md). New commercial collections: [SCHEMA_ORDERS.md](./SCHEMA_ORDERS.md), [SCHEMA_RATES.md](./SCHEMA_RATES.md), [SCHEMA_TAXES.md](./SCHEMA_TAXES.md).
+This is a **Fujio-Turner** project, not koten-ai. The architecture, data model, operations catalog, and query contract live here. Use cases: [DAY_IN_LIFE.md](./DAY_IN_LIFE.md) (assets / customer / sales). Auth: [AUTH.md](./AUTH.md). Phased delivery: [ROADMAP.md](./ROADMAP.md). Collection schemas: [schema/](./schema/README.md).
 
 **Sibling note.** `utility_field_service` is a UtilityCo / SAP demo scaffold (mock repository, ops dashboard, OpenFreeMap + MapLibre). This product is a **new** phone-first field app. Do not copy that collection set, SAP outbox, or mock-first data layer.
 
@@ -827,6 +827,8 @@ On pull (replicator document listener, `isPush === false`) for `workordersout`: 
 
 ## Data model
 
+Per-collection field lists: **[schema/](./schema/README.md)**. Shared envelope: [schema/SCHEMA_COMMON.md](./schema/SCHEMA_COMMON.md).
+
 ### Database, scope, collections
 
 | | |
@@ -1464,7 +1466,7 @@ Scratch: camera staging, draft note text. Collection name is still `tmp` (founde
 
 One collection (not `ordersin`/`ordersout`). **Never mutate `role: inbound`.** `StartOrder` copies to a new `ord:` with `role: working`. Field creates use `origin: field`. Complete freezes (`owner: backend`); forgotten lines → amendment `ord:` with `amends.id`. Money is **integer cents**; `PriceLines` snapshots `rates` + `taxes` onto lines.
 
-Full field list, examples, indexes, ops, push filter: **[SCHEMA_ORDERS.md](./SCHEMA_ORDERS.md)**.
+Full field list, examples, indexes, ops, push filter: **[schema/SCHEMA_ORDERS.md](./schema/SCHEMA_ORDERS.md)**.
 
 Prefix `ord:`. Channel `emp:{employeeId}`.
 
@@ -1472,13 +1474,13 @@ Prefix `ord:`. Channel `emp:{employeeId}`.
 
 Price book (labor / product / service / travel). **Never `save` on device.** Orders copy `amount` onto `lines[].unitPrice`.
 
-**[SCHEMA_RATES.md](./SCHEMA_RATES.md)**. Prefix `rate:`. PULL. Channel `district:` / `public`.
+**[schema/SCHEMA_RATES.md](./schema/SCHEMA_RATES.md)**. Prefix `rate:`. PULL. Channel `district:` / `public`.
 
 ### `taxes` — type `tax` — pull
 
 Jurisdictions, `rateBps` (basis points, integer). **Never `save` on device.** Orders store `lineTax` cents.
 
-**[SCHEMA_TAXES.md](./SCHEMA_TAXES.md)**. Prefix `tax:`. PULL. Channel `district:` / `public`.
+**[schema/SCHEMA_TAXES.md](./schema/SCHEMA_TAXES.md)**. Prefix `tax:`. PULL. Channel `district:` / `public`.
 
 ---
 
@@ -2138,8 +2140,8 @@ Closed for v1: `scheduled.day` is device-local; CLIP **512**; tech may cancel ou
 29. **Today Reassigned badge** when inbound `assignedTo.employeeId` ≠ session (or inbound purged) while a local outbound exists.
 30. **Project:** Fujio-Turner (`github.com/Fujio-Turner/mobile_field_service`), not koten-ai. Use-case SoT: [DAY_IN_LIFE.md](./DAY_IN_LIFE.md).
 31. **Three modes, one DB:** `users.workModes[]` = `assets` \| `customer` \| `sales`. Work orders = labor/assets; orders = money.
-32. **`orders` is one collection.** Never mutate `role: inbound`. Copy to `role: working`. Freeze + amendment like WOs. Schema: [SCHEMA_ORDERS.md](./SCHEMA_ORDERS.md).
-33. **`rates` and `taxes` are pull catalogs.** Money on orders is integer cents snapshotted by `PriceLines`. [SCHEMA_RATES.md](./SCHEMA_RATES.md), [SCHEMA_TAXES.md](./SCHEMA_TAXES.md).
+32. **`orders` is one collection.** Never mutate `role: inbound`. Copy to `role: working`. Freeze + amendment like WOs. Schema: [schema/SCHEMA_ORDERS.md](./schema/SCHEMA_ORDERS.md).
+33. **`rates` and `taxes` are pull catalogs.** Money on orders is integer cents snapshotted by `PriceLines`. [schema/SCHEMA_RATES.md](./schema/SCHEMA_RATES.md), [schema/SCHEMA_TAXES.md](./schema/SCHEMA_TAXES.md).
 34. **Field-created customers** (`origin: field`) may push. Pulled customer master is never mutated.
 35. **Field-created inbound WOs/jobs:** `CreateWorkOrderIn` → new `woin:` `origin: field`. Never patch dispatch inbound. Labor still uses `StartWork` copy-out.
 36. **Orders:** snapshot prices only; **no card processing** in v1; **assume stock available** (no reservation). `SubmitOrder` allowed at quoted/accepted without delivery. POD **signature** is a future ROADMAP item (photo now).
@@ -2156,6 +2158,6 @@ Closed for v1: `scheduled.day` is device-local; CLIP **512**; tech may cancel ou
 - [CBL vector search (native EE, not RN)](https://docs.couchbase.com/couchbase-lite/current/java/working-with-vector-search.html)
 - [OpenFreeMap](https://openfreemap.org/quick_start/)
 - Sibling (do not copy product model): `utility_field_service` docs and MapLibre OpenFreeMap usage
-- This repo: [AUTH.md](./AUTH.md) · [DAY_IN_LIFE.md](./DAY_IN_LIFE.md) · [DAY_IN_LIFE_ASSETS.md](./DAY_IN_LIFE_ASSETS.md) · [DAY_IN_LIFE_CUSTOMER.md](./DAY_IN_LIFE_CUSTOMER.md) · [DAY_IN_LIFE_SALES.md](./DAY_IN_LIFE_SALES.md) · [SCHEMA_ORDERS.md](./SCHEMA_ORDERS.md) · [SCHEMA_RATES.md](./SCHEMA_RATES.md) · [SCHEMA_TAXES.md](./SCHEMA_TAXES.md) · [ROADMAP.md](./ROADMAP.md)
+- This repo: [AUTH.md](./AUTH.md) · [DAY_IN_LIFE.md](./DAY_IN_LIFE.md) · [schema/](./schema/README.md) · [ROADMAP.md](./ROADMAP.md) · [AGENT.md](../AGENT.md)
 - [OIDC implicit + SG](https://www.couchbase.com/blog/oidc-implicit-flow-client-authentication-couchbase-sync-gateway/) · [OIDC auth code + SG](https://www.couchbase.com/blog/oidc-authorization-code-flow-client-authentication-couchbase-sync-gateway/)
 - GitHub: [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service)

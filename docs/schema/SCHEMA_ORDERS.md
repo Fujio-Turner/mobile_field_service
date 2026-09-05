@@ -7,8 +7,8 @@
 | `type` | `order` |
 | Repo | [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service) |
 | Date | 2026-09-04 |
-| Design | [DESIGN.md](./DESIGN.md) |
-| Use cases | [DAY_IN_LIFE_CUSTOMER.md](./DAY_IN_LIFE_CUSTOMER.md), [DAY_IN_LIFE_SALES.md](./DAY_IN_LIFE_SALES.md) |
+| Design | [DESIGN.md](../DESIGN.md) |
+| Use cases | [DAY_IN_LIFE_CUSTOMER.md](../DAY_IN_LIFE_CUSTOMER.md), [DAY_IN_LIFE_SALES.md](../DAY_IN_LIFE_SALES.md) |
 
 Commercial document: customer, lines, **snapshotted** prices and tax, fulfillment pointer. One collection (founder name). Conflict rules match work orders, but copies stay **in this collection** (there is no `ordersin` / `ordersout`).
 

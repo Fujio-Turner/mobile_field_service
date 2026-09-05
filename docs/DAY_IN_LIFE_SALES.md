@@ -9,8 +9,8 @@
 | Date | 2026-09-04 |
 | Status | Draft |
 | Index | [DAY_IN_LIFE.md](./DAY_IN_LIFE.md) |
-| Orders schema | [SCHEMA_ORDERS.md](./SCHEMA_ORDERS.md) |
-| Rates / taxes | [SCHEMA_RATES.md](./SCHEMA_RATES.md), [SCHEMA_TAXES.md](./SCHEMA_TAXES.md) |
+| Orders schema | [schema/SCHEMA_ORDERS.md](./schema/SCHEMA_ORDERS.md) |
+| Rates / taxes | [schema/SCHEMA_RATES.md](./schema/SCHEMA_RATES.md), [schema/SCHEMA_TAXES.md](./schema/SCHEMA_TAXES.md) |
 
 Collections in play: `orders`, `products`, `customers`, `rates`, `taxes`, `inventory`, `messages`.  
 Work orders are **optional** here. Pure sales is: quote/order → deliver product or service → freeze the order → next customer. **No credit card.** Catalog prices are **snapshotted**; assume stock is available. POD is a **photo**; signature pad is later. If she needs a labor ticket, she `CreateWorkOrderIn` on the phone.

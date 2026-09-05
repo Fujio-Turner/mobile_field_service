@@ -74,10 +74,12 @@ Chat is **employees only** (you ↔ dispatch), not customers. Orders **snapshot 
 | --- | --- |
 | Understand the product | This README + [DAY_IN_LIFE.md](docs/DAY_IN_LIFE.md) |
 | See collections, queries, freeze rules | [DESIGN.md](docs/DESIGN.md) |
-| See orders / rates / taxes fields | [SCHEMA_ORDERS.md](docs/SCHEMA_ORDERS.md) · [SCHEMA_RATES.md](docs/SCHEMA_RATES.md) · [SCHEMA_TAXES.md](docs/SCHEMA_TAXES.md) |
+| See document / collection fields | [docs/schema/](docs/schema/README.md) |
 | See login, Keychain, 401 handling | [AUTH.md](docs/AUTH.md) |
 | See what we build in what order | [ROADMAP.md](docs/ROADMAP.md) |
 | Log, style UI, cut a release, sync | [guides/](guides/README.md) |
+| Agent / coding rules | [AGENT.md](AGENT.md) |
+| Tests | [tests/](tests/README.md) |
 
 ---
 

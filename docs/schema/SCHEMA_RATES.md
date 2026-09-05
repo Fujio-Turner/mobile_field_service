@@ -7,7 +7,7 @@
 | `type` | `rate` |
 | Repo | [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service) |
 | Date | 2026-09-04 |
-| Design | [DESIGN.md](./DESIGN.md) |
+| Design | [DESIGN.md](../DESIGN.md) |
 | Used by | [SCHEMA_ORDERS.md](./SCHEMA_ORDERS.md) |
 
 Price book: labor, product, service, travel, surcharge. **Pull-only catalog.** The device never `save`s rate documents. Orders **snapshot** `amount` onto `lines[].unitPrice` at add-line / reprice time.
