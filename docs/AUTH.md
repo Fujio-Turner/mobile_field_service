@@ -18,6 +18,7 @@ References:
 - [OIDC implicit flow + Sync Gateway](https://www.couchbase.com/blog/oidc-implicit-flow-client-authentication-couchbase-sync-gateway/)
 - [OIDC authorization code flow + Sync Gateway](https://www.couchbase.com/blog/oidc-authorization-code-flow-client-authentication-couchbase-sync-gateway/)
 - [CBL RN remote sync — client auth + custom headers](https://cbl-reactnative.dev/DataSync/remote-sync-gateway)
+- App replication how-to: [guides/REPLICATION.md](../guides/REPLICATION.md)
 - [SG user authentication](https://docs.couchbase.com/sync-gateway/current/security/authentication-users.html)
 
 ---

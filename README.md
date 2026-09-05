@@ -48,6 +48,7 @@ OIDC: the ID token can be large. **Do not** put it on every replicator request. 
 | [docs/AUTH.md](docs/AUTH.md) | Login page, basic vs OIDC, Keychain, token expiry |
 | [docs/DESIGN.md](docs/DESIGN.md) | Architecture, all collections, queries, sync |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Phases and PR plan |
+| [guides/](guides/README.md) | Logging, UI, release, **replication** |
 
 No application code yet. Pick a day-in-the-life, then the design.
 

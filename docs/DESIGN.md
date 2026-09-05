@@ -1937,7 +1937,7 @@ Map `ReplicatorActivityLevel` 0–4 to `stopped | offline | connecting | idle | 
 | Two devices, same user, two `woout` ids | Medium | v1 one active device; reconcile keep oldest `audit.cr.dt` |
 | Nested array blobs on RN Android | High | Top-level `photo:<id>` keys only |
 | RN push filter as TS closure | High | `"show source"` pure functions per collection |
-| CBL 4.x APIs used on 3.3.3 plugin | High | Pin 1.1.x / native 3.3.3; 4.x is a future bump |
+| Wrong RN binding (official 1.1, no vector) | High | Fujio-Turner/cbl-reactnative; 4.x + vector on that fork |
 | PII in logs (customer phone, photo EXIF) | Medium | Structured logs: ids, counts, codes; no bodies; strip EXIF on compress |
 | Blob over 20 MB rejected by SG | Low | Compress to 200–800 KB; reject capture &gt; 8 MB pre-compress |
 | JS brute-force vectors battery drain | Low | Feature flag; no production brute force |
@@ -1964,9 +1964,9 @@ CBL RN **requires a Couchbase Lite Enterprise license**. Builds must not ship CE
 
 ### Logging
 
-`LogSinks.setConsole({ level: LogLevel.INFO, domains: [REPLICATOR, NETWORK, DATABASE] })` in production. VERBOSE **debug only**.
+Standard: [`guides/LOGGING.md`](../guides/LOGGING.md). CBL: `LogSinks` ([docs](https://cbl-reactnative.dev/Troubleshooting/using-logs)). Production: `LogLevel.INFO` + `REPLICATOR`/`NETWORK`/`DATABASE`. VERBOSE **debug only**.
 
-App logger (`src/log/logger.ts`): JSON lines `{ ts, level, op, durMs, collection, docId, errCode, appVer }`. **Never** log document JSON, photo bytes, session tokens, passwords, street-level customer notes.
+App logger (`src/log/logger.ts`): JSON `{ ts, level, event, op, durMs, collection, docId, errCode, appVer }`. **Never** log document JSON, photo bytes, session tokens, passwords, street-level customer notes.
 
 ### Metrics (in-memory + optional file; not PII)
 

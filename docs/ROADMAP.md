@@ -31,6 +31,7 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 - [x] Day-in-the-life use cases: assets, customer, sales ([DAY_IN_LIFE.md](./DAY_IN_LIFE.md))
 - [x] Schemas: [orders](./SCHEMA_ORDERS.md), [rates](./SCHEMA_RATES.md), [taxes](./SCHEMA_TAXES.md)
 - [x] This roadmap + PR plan
+- [x] Engineering guides: logging, UI, release, replication ([guides/](../guides/README.md))
 - [ ] README: EE license, Expo **development builds**, iOS/Android only, CBL **3.3.3 EE** (lands with first code PR)
 
 **Exit:** an engineer can implement without inventing field names, prefixes, or SQL++.
@@ -286,7 +287,7 @@ Ordered, independently reviewable PRs. Each PR should build, typecheck, and leav
 | | |
 | --- | --- |
 | Title | `docs: field-service architecture, day-in-the-life, and roadmap` |
-| Files | `docs/DESIGN.md`, `docs/ROADMAP.md`, `docs/DAY_IN_LIFE*.md`, `docs/SCHEMA_*.md`, `README.md` |
+| Files | `docs/DESIGN.md`, `docs/ROADMAP.md`, `docs/DAY_IN_LIFE*.md`, `docs/SCHEMA_*.md`, `guides/*`, `README.md` |
 | Deps | none |
 | Description | Fujio-Turner architecture on https://github.com/Fujio-Turner/mobile_field_service: thirteen `field` collections, three modes, field-created inbound WOs, cbl-reactnative fork + vector, auth session TTL. No application code. |
 
