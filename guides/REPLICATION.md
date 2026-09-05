@@ -106,6 +106,19 @@ function notesPushFilter(document: any, _flags: any): boolean {
 - General notes (no parent) set `readyToPush: true` on create.
 - Frozen parent → 409; do not push a follow-up onto the frozen copy.
 
+### Messages (PR-14)
+
+```ts
+function messagesPushFilter(document: any, _flags: any): boolean {
+  "show source";
+  return document["readyToPush"] === true;
+}
+```
+
+- `SendMessage` sets `readyToPush: true` on create (not gated on job Submit).
+- Completing a WO does **not** freeze the thread.
+- Channels: `emp:{from.employeeId}` plus each `toEmployeeIds` entry; job threads also `wo:{workOrderInId}` when SG grants that channel.
+
 Channels: `emp:{employeeId}` (SG username is **email**). See DESIGN matrix.
 
 ---

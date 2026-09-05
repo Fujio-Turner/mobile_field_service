@@ -3,9 +3,11 @@ import { nowSec } from '../audit';
 import { FIELD_SCOPE } from './collections';
 import {
   SEED_CUSTOMER_ID,
+  SEED_DISPATCH_USER_ID,
   SEED_USER_ID,
   seedAssets,
   seedCustomerDoc,
+  seedDispatchUserDoc,
   seedInboundJobs,
   seedProductsRatesTaxes,
   seedTaskTemplates,
@@ -56,6 +58,11 @@ export async function seedIfNeeded(database: DbLike): Promise<void> {
   if (!users || !customers || !woin) return;
 
   await saveIfMissing(users, SEED_USER_ID, seedUserDoc(ver, dt) as unknown as Record<string, unknown>);
+  await saveIfMissing(
+    users,
+    SEED_DISPATCH_USER_ID,
+    seedDispatchUserDoc(ver, dt) as unknown as Record<string, unknown>,
+  );
   await saveIfMissing(
     customers,
     SEED_CUSTOMER_ID,

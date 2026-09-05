@@ -38,6 +38,11 @@ describe('collections', () => {
     expect(fts?.collection).toBe('products');
     expect(fts?.properties).toEqual(['name', 'sku', 'description']);
   });
+
+  it('defines message thread index', () => {
+    const idx = VALUE_INDEXES.find((i) => i.name === 'idx_msg_thread');
+    expect(idx?.properties).toEqual(['threadId', 'audit.cr.dt']);
+  });
 });
 
 describe('tmp expiry', () => {

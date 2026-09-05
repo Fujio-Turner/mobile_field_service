@@ -159,11 +159,11 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 7b — Chat
 
-- [ ] `field.messages` collection, prefix `msg:`
-- [ ] Job thread `thr:wo:{woinId}` and DM `thr:dm:{empA}:{empB}`
-- [ ] `SendMessage` `readyToPush: true` (not gated on WO Submit)
-- [ ] Chat tab + job-scoped composer from outbound editor
-- [ ] Push filter + `emp:` / `wo:` channels documented for the replicator PR
+- [x] `field.messages` collection, prefix `msg:`
+- [x] Job thread `thr:wo:{woinId}` and DM `thr:dm:{empA}:{empB}`
+- [x] `SendMessage` `readyToPush: true` (not gated on WO Submit)
+- [x] Chat tab + job-scoped composer from outbound editor
+- [x] Push filter + `emp:` / `wo:` channels documented for the replicator PR
 
 **Exit:** airplane-mode send appears after radio returns; completing a WO does not freeze the thread.
 

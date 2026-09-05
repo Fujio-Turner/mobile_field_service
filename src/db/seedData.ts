@@ -2,10 +2,14 @@ import { stampAuditCreate } from '../audit';
 import { deviceLocalDay } from '../ids';
 
 export const SEED_USER_ID = 'usr:01K4Q6AAA00000000000000001';
+export const SEED_DISPATCH_USER_ID = 'usr:01K4Q6AAA00000000000000002';
 export const SEED_CUSTOMER_ID = 'cus:01K4Q6CCC00000000000000001';
 export const SEED_EMPLOYEE_ID = 'E-4412';
 export const SEED_EMAIL = 'jon.hale@example.com';
 export const SEED_USERNAME = 'tech.jon';
+export const SEED_DISPATCH_EMPLOYEE_ID = 'E-DISP-01';
+export const SEED_DISPATCH_EMAIL = 'maya.dispatch@example.com';
+export const SEED_DISPATCH_USERNAME = 'dispatch.maya';
 export const SEED_TASK_TEMPLATE_ID = 'tsk:01K4Q6TTT00000000000000001';
 
 export function seedTaskTemplates(ver: string, dt: number) {
@@ -44,6 +48,22 @@ export function seedUserDoc(ver: string, dt: number) {
       role: 'technician',
       workModes: ['assets'],
       vanId: 'van:12',
+      active: true,
+    },
+    { by: 'seed', ver, dt },
+  );
+}
+
+export function seedDispatchUserDoc(ver: string, dt: number) {
+  return stampAuditCreate(
+    {
+      type: 'user',
+      employeeId: SEED_DISPATCH_EMPLOYEE_ID,
+      email: SEED_DISPATCH_EMAIL,
+      username: SEED_DISPATCH_USERNAME,
+      displayName: 'Maya Dispatch',
+      role: 'dispatch',
+      workModes: ['assets'],
       active: true,
     },
     { by: 'seed', ver, dt },

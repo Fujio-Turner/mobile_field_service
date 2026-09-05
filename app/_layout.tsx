@@ -21,6 +21,7 @@ export default function RootLayout() {
           <Stack.Screen name="wo" />
           <Stack.Screen name="note" />
           <Stack.Screen name="asset" />
+          <Stack.Screen name="chat" />
         </Stack>
       </DatabaseProvider>
     </AuthProvider>

@@ -38,6 +38,7 @@ import { nativeDbAvailable } from '@/src/db/database';
 import { seedProductsRatesTaxes, seedUserDoc } from '@/src/db/seedData';
 import { updateWorkOrderOutFields } from '@/src/ops/updateWorkOrderOut';
 import { VanStockConsume } from '@/src/features/inventory/VanStockConsume';
+import { JobChat } from '@/src/features/chat/JobChat';
 import { JobTasksNotes } from '@/src/features/work/JobTasksNotes';
 import { useAuth } from '@/src/session/AuthContext';
 import { theme } from '@/src/theme';
@@ -257,6 +258,9 @@ export default function WorkOrderOutScreen() {
           notes={notes}
           onMutate={(fn) => void run(fn)}
         />
+
+        <Text style={styles.section}>Job chat</Text>
+        <JobChat woinId={doc.sourceId} wooutId={doc.id} session={s} />
 
         <Text style={styles.section}>Photos {doc.photos.length}/20</Text>
         {doc.photos.map((p) => (
