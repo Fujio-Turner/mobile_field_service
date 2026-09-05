@@ -78,16 +78,16 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 3 — Today list + KV detail
 
-- [ ] `ListTodayWork`: inbound `assignedTo.employeeId = $employeeId`, `status NOT IN ('cancelled','superseded')`, `scheduled.day = $day`, `ORDER BY scheduled.startDt DESC LIMIT 20 OFFSET n`
-- [ ] **Reassigned** / **Assignment changed** badge when inbound assignee ≠ session but local outbound exists
-- [ ] Page 0 **UNION ALL** active outbound: `workordersout` `status IN ('assigned','in_progress','blocked')` — **no** `day` filter; unpaged; collapse one row per `source.id` preferring outbound
-- [ ] Infinite scroll (offset += 20) on inbound only
-- [ ] Live query on inbound page 0 only; re-run active-outbound on those callbacks and pull-to-refresh
-- [ ] Empty / error / stale-sync states
-- [ ] Batched `FindOutboundForSources` → `openId` + `openCollection` on each row
-- [ ] Row tap → **one** KV get on `openCollection`
-- [ ] Read-only inbound detail screen
-- [ ] `query.explain()` debug on today list (index `idx_woin_today`)
+- [x] `ListTodayWork`: inbound `assignedTo.employeeId = $employeeId`, `status NOT IN ('cancelled','superseded')`, `scheduled.day = $day`, `ORDER BY scheduled.startDt DESC LIMIT 20 OFFSET n`
+- [x] **Reassigned** / **Assignment changed** badge when inbound assignee ≠ session but local outbound exists
+- [x] Page 0 **UNION ALL** active outbound: `workordersout` `status IN ('assigned','in_progress','blocked')` — **no** `day` filter; unpaged; collapse one row per `source.id` preferring outbound
+- [x] Infinite scroll (offset += 20) on inbound only
+- [x] Live query on inbound page 0 only; re-run active-outbound on those callbacks and pull-to-refresh
+- [x] Empty / error / stale-sync states (stale-sync waits on replicator)
+- [x] Batched `FindOutboundForSources` → `openId` + `openCollection` on each row
+- [ ] Row tap → **one** KV get on `openCollection` (S04)
+- [ ] Read-only inbound detail screen (S04)
+- [x] `query.explain()` debug on today list (index `idx_woin_today`)
 
 **Exit:** scrolling 40+ seed jobs stays on the indexed plan; tap does not re-query the list.
 

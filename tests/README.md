@@ -7,7 +7,7 @@ tests/
   smoke.test.ts  theme + demo login helper
   session/       strategy, expiry skew
   db/            ids, audit, stampHistory, collections, tracking id
-  ops/           StartWork, SubmitOrder, PriceLines, RecordTrackPoint, …
+  ops/           listTodayWork collapse, StartWork, SubmitOrder, …
   sync/          push filters (pure fns)
   README.md
 ```

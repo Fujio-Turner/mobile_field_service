@@ -6,24 +6,37 @@ import { getCblEngine } from './engine';
 import { isCblNativeAvailable } from './native';
 import { seedIfNeeded } from './seed';
 
+export type QueryLike = {
+  execute: () => Promise<unknown>;
+  addChangeListener?: (cb: (change: { error?: string; results?: unknown }) => void) => Promise<unknown>;
+  removeChangeListener?: (token: unknown) => Promise<void>;
+  setParameters?: (p: unknown) => void;
+  explain?: () => Promise<string>;
+};
+
+export type CblDatabase = {
+  close: () => Promise<void>;
+  createCollection: (n: string, s: string) => Promise<unknown>;
+  collection: (n: string, s: string) => Promise<unknown>;
+  createQuery: (sql: string) => QueryLike;
+};
+
 export type OpenedDatabase = {
   name: string;
   close: () => Promise<void>;
 };
 
-let opened: { db: { close: () => Promise<void>; createCollection: (n: string, s: string) => Promise<unknown>; collection: (n: string, s: string) => Promise<unknown> }; name: string } | null =
-  null;
+let opened: { db: CblDatabase; name: string } | null = null;
+
+export function getOpenedDatabase(): CblDatabase | null {
+  return opened?.db ?? null;
+}
 
 export async function openFieldDatabase(employeeId: string): Promise<OpenedDatabase> {
   getCblEngine();
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { Database, DatabaseConfiguration, FileSystem } = require('cbl-reactnative') as {
-    Database: new (name: string, config: unknown) => {
-      open: () => Promise<void>;
-      close: () => Promise<void>;
-      createCollection: (n: string, s: string) => Promise<unknown>;
-      collection: (n: string, s: string) => Promise<unknown>;
-    };
+    Database: new (name: string, config: unknown) => CblDatabase & { open: () => Promise<void> };
     DatabaseConfiguration: new () => {
       setDirectory: (p: string) => void;
       setEncryptionKey: (k: string) => void;
