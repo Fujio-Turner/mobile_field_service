@@ -119,6 +119,20 @@ function messagesPushFilter(document: any, _flags: any): boolean {
 - Completing a WO does **not** freeze the thread.
 - Channels: `emp:{from.employeeId}` plus each `toEmployeeIds` entry; job threads also `wo:{workOrderInId}` when SG grants that channel.
 
+### Orders (PR-15)
+
+```ts
+function ordersPushFilter(document: any, _flags: any): boolean {
+  "show source";
+  if (document["role"] === "inbound") return false;
+  const s = document["syncState"];
+  return s === "ready_to_push" || s === "pushed" || s === "push_error";
+}
+```
+
+- Never `save` inbound orders. `rates` / `taxes` push filter is `false`.
+- `SubmitOrder` allowed at quoted | accepted | complete | cancelled (no payment).
+
 Channels: `emp:{employeeId}` (SG username is **email**). See DESIGN matrix.
 
 ---

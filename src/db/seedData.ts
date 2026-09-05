@@ -89,7 +89,9 @@ export const SEED_ASSET_IDS = [
 ] as const;
 export const SEED_PRODUCT_ID = 'prd:01K4Q6PPP00000000000000001';
 export const SEED_RATE_ID = 'rate:01K4Q6RATE00000000000001';
+export const SEED_RATE_LABOR_ID = 'rate:01K4Q6RATE00000000000002';
 export const SEED_TAX_ID = 'tax:01K4Q6TAX00000000000001';
+export const SEED_INBOUND_ORDER_ID = 'ord:01K4Q7INBOUND000000000001';
 export const SEED_INV_ID = 'inv:01K4Q6INV0000000000000001';
 export const SEED_VAN_ID = 'van:12';
 
@@ -149,6 +151,24 @@ export function seedProductsRatesTaxes(ver: string, dt: number) {
             amount: 18500,
             currency: 'USD',
             unit: 'ea',
+            taxInclusive: false,
+            defaultTaxIds: [SEED_TAX_ID],
+            active: true,
+          },
+          { by: 'seed', ver, dt },
+        ),
+      },
+      {
+        id: SEED_RATE_LABOR_ID,
+        doc: stampAuditCreate(
+          {
+            type: 'rate',
+            code: 'LABOR-STD',
+            name: 'Standard labor',
+            kind: 'service',
+            amount: 12500,
+            currency: 'USD',
+            unit: 'hour',
             taxInclusive: false,
             defaultTaxIds: [SEED_TAX_ID],
             active: true,
@@ -260,4 +280,47 @@ export function seedInboundJobs(ver: string, dt: number, day = deviceLocalDay())
       { by: 'dispatch.maya', ver: 'server-dispatch', dt },
     ),
   }));
+}
+
+export function seedInboundOrder(ver: string, dt: number, day = deviceLocalDay()) {
+  return {
+    id: SEED_INBOUND_ORDER_ID,
+    doc: stampAuditCreate(
+      {
+        type: 'order',
+        role: 'inbound',
+        origin: 'dispatch',
+        owner: 'backend',
+        status: 'accepted',
+        syncState: 'local_draft',
+        number: 'ORD-3301',
+        kind: 'product',
+        currency: 'USD',
+        customerId: SEED_CUSTOMER_ID,
+        assignedTo,
+        scheduled: { startDt: dt + 3600, endDt: dt + 7200, day },
+        site: {
+          name: 'Riverside Pump Station',
+          geo: { lat: 41.7658, lon: -72.6734 },
+        },
+        lines: [
+          {
+            id: 'ln_01K4Q7LINE000000000000001',
+            productId: SEED_PRODUCT_ID,
+            rateId: SEED_RATE_ID,
+            description: 'Check valve 4in',
+            qty: 2,
+            uom: 'ea',
+            unitPrice: 18500,
+            taxIds: [SEED_TAX_ID],
+            lineSubtotal: 37000,
+            lineTax: 2331,
+            lineTotal: 39331,
+          },
+        ],
+        totals: { subtotal: 37000, taxTotal: 2331, total: 39331 },
+      },
+      { by: 'dispatch.maya', ver: 'server-dispatch', dt },
+    ),
+  };
 }

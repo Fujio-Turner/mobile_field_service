@@ -212,13 +212,13 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 9b — Orders, rates, taxes, field customers
 
-- [ ] Pull `rates` + `taxes`; never save those catalogs
-- [ ] `ListTodayOrders` / `StartOrder` (copy inbound → working; never mutate inbound)
-- [ ] `CreateOrder` `origin: field`; `PriceLines` integer cents
-- [ ] `CompleteOrder` freeze + `CreateOrderAmendment`
-- [ ] `CreateCustomer` `origin: field` (do not patch pulled customers)
-- [ ] Optional `orderId` on delivery WOs; `workOrderOutId` on orders taken on site
-- [ ] Seed: one inbound order, two rates, one tax, Hartford customer
+- [x] Pull `rates` + `taxes`; never save those catalogs
+- [x] `ListTodayOrders` / `StartOrder` (copy inbound → working; never mutate inbound)
+- [x] `CreateOrder` `origin: field`; `PriceLines` integer cents
+- [x] `CompleteOrder` freeze + `CreateOrderAmendment`
+- [x] `CreateCustomer` `origin: field` (do not patch pulled customers)
+- [x] Optional `orderId` on delivery WOs; `workOrderOutId` on orders taken on site
+- [x] Seed: one inbound order, two rates, one tax, Hartford customer
 
 **Exit:** sales-mode Today lists an inbound order; copy + complete does not change inbound JSON; walk-up creates `cus:` + `ord:`.
 

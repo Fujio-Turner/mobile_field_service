@@ -9,6 +9,7 @@ import {
   seedCustomerDoc,
   seedDispatchUserDoc,
   seedInboundJobs,
+  seedInboundOrder,
   seedProductsRatesTaxes,
   seedTaskTemplates,
   seedUserDoc,
@@ -55,6 +56,7 @@ export async function seedIfNeeded(database: DbLike): Promise<void> {
   const rates = (await database.collection('rates', FIELD_SCOPE)) as CollectionLike | null;
   const taxes = (await database.collection('taxes', FIELD_SCOPE)) as CollectionLike | null;
   const inventory = (await database.collection('inventory', FIELD_SCOPE)) as CollectionLike | null;
+  const orders = (await database.collection('orders', FIELD_SCOPE)) as CollectionLike | null;
   if (!users || !customers || !woin) return;
 
   await saveIfMissing(users, SEED_USER_ID, seedUserDoc(ver, dt) as unknown as Record<string, unknown>);
@@ -101,5 +103,9 @@ export async function seedIfNeeded(database: DbLike): Promise<void> {
   }
   for (const row of seedInboundJobs(ver, dt)) {
     await saveIfMissing(woin, row.id, row.doc as unknown as Record<string, unknown>);
+  }
+  if (orders) {
+    const inbound = seedInboundOrder(ver, dt);
+    await saveIfMissing(orders, inbound.id, inbound.doc as unknown as Record<string, unknown>);
   }
 }

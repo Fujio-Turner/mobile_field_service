@@ -13,7 +13,11 @@ import {
 import { useDatabase } from '@/src/db/DatabaseProvider';
 import { TodayRowView } from '@/src/features/today/TodayRowView';
 import { deviceLocalDay } from '@/src/ids';
+import { memorySave } from '@/src/db/memoryStore';
+import { nativeDbAvailable } from '@/src/db/database';
+import { seedInboundOrder, seedProductsRatesTaxes } from '@/src/db/seedData';
 import { listTodayWork, sourceIdsFromRows, TODAY_PAGE_SIZE } from '@/src/ops/listTodayWork';
+import { listTodayOrders } from '@/src/ops/orders';
 import type { TodayRow } from '@/src/ops/todayTypes';
 import { watchTodayWork, type WatchTodayHandle } from '@/src/ops/watchTodayWork';
 import { useAuth } from '@/src/session/AuthContext';
@@ -31,6 +35,7 @@ export default function TodayScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [orders, setOrders] = useState<Array<{ id: string; number: string; role: string; status: string }>>([]);
   const skipRef = useRef(new Set<string>());
   const inboundOffset = useRef(0);
   const watchRef = useRef<WatchTodayHandle | null>(null);
@@ -49,8 +54,24 @@ export default function TodayScreen() {
     if (!employeeId) return;
     setError(null);
     try {
+      if (!nativeDbAvailable()) {
+        const catalog = seedProductsRatesTaxes('0.1.0+1', 1_700_000_000);
+        for (const row of catalog.rates) memorySave('rates', row.id, row.doc as never);
+        for (const row of catalog.taxes) memorySave('taxes', row.id, row.doc as never);
+        const inbound = seedInboundOrder('0.1.0+1', 1_700_000_000, day);
+        memorySave('orders', inbound.id, inbound.doc as never);
+      }
       const result = await listTodayWork({ employeeId, day, offset: 0 });
       applyPage0(result.rows, result.preview, result.inboundCount);
+      const todayOrders = await listTodayOrders(employeeId, day);
+      setOrders(
+        todayOrders.map((row) => ({
+          id: row.id,
+          number: String(row.doc.number ?? ''),
+          role: String(row.doc.role ?? ''),
+          status: String(row.doc.status ?? ''),
+        })),
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Query failed');
     }
@@ -145,6 +166,26 @@ export default function TodayScreen() {
                 <Text style={styles.retry}>Retry</Text>
               </Pressable>
             ) : null}
+            {orders.length > 0 ? (
+              <View>
+                <Text style={styles.section}>Orders</Text>
+                {orders.map((o) => (
+                  <Pressable key={o.id} onPress={() => router.push(`/order/${o.id}`)} style={styles.orderRow}>
+                    <Text style={styles.orderTitle}>{o.number}</Text>
+                    <Text style={styles.muted}>
+                      {o.role} · {o.status}
+                    </Text>
+                  </Pressable>
+                ))}
+                <Pressable onPress={() => router.push('/order/new')} style={styles.orderRow}>
+                  <Text style={styles.retry}>New field order</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable onPress={() => router.push('/order/new')} style={styles.orderRow}>
+                <Text style={styles.retry}>Orders</Text>
+              </Pressable>
+            )}
           </View>
         }
         ListEmptyComponent={
@@ -191,4 +232,13 @@ const styles = StyleSheet.create({
   empty: { fontSize: theme.type.lg, color: theme.color.text, fontWeight: '600', marginBottom: theme.space.sm },
   muted: { fontSize: theme.type.md, color: theme.color.muted },
   spinner: { marginVertical: theme.space.lg },
+  section: {
+    marginTop: theme.space.lg,
+    marginBottom: theme.space.xs,
+    fontSize: theme.type.sm,
+    color: theme.color.muted,
+    fontWeight: '600',
+  },
+  orderRow: { minHeight: 48, justifyContent: 'center', marginBottom: theme.space.sm },
+  orderTitle: { fontSize: theme.type.md, color: theme.color.text, fontWeight: '600' },
 });

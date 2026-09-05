@@ -22,6 +22,7 @@ export default function RootLayout() {
           <Stack.Screen name="note" />
           <Stack.Screen name="asset" />
           <Stack.Screen name="chat" />
+          <Stack.Screen name="order" />
         </Stack>
       </DatabaseProvider>
     </AuthProvider>
