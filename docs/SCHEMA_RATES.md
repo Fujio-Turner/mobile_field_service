@@ -1,0 +1,87 @@
+# Schema — `field.rates`
+
+| Field | Value |
+| --- | --- |
+| Collection | `rates` (scope `field`) |
+| Doc id | `rate:<ULID>` |
+| `type` | `rate` |
+| Repo | [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service) |
+| Date | 2026-09-04 |
+| Design | [DESIGN.md](./DESIGN.md) |
+| Used by | [SCHEMA_ORDERS.md](./SCHEMA_ORDERS.md) |
+
+Price book: labor, product, service, travel, surcharge. **Pull-only catalog.** The device never `save`s rate documents. Orders **snapshot** `amount` onto `lines[].unitPrice` at add-line / reprice time.
+
+---
+
+## Envelope
+
+`type`, `audit.cr|up.{dt,ver,by}` (unix seconds). `lastAction` optional (server). No technician mutations → no GPS stamp required.
+
+---
+
+## Fields
+
+**Required:** `type`, `audit`, `code`, `name`, `kind`, `amount`, `currency`, `unit`, `active`.
+
+**Optional:** `productId`, `description`, `effectiveFromDt`, `effectiveToDt`, `taxInclusive`, `defaultTaxIds[]`, `minQty`, `crewId`, `districtId`.
+
+| Field | Values / notes |
+| --- | --- |
+| `kind` | `labor` \| `product` \| `service` \| `travel` \| `surcharge` |
+| `amount` | Integer **cents** (or minor units) per `unit` |
+| `currency` | `USD` |
+| `unit` | `hour` \| `ea` \| `mile` \| `flat` \| `day` |
+| `taxInclusive` | If true, `amount` includes tax; `PriceLines` extracts tax using [SCHEMA_TAXES.md](./SCHEMA_TAXES.md) |
+| `defaultTaxIds` | Default `tax:` ids when a line does not override |
+| `effectiveFromDt` / `effectiveToDt` | Unix seconds; omit `to` = open-ended |
+| `productId` | When this rate is the list price of a `prd:` |
+
+Pick the rate where `active === true` and `effectiveFromDt <= now < effectiveToDt` (missing `to` = open). If several match, prefer `districtId` then `crewId` then global (`districtId` absent).
+
+---
+
+## Example
+
+```json
+{
+  "type": "rate",
+  "audit": {
+    "cr": { "dt": 1750000000, "ver": "server", "by": "pricing" },
+    "up": { "dt": 1788400000, "ver": "server", "by": "pricing" }
+  },
+  "code": "VLV-CHK-4-LIST",
+  "name": "Check valve 4in list",
+  "kind": "product",
+  "productId": "prd:01K4Q6PPP00000000000000001",
+  "amount": 18500,
+  "currency": "USD",
+  "unit": "ea",
+  "taxInclusive": false,
+  "defaultTaxIds": ["tax:01K4Q6TAX00000000000001"],
+  "effectiveFromDt": 1750000000,
+  "active": true,
+  "districtId": "district:north"
+}
+```
+
+Labor example: `kind: service`, `code: LABOR-STD`, `amount: 12500` ($125.00), `unit: hour`.
+
+---
+
+## Indexes
+
+| Name | Kind | Keys |
+| --- | --- | --- |
+| `idx_rate_code` | value | `code` |
+| `idx_rate_product` | value | `productId`, `active` |
+| `idx_rate_kind` | value | `kind`, `active` |
+| FTS `idx_rate_fts` | fts | `code`, `name`, `description` |
+
+---
+
+## Replication
+
+**PULL only.** Push filter `return false`. Channel: `district:{id}` and/or `public`.
+
+Hard rule: **no live join** from an order line to `rates.amount` for display of a saved order. Show `lines[].unitPrice`.
