@@ -133,12 +133,12 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 6 — Photos and `local.tmp`
 
-- [ ] Camera runtime permission
-- [ ] Camera → `StagePhoto` (`local.tmp`, 24 h expiration) → `CommitPhoto`
-- [ ] Top-level blobs `photo:<id>` + `photo:<id>:thumb` (not array paths)
-- [ ] Cap 20 photos/job; compress 200–800 KB; strip EXIF
-- [ ] Delete photo; periodic compact
-- [ ] **No** embedding enqueue
+- [x] Camera runtime permission
+- [x] Camera → `StagePhoto` (`local.tmp`, 24 h expiration) → `CommitPhoto`
+- [x] Top-level blobs `photo:<id>` + `photo:<id>:thumb` (not array paths)
+- [x] Cap 20 photos/job; compress 200–800 KB; strip EXIF
+- [x] Delete photo; periodic compact
+- [x] **No** embedding enqueue
 
 **Exit:** 10 photos on a job survive process death; `local.tmp` staging expires.
 
