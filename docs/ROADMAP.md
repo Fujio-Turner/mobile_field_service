@@ -185,12 +185,12 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 8b — Location crumbs (`tracking`)
 
-- [ ] Collection `field.tracking`, id `track:{YYYY-MM-DD}:{employeeId}` (device-local day; not email)
-- [ ] `RecordTrackPoint` when haversine ≥ `EXPO_PUBLIC_TRACK_MIN_MOVE_M` (default 100 m; `152` ≈ 500 ft)
-- [ ] Map `tracking` keyed by unix seconds → `[lat, lon]`; cap 4000/day; `last` `[lat, lon, ts]` for O(1) compare
-- [ ] `GetTrackingDay` / `GetTrackingLastNDays(n=7)` — seven KV gets, no query
-- [ ] Push filter always true; never log the map
-- [ ] Foreground / while-using only in v1 (background trail later)
+- [x] Collection `field.tracking`, id `track:{YYYY-MM-DD}:{employeeId}` (device-local day; not email)
+- [x] `RecordTrackPoint` when haversine ≥ `EXPO_PUBLIC_TRACK_MIN_MOVE_M` (default 100 m; `152` ≈ 500 ft)
+- [x] Map `tracking` keyed by unix seconds → `[lat, lon]`; cap 4000/day; `last` `[lat, lon, ts]` for O(1) compare
+- [x] `GetTrackingDay` / `GetTrackingLastNDays(n=7)` — seven KV gets, no query
+- [x] Push filter always true; never log the map
+- [x] Foreground / while-using only in v1 (background trail later)
 
 **Exit:** moving ~100 m+ writes a point; last 7 constructed ids KV-get; still docs do not dump crumbs.
 

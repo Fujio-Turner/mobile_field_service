@@ -1,5 +1,9 @@
+import { useCallback, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useDatabase } from '@/src/db/DatabaseProvider';
+import { deviceLocalDay } from '@/src/ids';
+import { getTrackingDay, getTrackingLastNDays } from '@/src/ops/tracking';
 import { useAuth } from '@/src/session/AuthContext';
 import { NativeBanner } from '@/src/ui/NativeBanner';
 import { theme } from '@/src/theme';
@@ -8,6 +12,21 @@ import { appVersion } from '@/src/version';
 export default function ProfileScreen() {
   const { session, logout, busy } = useAuth();
   const { dbName, status } = useDatabase();
+  const [crumbToday, setCrumbToday] = useState<number | null>(null);
+  const [crumbDays, setCrumbDays] = useState<number | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!session) return;
+      void (async () => {
+        const today = await getTrackingDay(session.employeeId, deviceLocalDay());
+        const map = today?.tracking as Record<string, unknown> | undefined;
+        setCrumbToday(map ? Object.keys(map).length : 0);
+        const week = await getTrackingLastNDays(session.employeeId, 7);
+        setCrumbDays(week.filter((d) => d.doc != null).length);
+      })();
+    }, [session]),
+  );
 
   return (
     <View style={styles.wrap}>
@@ -19,6 +38,11 @@ export default function ProfileScreen() {
       <Text style={styles.muted}>Strategy: {session?.strategy ?? '—'}</Text>
       <Text style={styles.muted}>Database: {dbName ?? status}</Text>
       <Text style={styles.muted}>Version {appVersion()}</Text>
+      {crumbToday != null ? (
+        <Text style={styles.muted}>
+          Crumbs today {crumbToday} · days with crumbs {crumbDays ?? 0}/7 (no map dump)
+        </Text>
+      ) : null}
 
       <Pressable
         accessibilityRole="button"

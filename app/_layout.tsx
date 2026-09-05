@@ -3,11 +3,13 @@ import { StatusBar } from 'expo-status-bar';
 import { DatabaseProvider } from '@/src/db/DatabaseProvider';
 import { AuthProvider } from '@/src/session/AuthContext';
 import { theme } from '@/src/theme';
+import { TrackingWatch } from '@/src/ui/TrackingWatch';
 
 export default function RootLayout() {
   return (
     <AuthProvider>
       <DatabaseProvider>
+        <TrackingWatch />
         <StatusBar style="dark" />
         <Stack
           screenOptions={{

@@ -133,6 +133,18 @@ function ordersPushFilter(document: any, _flags: any): boolean {
 - Never `save` inbound orders. `rates` / `taxes` push filter is `false`.
 - `SubmitOrder` allowed at quoted | accepted | complete | cancelled (no payment).
 
+### Tracking (PR-16)
+
+```ts
+function trackingPushFilter(_document: any, _flags: any): boolean {
+  "show source";
+  return true;
+}
+```
+
+- Device-owned crumbs; do not wait for Submit.
+- Never log the `tracking` map. Channel `emp:{employeeId}`. Id uses employeeId, not email.
+
 Channels: `emp:{employeeId}` (SG username is **email**). See DESIGN matrix.
 
 ---
