@@ -26,7 +26,18 @@ import { captureAndCommitPhoto } from '@/src/ops/capturePhoto';
 import { listNotes, type NoteItem } from '@/src/ops/notes';
 import { deletePhoto } from '@/src/ops/photos';
 import { listTasksForWork, type TaskItem } from '@/src/ops/tasks';
+import {
+  DEFAULT_VAN_ID,
+  listStockAtLocation,
+  repairUnappliedInventoryTx,
+  vanLocationIdForEmployee,
+  type DisplayStock,
+} from '@/src/ops/inventory';
+import { memorySave } from '@/src/db/memoryStore';
+import { nativeDbAvailable } from '@/src/db/database';
+import { seedProductsRatesTaxes, seedUserDoc } from '@/src/db/seedData';
 import { updateWorkOrderOutFields } from '@/src/ops/updateWorkOrderOut';
+import { VanStockConsume } from '@/src/features/inventory/VanStockConsume';
 import { JobTasksNotes } from '@/src/features/work/JobTasksNotes';
 import { useAuth } from '@/src/session/AuthContext';
 import { theme } from '@/src/theme';
@@ -50,7 +61,11 @@ function showErr(e: unknown) {
                 ? 'Follow-up is only after complete or cancel.'
                 : code === 'photo_cap'
                   ? 'Photo cap is 20 on this copy.'
-                  : 'Could not update the job.';
+                  : code === 'insufficient_stock'
+                    ? e instanceof Error
+                      ? e.message
+                      : 'Not enough on the van.'
+                    : 'Could not update the job.';
   Alert.alert('Job', msg);
 }
 
@@ -65,23 +80,39 @@ export default function WorkOrderOutScreen() {
   const [busy, setBusy] = useState(false);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [notes, setNotes] = useState<NoteItem[]>([]);
+  const [stock, setStock] = useState<DisplayStock[]>([]);
+  const [vanId, setVanId] = useState(DEFAULT_VAN_ID);
 
   const reload = useCallback(async () => {
     if (!id) {
       setDoc(null);
       setTasks([]);
       setNotes([]);
+      setStock([]);
       return;
     }
+    if (!nativeDbAvailable()) {
+      const catalog = seedProductsRatesTaxes('0.1.0+1', 1_700_000_000);
+      for (const row of catalog.products) memorySave('products', row.id, row.doc as never);
+      for (const row of catalog.inventory) memorySave('inventory', row.id, row.doc as never);
+      memorySave('users', 'usr:demo', seedUserDoc('0.1.0+1', 1_700_000_000) as never);
+    }
+    if (session) await repairUnappliedInventoryTx(id, session);
     const wo = await getWorkOrderOut(id);
     setDoc(wo);
     if (wo) {
       setSummary(wo.summary);
       setTasks(await listTasksForWork(wo.id));
       setNotes(await listNotes({ workOrderOutId: wo.id }));
+      if (session) {
+        const loc = await vanLocationIdForEmployee(session.employeeId);
+        setVanId(loc);
+        setStock(await listStockAtLocation(loc));
+      }
     } else {
       setTasks([]);
       setNotes([]);
+      setStock([]);
     }
     if (wo && session) {
       const inbound = await getWorkOrderIn(wo.sourceId);
@@ -265,6 +296,35 @@ export default function WorkOrderOutScreen() {
         >
           <Text style={styles.secondaryLabel}>Nearby assets</Text>
         </Pressable>
+
+        <Text style={styles.section}>Materials</Text>
+        {doc.materials.length === 0 ? <Text style={styles.muted}>None used yet</Text> : null}
+        {doc.materials.map((m) => (
+          <Text key={m.productId} style={styles.value}>
+            {m.description ?? m.sku ?? m.productId} · {m.qtyUsed} {m.uom ?? ''}
+          </Text>
+        ))}
+        {doc.editable ? (
+          <>
+            <Text style={styles.section}>Van stock</Text>
+            <VanStockConsume
+              wooutId={doc.id}
+              locationId={vanId}
+              stock={stock}
+              editable={doc.editable}
+              busy={busy}
+              session={s}
+              onMutate={(fn) => void run(fn)}
+            />
+            <Pressable
+              disabled={busy}
+              style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
+              onPress={() => router.push(`/(tabs)/inventory?wooutId=${encodeURIComponent(doc.id)}`)}
+            >
+              <Text style={styles.secondaryLabel}>Full van catalog</Text>
+            </Pressable>
+          </>
+        ) : null}
 
         {doc.editable && (doc.status === 'assigned' || doc.status === 'blocked') ? (
           <Pressable

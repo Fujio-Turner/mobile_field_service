@@ -30,6 +30,7 @@ export type WorkOrderOut = {
   amendsId?: string;
   editable: boolean;
   photos: PhotoMeta[];
+  materials: Array<{ productId: string; sku?: string; description?: string; qtyUsed: number; uom?: string }>;
 };
 
 export function parseWorkOrderOut(id: string, raw: Record<string, unknown> | null): WorkOrderOut | null {
@@ -82,6 +83,16 @@ export function parseWorkOrderOut(id: string, raw: Record<string, unknown> | nul
     amendsId: raw.amends != null ? String((raw.amends as { id?: string }).id ?? '') : undefined,
     editable: !isFrozen(raw),
     photos: Array.isArray(raw.photos) ? (raw.photos as PhotoMeta[]) : [],
+    materials: (Array.isArray(raw.materials) ? raw.materials : []).map((m) => {
+      const r = m as Record<string, unknown>;
+      return {
+        productId: String(r.productId ?? ''),
+        sku: r.sku != null ? String(r.sku) : undefined,
+        description: r.description != null ? String(r.description) : undefined,
+        qtyUsed: Number(r.qtyUsed ?? 0),
+        uom: r.uom != null ? String(r.uom) : undefined,
+      };
+    }),
   };
 }
 

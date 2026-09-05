@@ -198,13 +198,13 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 9 — Products and inventory
 
-- [ ] Catalog browse + FTS (`idx_prd_fts`)
-- [ ] Van stock list (`locationId` of current user)
-- [ ] `ConsumeInventoryOnWork`: write **only** `inventory_tx` + `woout.materials` (**never `save` stock rows**)
-- [ ] Display qty = pulled `qtyOnHand` + `SUM(qtyDelta WHERE inventory_tx.audit.cr.dt > snapshot.audit.up.dt)`
-- [ ] `RebuildStock` read model (no writer)
-- [ ] Insufficient stock error; `allowNegative` only `supervisor` / `technician_lead`
-- [ ] v1: one van per technician; **stock not pushed and not saved**; `inventory_tx` push when `readyToPush`
+- [x] Catalog browse + FTS (`idx_prd_fts`)
+- [x] Van stock list (`locationId` of current user)
+- [x] `ConsumeInventoryOnWork`: write **only** `inventory_tx` + `woout.materials` (**never `save` stock rows**)
+- [x] Display qty = pulled `qtyOnHand` + `SUM(qtyDelta WHERE inventory_tx.audit.cr.dt > snapshot.audit.up.dt)`
+- [x] `RebuildStock` read model (no writer)
+- [x] Insufficient stock error; `allowNegative` only `supervisor` / `technician_lead`
+- [x] v1: one van per technician; **stock not pushed and not saved**; `inventory_tx` push when `readyToPush`
 
 **Exit:** consuming a valve on the job writes `invtx:` and a materials line; van list shows snapshot + txs newer than `snapshot.audit.up.dt`; crash between tx and materials is repaired via `appliedToWo` only.
 

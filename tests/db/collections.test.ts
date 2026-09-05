@@ -32,6 +32,12 @@ describe('collections', () => {
     const geo = VALUE_INDEXES.find((i) => i.name === 'idx_ast_geo');
     expect(geo?.properties).toEqual(['geo.lat', 'geo.lon']);
   });
+
+  it('defines product FTS on name sku description', () => {
+    const fts = FTS_INDEXES.find((i) => i.name === 'idx_prd_fts');
+    expect(fts?.collection).toBe('products');
+    expect(fts?.properties).toEqual(['name', 'sku', 'description']);
+  });
 });
 
 describe('tmp expiry', () => {

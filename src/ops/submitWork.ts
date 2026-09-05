@@ -1,5 +1,6 @@
 import { loadChild, saveChild } from './childStore';
 import type { StartSession } from './copyInbound';
+import { listInventoryTxForWork } from './inventory';
 import { listNotes } from './notes';
 import { OutError } from './outError';
 import { loadOutboundRaw } from './outboundStore';
@@ -16,6 +17,11 @@ export async function markJobChildrenReadyToPush(wooutId: string): Promise<void>
     const raw = await loadChild('notes', n.id);
     if (!raw || raw.readyToPush === true) continue;
     await saveChild('notes', n.id, { ...raw, readyToPush: true });
+  }
+  for (const tx of await listInventoryTxForWork(wooutId)) {
+    const raw = await loadChild('inventory', tx.id);
+    if (!raw || raw.readyToPush === true) continue;
+    await saveChild('inventory', tx.id, { ...raw, readyToPush: true });
   }
 }
 
