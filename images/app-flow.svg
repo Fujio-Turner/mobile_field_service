@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 280" role="img" aria-labelledby="t d">
+  <title id="t">What you do in the app</title>
+  <desc id="d">Sign in, see today, open a job, work it, complete, sync.</desc>
+  <rect width="960" height="280" fill="#f8fafc"/>
+  <text x="480" y="36" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="20" font-weight="700" fill="#0f172a">A shift on the phone</text>
+
+  <g font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+    <!-- 1 -->
+    <g transform="translate(20,64)">
+      <rect width="140" height="160" rx="14" fill="#fff" stroke="#cbd5e1"/>
+      <circle cx="70" cy="40" r="18" fill="#0f172a"/>
+      <text x="70" y="45" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">1</text>
+      <text x="70" y="78" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Sign in</text>
+      <text x="70" y="100" text-anchor="middle" font-size="11" fill="#475569">Email + password</text>
+      <text x="70" y="116" text-anchor="middle" font-size="11" fill="#475569">or Sign in with IdP</text>
+    </g>
+    <path d="M168 144h24" stroke="#94a3b8" stroke-width="2" marker-end="url(#b)"/>
+
+    <!-- 2 -->
+    <g transform="translate(204,64)">
+      <rect width="140" height="160" rx="14" fill="#fff" stroke="#cbd5e1"/>
+      <circle cx="70" cy="40" r="18" fill="#0f172a"/>
+      <text x="70" y="45" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">2</text>
+      <text x="70" y="78" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Today</text>
+      <text x="70" y="100" text-anchor="middle" font-size="11" fill="#475569">Jobs for this day</text>
+      <text x="70" y="116" text-anchor="middle" font-size="11" fill="#475569">newest first, scroll</text>
+    </g>
+    <path d="M352 144h24" stroke="#94a3b8" stroke-width="2" marker-end="url(#b)"/>
+
+    <!-- 3 -->
+    <g transform="translate(388,64)">
+      <rect width="140" height="160" rx="14" fill="#fff" stroke="#cbd5e1"/>
+      <circle cx="70" cy="40" r="18" fill="#0f172a"/>
+      <text x="70" y="45" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">3</text>
+      <text x="70" y="78" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Open</text>
+      <text x="70" y="100" text-anchor="middle" font-size="11" fill="#475569">Tap = get by id</text>
+      <text x="70" y="116" text-anchor="middle" font-size="11" fill="#475569">Start = make a copy</text>
+    </g>
+    <path d="M536 144h24" stroke="#94a3b8" stroke-width="2" marker-end="url(#b)"/>
+
+    <!-- 4 -->
+    <g transform="translate(572,64)">
+      <rect width="140" height="160" rx="14" fill="#fff" stroke="#cbd5e1"/>
+      <circle cx="70" cy="40" r="18" fill="#0f172a"/>
+      <text x="70" y="45" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">4</text>
+      <text x="70" y="78" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Do the work</text>
+      <text x="70" y="100" text-anchor="middle" font-size="11" fill="#475569">Offline is fine</text>
+      <text x="70" y="116" text-anchor="middle" font-size="11" fill="#475569">Photos, parts, chat</text>
+    </g>
+    <path d="M720 144h24" stroke="#94a3b8" stroke-width="2" marker-end="url(#b)"/>
+
+    <!-- 5 -->
+    <g transform="translate(756,64)">
+      <rect width="184" height="160" rx="14" fill="#ecfdf5" stroke="#0d9488"/>
+      <circle cx="92" cy="40" r="18" fill="#0f766e"/>
+      <text x="92" y="45" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">5</text>
+      <text x="92" y="78" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Complete + sync</text>
+      <text x="92" y="100" text-anchor="middle" font-size="11" fill="#475569">Copy freezes. Office owns it.</text>
+      <text x="92" y="116" text-anchor="middle" font-size="11" fill="#475569">Forgot a photo? New paper.</text>
+    </g>
+  </g>
+  <defs>
+    <marker id="b" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+</svg>

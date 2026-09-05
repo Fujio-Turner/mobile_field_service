@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" role="img" aria-labelledby="t d">
+  <title id="t">How the product is designed</title>
+  <desc id="d">Phone with Couchbase Lite syncs over a session to Sync Gateway, which feeds Couchbase Server. The office owns completed copies.</desc>
+  <rect width="960" height="400" fill="#f8fafc"/>
+  <text x="480" y="36" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="20" font-weight="700" fill="#0f172a">Offline on the phone. Sync when you can.</text>
+
+  <!-- Phone -->
+  <g transform="translate(40,64)">
+    <rect width="280" height="300" rx="16" fill="#0f172a"/>
+    <rect x="12" y="12" width="256" height="276" rx="10" fill="#fff"/>
+    <text x="140" y="40" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#0f172a">iPhone / Android</text>
+    <text x="140" y="58" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" fill="#64748b">Expo · one person · one device</text>
+    <rect x="28" y="76" width="224" height="36" rx="8" fill="#ccfbf1"/>
+    <text x="140" y="98" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#0f766e">Today list  ·  KV open by id</text>
+    <rect x="28" y="122" width="224" height="88" rx="8" fill="#f1f5f9"/>
+    <text x="140" y="146" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" font-weight="600" fill="#0f172a">Couchbase Lite (local)</text>
+    <text x="140" y="166" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" fill="#475569">scope field  ·  local.tmp never syncs</text>
+    <text x="140" y="184" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" fill="#475569">Encrypted DB in Keychain key</text>
+    <rect x="28" y="220" width="224" height="48" rx="8" fill="#dbeafe"/>
+    <text x="140" y="240" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" fill="#1e40af">Login: email + password</text>
+    <text x="140" y="256" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" fill="#1e40af">Session cookie in Keychain</text>
+  </g>
+
+  <path d="M336 214h72" stroke="#334155" stroke-width="2.5" marker-end="url(#a)"/>
+  <text x="372" y="198" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" fill="#334155">wss + session</text>
+
+  <!-- SG -->
+  <g transform="translate(424,110)">
+    <rect width="200" height="208" rx="16" fill="#fff" stroke="#cbd5e1"/>
+    <text x="100" y="36" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="14" font-weight="700" fill="#0f172a">Sync Gateway</text>
+    <text x="100" y="56" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" fill="#64748b">or Capella App Services</text>
+    <text x="100" y="92" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#334155">POST /mfs/_session</text>
+    <text x="100" y="112" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#334155">TTL / expires honored</text>
+    <text x="100" y="144" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#334155">Channel emp:{employeeId}</text>
+    <text x="100" y="176" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" fill="#64748b">401 / 404 → stop, re-login</text>
+  </g>
+
+  <path d="M640 214h72" stroke="#334155" stroke-width="2.5" marker-end="url(#a)"/>
+
+  <!-- Server -->
+  <g transform="translate(728,110)">
+    <rect width="192" height="208" rx="16" fill="#fff" stroke="#cbd5e1"/>
+    <text x="96" y="36" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="14" font-weight="700" fill="#0f172a">Couchbase Server</text>
+    <text x="96" y="92" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#334155">Office owns completed</text>
+    <text x="96" y="112" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#334155">copies (spawn follow-ups)</text>
+    <text x="96" y="144" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#334155">Consolidate amendments</text>
+    <text x="96" y="176" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" fill="#64748b">Rates / taxes catalogs</text>
+  </g>
+
+  <defs>
+    <marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#334155"/>
+    </marker>
+  </defs>
+</svg>

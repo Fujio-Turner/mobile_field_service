@@ -1,64 +1,109 @@
 # Mobile Field Service
 
-Offline-first field technician app for **[Fujio-Turner](https://github.com/Fujio-Turner/mobile_field_service)**.
+A **phone app for people who work in the field** — inspect a pump, deliver parts, take an order on a doorstep — **even when there is no signal**.
 
-| | |
+When the radio comes back, the phone syncs with Couchbase (Sync Gateway or Capella). The office sees **your copy** of the work, not a tug-of-war on the same document.
+
+**Status:** design and guides. Application code is not in the repo yet.  
+**Platforms:** iOS and Android (Expo development builds).  
+**Repo:** [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service)
+
+![Three modes: assets, customer, sales](images/overview.svg)
+
+---
+
+## What you do in a shift
+
+![Sign in, Today list, open a job, work offline, complete and sync](images/app-flow.svg)
+
+1. **Sign in** with work email (or Sign in with your company IdP).
+2. **Today** shows the jobs (or orders) for this calendar day, newest first. Scroll for more.
+3. **Tap a row** to open it by document id. **Start** makes **your copy**.
+4. **Do the work** with no network: photos, parts, notes, employee chat, map of nearby assets.
+5. **Complete.** That copy **freezes** and the office owns it. Forgot a photo? You add a **new sheet of paper** that points at the original — you do not reopen the frozen one.
+
+Walk through a real day:
+
+| If you… | Read |
 | --- | --- |
-| Repo | https://github.com/Fujio-Turner/mobile_field_service |
-| Stack | Expo (development builds) + [Fujio-Turner/cbl-reactnative](https://github.com/Fujio-Turner/cbl-reactnative) (CBL EE + vector index) |
-| Platforms | iOS and Android |
+| Inspect / repair / move **company** kit | [Day in the life — assets](docs/DAY_IN_LIFE_ASSETS.md) |
+| Serve a **customer site**, then take another order | [Day in the life — customer](docs/DAY_IN_LIFE_CUSTOMER.md) |
+| **Sell and deliver**, then the next stop | [Day in the life — sales](docs/DAY_IN_LIFE_SALES.md) |
 
-This is **not** a koten-ai product.
+Index of all three: [docs/DAY_IN_LIFE.md](docs/DAY_IN_LIFE.md).
+
+---
+
+## How work is designed (so we do not fight)
+
+Dispatch — or you, on the phone — can **create** a job ticket. You **never edit a ticket the office already sent**. You copy it, work the copy, and sync that.
+
+If they reassign the job while you are in a basement, Today shows **Reassigned**. Your copy still goes up. Two documents for one job number is expected.
+
+![Copy-on-write: inbound ticket, your copy, freeze on complete, amendment if you forgot something](images/copy-on-write.svg)
+
+---
+
+## How the pieces fit
+
+The phone keeps an encrypted **Couchbase Lite** database. **Sync Gateway** (or Capella App Services) talks to **Couchbase Server**. Login mints a **session with an expiry**; a fat OIDC token is exchanged for that session, not sent on every sync request.
+
+![Phone with local Couchbase Lite, Sync Gateway session, Couchbase Server](images/architecture.svg)
+
+Replication how-to (for implementers): [guides/REPLICATION.md](guides/REPLICATION.md) · official API: [cbl-reactnative.dev](https://cbl-reactnative.dev) · sample app: [expo-cbl-travel](https://github.com/couchbase-examples/expo-cbl-travel).
+
+We use the Fujio-Turner [cbl-reactnative](https://github.com/Fujio-Turner/cbl-reactnative) fork (vector index, Couchbase Lite 4.x target), not the official 1.1 plugin as source of truth.
+
+---
+
+## Who this is for
+
+| Role | Why you are here |
+| --- | --- |
+| **Field tech / sales** | The product: Today, jobs, orders, photos, offline. |
+| **Engineer joining the repo** | Start with a day-in-the-life, then [docs/DESIGN.md](docs/DESIGN.md), then [guides/](guides/README.md). |
+| **Someone wiring Sync Gateway** | Email is the SG username. Session + TTL. Example below. |
+
+Chat is **employees only** (you ↔ dispatch), not customers. Orders **snapshot catalog prices**; we assume stock is there; **no credit cards** in this version. Proof of delivery is a **photo** for now (signature pad is later).
+
+---
+
+## Docs map
+
+| I want to… | Go here |
+| --- | --- |
+| Understand the product | This README + [DAY_IN_LIFE.md](docs/DAY_IN_LIFE.md) |
+| See collections, queries, freeze rules | [DESIGN.md](docs/DESIGN.md) |
+| See orders / rates / taxes fields | [SCHEMA_ORDERS.md](docs/SCHEMA_ORDERS.md) · [SCHEMA_RATES.md](docs/SCHEMA_RATES.md) · [SCHEMA_TAXES.md](docs/SCHEMA_TAXES.md) |
+| See login, Keychain, 401 handling | [AUTH.md](docs/AUTH.md) |
+| See what we build in what order | [ROADMAP.md](docs/ROADMAP.md) |
+| Log, style UI, cut a release, sync | [guides/](guides/README.md) |
+
+---
 
 ## Sync Gateway user (example)
 
-Login identifier is the **email**. The durable channel is `employeeId` on the profile document.
+Login identifier is the **email**. The durable channel is `employeeId` on the profile.
 
 ```text
-Sync Gateway public user (example)
+username:     jon.hale@example.com
+password:     (set on Sync Gateway; never stored in Couchbase Lite)
+session:      POST /mfs/_session  →  session_id + expires
+replicator:   SessionAuthenticator(session_id, "SyncGatewaySession")
 
-  username:     jon.hale@example.com
-  password:     (set on SG; never stored in CBL)
-  session:      POST /mfs/_session  →  session_id + expires
-  replicator:   SessionAuthenticator(session_id, "SyncGatewaySession")
-
-Pulled profile  usr:…  (field.users)
-
+Profile (field.users)
   employeeId:   E-4412
   email:        jon.hale@example.com
-  username:     tech.jon          # audit.by only
-  workModes:    ["assets"]        # or customer / sales
+  username:     tech.jon          ← audit.by only
+  workModes:    ["assets"]        ← or customer / sales
 
-Channel grant:  emp:E-4412
+Channel:      emp:E-4412
 ```
 
-OIDC: the ID token can be large. **Do not** put it on every replicator request. `POST /mfs/_session` with `Authorization: Bearer <id_token>`, then replicate with the **session** (TTL/`expires` honored). See [docs/AUTH.md](docs/AUTH.md).
+One person, one device in this version. Lab/testing the native module does **not** require a Couchbase Lite Enterprise license; shipping encryption + vector still does.
 
-## Docs (read these before code)
+---
 
-| Doc | What it is |
-| --- | --- |
-| [docs/DAY_IN_LIFE.md](docs/DAY_IN_LIFE.md) | Index: three modes (assets / customer / sales) |
-| [docs/DAY_IN_LIFE_ASSETS.md](docs/DAY_IN_LIFE_ASSETS.md) | Inspect, repair, move company assets |
-| [docs/DAY_IN_LIFE_CUSTOMER.md](docs/DAY_IN_LIFE_CUSTOMER.md) | Delivery WO + new order / new customer on site |
-| [docs/DAY_IN_LIFE_SALES.md](docs/DAY_IN_LIFE_SALES.md) | Order, deliver, next stop |
-| [docs/SCHEMA_ORDERS.md](docs/SCHEMA_ORDERS.md) | `orders` collection |
-| [docs/SCHEMA_RATES.md](docs/SCHEMA_RATES.md) | `rates` price book |
-| [docs/SCHEMA_TAXES.md](docs/SCHEMA_TAXES.md) | `taxes` |
-| [docs/AUTH.md](docs/AUTH.md) | Login page, basic vs OIDC, Keychain, token expiry |
-| [docs/DESIGN.md](docs/DESIGN.md) | Architecture, all collections, queries, sync |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | Phases and PR plan |
-| [guides/](guides/README.md) | Logging, UI, release, **replication** |
+## License
 
-No application code yet. Pick a day-in-the-life, then the design.
-
-## Hard rules (short)
-
-- Dispatch **and the phone** can create `workordersin` / jobs. **Never mutate a pulled dispatch inbound.** Field-created inbound is a new `woin:` (`origin: field`).
-- Work happens on a **copy** (`workordersout` / working `orders`). Complete **freezes** that copy; forgotten facts → `amends.id`.
-- Channels: `emp:{employeeId}`. SG login username = **email** (example above).
-- One person, one device (v1).
-- Orders: **snapshot catalog prices**, assume stock is available, **no credit-card processing** (later). Chat is **employees only**.
-- POD / signature capture is a **future** roadmap item (photo proof is enough for now).
-- Testing the CBL RN module does **not** require an EE license. Production still needs EE for shipping encrypted + vector builds.
-- Every mutation stamps `lastAction` (unix time + lat/lon when GPS exists).
+[Apache License 2.0](LICENSE)

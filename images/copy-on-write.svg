@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 380" role="img" aria-labelledby="t d">
+  <title id="t">Copy-on-write: how a job is worked without fighting the office</title>
+  <desc id="d">Inbound job is copied to the technician paper, worked offline, frozen on complete, and forgotten facts go on a new amendment.</desc>
+  <rect width="960" height="380" fill="#f8fafc"/>
+  <text x="480" y="36" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="20" font-weight="700" fill="#0f172a">Work your copy. Never fight the original.</text>
+  <text x="480" y="60" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="13" fill="#475569">Same idea for work orders and sales orders. Many documents per job is OK — the backend consolidates.</text>
+
+  <!-- step 1 -->
+  <g transform="translate(24,88)">
+    <rect width="168" height="200" rx="12" fill="#fff" stroke="#94a3b8" stroke-dasharray="5 4"/>
+    <text x="84" y="28" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#64748b">1. INBOUND</text>
+    <text x="84" y="52" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="13" font-weight="600" fill="#0f172a">woin:… / ord:…</text>
+    <text x="84" y="78" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#334155">Dispatch or phone</text>
+    <text x="84" y="96" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#334155">creates the ticket</text>
+    <text x="84" y="128" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" fill="#b45309">Pulled originals</text>
+    <text x="84" y="144" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" fill="#b45309">are not edited</text>
+  </g>
+  <path d="M200 188h36" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- step 2 -->
+  <g transform="translate(244,88)">
+    <rect width="168" height="200" rx="12" fill="#fff" stroke="#0d9488" stroke-width="2"/>
+    <text x="84" y="28" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#0f766e">2. YOUR COPY</text>
+    <text x="84" y="52" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="13" font-weight="600" fill="#0f172a">woout:… / working</text>
+    <text x="84" y="78" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#334155">Start work copies</text>
+    <text x="84" y="96" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#334155">the ticket locally</text>
+    <text x="84" y="128" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" fill="#0f766e">Photos, parts, notes</text>
+    <text x="84" y="144" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" fill="#0f766e">live on this paper</text>
+  </g>
+  <path d="M420 188h36" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- step 3 -->
+  <g transform="translate(464,88)">
+    <rect width="168" height="200" rx="12" fill="#ecfdf5" stroke="#0d9488"/>
+    <text x="84" y="28" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#0f766e">3. COMPLETE</text>
+    <text x="84" y="52" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="13" font-weight="600" fill="#0f172a">Frozen + backend owns</text>
+    <text x="84" y="78" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#334155">No more edits on</text>
+    <text x="84" y="96" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#334155">that document</text>
+    <text x="84" y="128" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" fill="#0f766e">Office can spawn</text>
+    <text x="84" y="144" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" fill="#0f766e">follow-up work</text>
+  </g>
+  <path d="M640 188h36" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- step 4 -->
+  <g transform="translate(684,88)">
+    <rect width="252" height="200" rx="12" fill="#fff" stroke="#6366f1"/>
+    <text x="126" y="28" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#4f46e5">4. FORGOT SOMETHING?</text>
+    <text x="126" y="52" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="13" font-weight="600" fill="#0f172a">New paper (amendment)</text>
+    <text x="126" y="78" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#334155">New id · amends.id → original</text>
+    <text x="126" y="108" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#334155">If dispatch reassigned the job</text>
+    <text x="126" y="126" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#334155">while you were offline, your copy</text>
+    <text x="126" y="144" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#334155">still syncs. Badge: Reassigned.</text>
+  </g>
+
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#64748b"/>
+    </marker>
+  </defs>
+
+  <text x="480" y="328" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#64748b">Every save stamps lastAction: time + lat/lon when GPS is available.</text>
+  <text x="480" y="352" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="12" fill="#64748b">Chat (employees only) is a separate collection and is not frozen with the job.</text>
+</svg>
