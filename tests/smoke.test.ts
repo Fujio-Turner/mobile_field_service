@@ -22,7 +22,9 @@ describe('demo login helper', () => {
     const result = buildDemoSession('jon.hale@example.com', now);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.session.username).toBe('jon.hale@example.com');
+    expect(result.session.username).toBe('tech.jon');
+    expect(result.session.employeeId).toBe('E-4412');
+    expect(result.session.email).toBe('jon.hale@example.com');
     expect(result.session.strategy).toBe('demo');
     expect(sessionIsLive(result.session.sessionExpiresAt, now)).toBe(true);
   });

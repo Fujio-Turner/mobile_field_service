@@ -8,12 +8,14 @@ export function authStrategy(): AuthStrategy {
   return 'basic';
 }
 
-/** Demo session: no network. Identifier required. */
+/** Demo session: no network. Maps to seed tech E-4412. Identifier required. */
 export function buildDemoSession(identifier: string, nowSec: number): {
   ok: true;
   session: {
     strategy: 'demo';
     username: string;
+    email: string;
+    employeeId: string;
     sessionId: string;
     cookieName: string;
     sessionExpiresAt: number;
@@ -27,7 +29,9 @@ export function buildDemoSession(identifier: string, nowSec: number): {
     ok: true,
     session: {
       strategy: 'demo',
-      username,
+      username: 'tech.jon',
+      email: 'jon.hale@example.com',
+      employeeId: 'E-4412',
       sessionId: 'demo-session',
       cookieName: 'SyncGatewaySession',
       sessionExpiresAt: nowSec + 7 * 24 * 3600,

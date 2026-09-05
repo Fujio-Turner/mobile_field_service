@@ -58,16 +58,17 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 2 — Encrypted database, collections, seed
 
-- [ ] `CblReactNativeEngine` singleton
-- [ ] Open `mfs_<safe>_<hash8>` with AES-256 **string** key from Keychain + `FileSystem.getDefaultPath()`
-- [ ] Create scope `field` (**fourteen** collections including `messages`, `orders`, `rates`, `taxes`, `tracking`) + `local.tmp`
-- [ ] Value + FTS indexes from DESIGN.md
-- [ ] `stampAuditCreate` / `stampAuditUpdate` / `stampHistory` (unix **seconds**, app version, path from/to, lat/lon when GPS)
-- [ ] ULID + prefixes (`woin`, `woout`, `ast`, `prd`, `inv`, `invtx`, `usr`, `cus`, `tsk`, `nte`, `msg`, `ord`, `rate`, `tax`, `tmp`) + tracking `track:{day}:{employeeId}`
-- [ ] Users seed with `employeeId` + `email` (channel `emp:E-4412`)
-- [ ] Optional pre-built / JSON seed: ~12 inbound jobs, assets near sites, van stock, products, one user, one customer
-- [ ] `tmp` in scope `local`; replicator allow-list cannot include it; expiration helper
+- [x] `CblReactNativeEngine` singleton
+- [x] Open `mfs_<safe>_<hash8>` with AES-256 **string** key from Keychain + `FileSystem.getDefaultPath()`
+- [x] Create scope `field` (**fourteen** collections including `messages`, `orders`, `rates`, `taxes`, `tracking`) + `local.tmp`
+- [x] Value + FTS indexes from DESIGN.md
+- [x] `stampAuditCreate` / `stampAuditUpdate` / `stampHistory` (unix **seconds**, app version, path from/to, lat/lon when GPS)
+- [x] ULID + prefixes (`woin`, `woout`, `ast`, `prd`, `inv`, `invtx`, `usr`, `cus`, `tsk`, `nte`, `msg`, `ord`, `rate`, `tax`, `tmp`) + tracking `track:{day}:{employeeId}`
+- [x] Users seed with `employeeId` + `email` (channel `emp:E-4412`)
+- [ ] Optional pre-built / JSON seed: ~12 inbound jobs, assets near sites, van stock, products, one user, one customer (three inbound jobs + user + customer in v1 seed)
+- [x] `tmp` in scope `local`; replicator allow-list cannot include it; expiration helper
 - [ ] `RebuildStock` read-model stub (no stock `save`; unused until inventory PR)
+- [x] Guard screen if the native module is missing (Expo Go)
 
 **Exit:** `cblite` / VSCode CBL inspector shows `field.workordersin` seed docs with audit stamps.
 

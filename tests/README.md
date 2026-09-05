@@ -6,8 +6,8 @@ All automated tests live **here**, not under `src/`.
 tests/
   smoke.test.ts  theme + demo login helper
   session/       strategy, expiry skew
+  db/            ids, audit, stampHistory, collections, tracking id
   ops/           StartWork, SubmitOrder, PriceLines, RecordTrackPoint, …
-  db/            ids, audit, stampHistory, tracking id
   sync/          push filters (pure fns)
   README.md
 ```

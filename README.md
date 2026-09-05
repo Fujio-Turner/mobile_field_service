@@ -81,7 +81,15 @@ npx expo start
 
 `.env.example` sets `EXPO_PUBLIC_AUTH_STRATEGY=demo`. Sign in with any email; you should land on **Today** (empty). Version on the login footer and Profile comes from `app.json`, not a hard-coded string.
 
-This slice has **no Couchbase Lite**. Expo Go can open it. The next slice (encrypted DB) needs a **development build** and the [cbl-reactnative](https://github.com/Fujio-Turner/cbl-reactnative) fork. Shipping encryption + vector still needs a Couchbase Lite **Enterprise** license; lab/testing the module does not.
+Couchbase Lite is wired but **not in Expo Go**. After login, Today shows a banner until you run a **development build**:
+
+```bash
+npx expo run:ios
+# or
+npx expo run:android
+```
+
+Binding: [Fujio-Turner/cbl-reactnative](https://github.com/Fujio-Turner/cbl-reactnative) (`feat/vector-search-support`). Shipping encryption + vector still needs a Couchbase Lite **Enterprise** license; lab/testing the module does not.
 
 ---
 

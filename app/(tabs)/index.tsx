@@ -1,11 +1,15 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { NativeBanner } from '@/src/ui/NativeBanner';
 import { theme } from '@/src/theme';
 
 export default function TodayScreen() {
   return (
     <View style={styles.wrap}>
+      <NativeBanner />
       <Text style={styles.empty}>No work for today</Text>
-      <Text style={styles.muted}>Jobs appear here after the database slice.</Text>
+      <Text style={styles.muted}>
+        Today’s list query lands in the next slice. Seed jobs are written when Couchbase Lite opens.
+      </Text>
     </View>
   );
 }

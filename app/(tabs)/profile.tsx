@@ -1,16 +1,23 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useDatabase } from '@/src/db/DatabaseProvider';
 import { useAuth } from '@/src/session/AuthContext';
+import { NativeBanner } from '@/src/ui/NativeBanner';
 import { theme } from '@/src/theme';
 import { appVersion } from '@/src/version';
 
 export default function ProfileScreen() {
   const { session, logout, busy } = useAuth();
+  const { dbName, status } = useDatabase();
 
   return (
     <View style={styles.wrap}>
+      <NativeBanner />
       <Text style={styles.label}>Signed in as</Text>
       <Text style={styles.name}>{session?.username ?? '—'}</Text>
+      <Text style={styles.muted}>{session?.email ?? '—'}</Text>
+      <Text style={styles.muted}>Employee {session?.employeeId ?? '—'}</Text>
       <Text style={styles.muted}>Strategy: {session?.strategy ?? '—'}</Text>
+      <Text style={styles.muted}>Database: {dbName ?? status}</Text>
       <Text style={styles.muted}>Version {appVersion()}</Text>
 
       <Pressable

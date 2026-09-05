@@ -34,6 +34,7 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      "./plugin.config.js",
       [
         "expo-build-properties",
         {
