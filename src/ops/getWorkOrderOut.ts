@@ -1,7 +1,11 @@
 import { FIELD_SCOPE } from '../db/collections';
 import { getOpenedDatabase, nativeDbAvailable } from '../db/database';
 import { memoryGet } from '../db/memoryStore';
+import { isFrozen } from './outStatus';
 import { documentToObject } from './workOrderIn';
+
+export type WorkOrderOutOp = { id?: string; name?: string; status?: string; required?: boolean };
+export type WorkOrderOutCheck = { id?: string; label?: string; done?: boolean; required?: boolean };
 
 export type WorkOrderOut = {
   id: string;
@@ -17,6 +21,13 @@ export type WorkOrderOut = {
   assignedTo: { employeeId: string; email?: string; username?: string; displayName?: string };
   siteName: string;
   historyOps: string[];
+  operations: WorkOrderOutOp[];
+  checklist: WorkOrderOutCheck[];
+  blockedReason?: string;
+  blockedNote?: string;
+  cancelledReason?: string;
+  amendsId?: string;
+  editable: boolean;
 };
 
 export function parseWorkOrderOut(id: string, raw: Record<string, unknown> | null): WorkOrderOut | null {
@@ -45,6 +56,29 @@ export function parseWorkOrderOut(id: string, raw: Record<string, unknown> | nul
     },
     siteName: String(site.name ?? ''),
     historyOps: history.map((h) => String((h as { op?: string }).op ?? '')),
+    operations: (Array.isArray(raw.operations) ? raw.operations : []).map((op) => {
+      const r = op as Record<string, unknown>;
+      return {
+        id: r.id != null ? String(r.id) : undefined,
+        name: r.name != null ? String(r.name) : undefined,
+        status: r.status != null ? String(r.status) : 'pending',
+        required: Boolean(r.required),
+      };
+    }),
+    checklist: (Array.isArray(raw.checklist) ? raw.checklist : []).map((c) => {
+      const r = c as Record<string, unknown>;
+      return {
+        id: r.id != null ? String(r.id) : undefined,
+        label: r.label != null ? String(r.label) : undefined,
+        done: Boolean(r.done),
+        required: Boolean(r.required),
+      };
+    }),
+    blockedReason: raw.blockedReason != null ? String(raw.blockedReason) : undefined,
+    blockedNote: raw.blockedNote != null ? String(raw.blockedNote) : undefined,
+    cancelledReason: raw.cancelledReason != null ? String(raw.cancelledReason) : undefined,
+    amendsId: raw.amends != null ? String((raw.amends as { id?: string }).id ?? '') : undefined,
+    editable: !isFrozen(raw),
   };
 }
 

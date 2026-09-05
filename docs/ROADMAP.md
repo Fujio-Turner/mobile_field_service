@@ -115,17 +115,17 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 5 — Outbound editor, status, Submit (no camera yet)
 
-- [ ] Status machine: `assigned` → `in_progress` ⇄ `blocked` → `complete` / `cancelled`
-- [ ] Operation statuses `pending | in_progress | done | skipped`
-- [ ] Editable operations + embedded checklist
-- [ ] `CompleteWork` gates required operations `status === 'done'` and required checklist `done === true` (required **tasks** added in the tasks PR)
-- [ ] `CancelWork` with reason (tech); dispatch cancel is inbound-only
-- [ ] `SubmitWork` only after complete/cancel; sets `syncState=ready_to_push`
-- [ ] Complete/Cancel set `owner: backend` and **freeze the body** (no notes/photos on that id)
-- [ ] `CreateAmendment`: new `woout` with `role: amendment`, `amends.id`
-- [ ] `history[]` on user saves (path + from/to + dt + lat/lon); skip `SetSyncState`
-- [ ] Dispatch-updated banner (inbound KV vs snapshot; no auto-merge)
-- [ ] Reassigned banner on an in-progress copy whose inbound assignee changed
+- [x] Status machine: `assigned` → `in_progress` ⇄ `blocked` → `complete` / `cancelled`
+- [x] Operation statuses `pending | in_progress | done | skipped`
+- [x] Editable operations + embedded checklist
+- [x] `CompleteWork` gates required operations `status === 'done'` and required checklist `done === true` (required **tasks** added in the tasks PR)
+- [x] `CancelWork` with reason (tech); dispatch cancel is inbound-only
+- [x] `SubmitWork` only after complete/cancel; sets `syncState=ready_to_push`
+- [x] Complete/Cancel set `owner: backend` and **freeze the body** (no notes/photos on that id)
+- [x] `CreateAmendment`: new `woout` with `role: amendment`, `amends.id`
+- [x] `history[]` on user saves (path + from/to + dt + lat/lon); skip `SetSyncState`
+- [ ] Dispatch-updated banner (inbound KV vs snapshot; no auto-merge) — Reassigned / assignment-changed banner is in
+- [x] Reassigned banner on an in-progress copy whose inbound assignee changed
 
 **Exit:** a tech can start, edit ops, complete, freeze, submit, and open a follow-up paper fully offline (without photos).
 

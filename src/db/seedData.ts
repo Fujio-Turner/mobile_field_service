@@ -98,6 +98,11 @@ export function seedInboundJobs(ver: string, dt: number, day = deviceLocalDay())
           day,
         },
         summary: j.summary,
+        operations: [
+          { id: 'op-1', name: 'Site check', required: true, status: 'pending' },
+          { id: 'op-2', name: 'Close out', required: false, status: 'pending' },
+        ],
+        checklist: [{ id: 'cl-ppe', label: 'PPE on', required: true, done: false }],
       },
       { by: 'dispatch.maya', ver: 'server-dispatch', dt },
     ),
