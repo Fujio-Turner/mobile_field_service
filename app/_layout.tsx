@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { DatabaseProvider } from '@/src/db/DatabaseProvider';
 import { AuthProvider } from '@/src/session/AuthContext';
 import { theme } from '@/src/theme';
+import { ReplicatorWatch } from '@/src/ui/ReplicatorWatch';
 import { TrackingWatch } from '@/src/ui/TrackingWatch';
 
 export default function RootLayout() {
@@ -10,6 +11,7 @@ export default function RootLayout() {
     <AuthProvider>
       <DatabaseProvider>
         <TrackingWatch />
+        <ReplicatorWatch />
         <StatusBar style="dark" />
         <Stack
           screenOptions={{

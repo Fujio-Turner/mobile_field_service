@@ -39,7 +39,7 @@ WHERE assignedTo.employeeId = $employeeId
 export function outboundForSourcesSql(count: number): string {
   const ors = Array.from({ length: count }, (_, i) => `source.id = $s${i}`).join(' OR ');
   return `
-SELECT META().id AS id, source.id AS sourceId, status, role
+SELECT META().id AS id, source.id AS sourceId, status, role, audit.cr.dt AS auditCrDt
 FROM field.workordersout
 WHERE assignedTo.employeeId = $employeeId
   AND (${ors})

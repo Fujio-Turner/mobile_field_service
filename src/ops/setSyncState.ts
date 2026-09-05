@@ -1,8 +1,21 @@
 import { nowSec, stampAuditUpdate } from '../audit';
 import { appVersion } from '../version';
+import { loadChild, saveChild } from './childStore';
 import type { StartSession } from './copyInbound';
 import { OutError } from './outError';
 import { loadOutboundRaw, saveOutboundRaw } from './outboundStore';
+
+export function shouldWriteSyncState(
+  doc: Record<string, unknown>,
+  syncState: 'ready_to_push' | 'pushed' | 'push_error',
+  lastPushErrorCode?: string,
+): boolean {
+  if (String(doc.syncState) !== syncState) return true;
+  if (syncState === 'push_error') {
+    return String(doc.lastPushErrorCode ?? '') !== String(lastPushErrorCode ?? '');
+  }
+  return false;
+}
 
 export function applySyncState(
   doc: Record<string, unknown>,
@@ -34,5 +47,18 @@ export async function setSyncState(
 ): Promise<void> {
   const doc = await loadOutboundRaw(id);
   if (!doc) throw new OutError('missing');
+  if (!shouldWriteSyncState(doc, syncState, lastPushErrorCode)) return;
   await saveOutboundRaw(id, applySyncState(doc, syncState, session, lastPushErrorCode));
+}
+
+export async function setOrderSyncState(
+  id: string,
+  syncState: 'ready_to_push' | 'pushed' | 'push_error',
+  session: StartSession,
+  lastPushErrorCode?: string,
+): Promise<void> {
+  const doc = await loadChild('orders', id);
+  if (!doc) return;
+  if (!shouldWriteSyncState(doc, syncState, lastPushErrorCode)) return;
+  await saveChild('orders', id, applySyncState(doc, syncState, session, lastPushErrorCode));
 }

@@ -49,4 +49,5 @@ export type OutboundRef = {
   sourceId: string;
   status: string;
   role: string;
+  auditCrDt?: number;
 };

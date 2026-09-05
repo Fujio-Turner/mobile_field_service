@@ -1,9 +1,18 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { useDatabase } from '../db/DatabaseProvider';
+import { useAuth } from '../session/AuthContext';
 import { theme } from '../theme';
 
 export function NativeBanner() {
   const { status, error, dbName } = useDatabase();
+  const { needsReauth } = useAuth();
+  if (needsReauth) {
+    return (
+      <View style={styles.warn}>
+        <Text style={styles.warnText}>Sign in to sync. Local work stays on this device.</Text>
+      </View>
+    );
+  }
   if (status === 'unavailable') {
     return (
       <View style={styles.warn}>

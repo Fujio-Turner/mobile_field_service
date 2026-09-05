@@ -68,15 +68,22 @@ export function memoryOutboundRefs(employeeId: string, sourceIds: string[]): Map
     const assigned = row.doc.assignedTo as { employeeId?: string } | undefined;
     if (!source?.id || !want.has(source.id)) continue;
     if (assigned?.employeeId !== employeeId) continue;
-    const prev = map.get(source.id);
     const role = String(row.doc.role ?? 'primary');
-    if (prev && prev.role === 'primary' && role !== 'primary') continue;
-    map.set(source.id, {
+    const auditCrDt = Number((row.doc.audit as { cr?: { dt?: number } } | undefined)?.cr?.dt ?? 0);
+    const next = {
       id: row.id,
       sourceId: source.id,
       status: String(row.doc.status ?? ''),
       role,
-    });
+      auditCrDt,
+    };
+    const prev = map.get(source.id);
+    if (prev && prev.role === 'primary' && role !== 'primary') continue;
+    if (prev && prev.role === 'primary' && role === 'primary') {
+      if (auditCrDt > (prev.auditCrDt ?? 0)) continue;
+      if (auditCrDt === (prev.auditCrDt ?? 0) && row.id > prev.id) continue;
+    }
+    map.set(source.id, next);
   }
   return map;
 }

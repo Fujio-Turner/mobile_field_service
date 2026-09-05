@@ -4,7 +4,7 @@ import { resetCopyOnWriteTotals } from '../../src/metrics/copyOnWrite';
 import { buildAmendment, createAmendment } from '../../src/ops/createAmendment';
 import { OutError } from '../../src/ops/outError';
 import { canTransition, completeBlockedReason, isFrozen } from '../../src/ops/outStatus';
-import { applySyncState } from '../../src/ops/setSyncState';
+import { applySyncState, shouldWriteSyncState } from '../../src/ops/setSyncState';
 import { startWork } from '../../src/ops/startWork';
 import { submitWork } from '../../src/ops/submitWork';
 import { completeTask, listTasksForWork } from '../../src/ops/tasks';
@@ -81,6 +81,15 @@ describe('setSyncState', () => {
     expect(next.syncState).toBe('ready_to_push');
     expect((next.history as unknown[]).length).toBe(1);
     expect((next.history as { op: string }[])[0].op).toBe('CompleteWork');
+  });
+
+  it('skips a no-op SetSyncState write', () => {
+    const doc = {
+      syncState: 'pushed',
+      audit: { cr: { dt: 1, ver: '1', by: 'a' }, up: { dt: 1, ver: '1', by: 'a' } },
+    };
+    expect(shouldWriteSyncState(doc, 'pushed')).toBe(false);
+    expect(shouldWriteSyncState(doc, 'push_error', '500')).toBe(true);
   });
 });
 

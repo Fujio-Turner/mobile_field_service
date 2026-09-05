@@ -214,11 +214,11 @@ Capella: same `wss` replicator; travel sample’s App Endpoint + collection **li
 
 ## 8. Checklist before merge
 
-- [ ] Engine singleton
-- [ ] Directory + encryption key from Keychain
-- [ ] `tmp` not in replicator configs
-- [ ] `"show source"` on every push filter
-- [ ] SessionAuthenticator + stored `expires`
-- [ ] 401 path tested
-- [ ] `start(false)`
-- [ ] No password in `app.json` (unlike the travel sample extra field)
+- [x] Engine singleton
+- [x] Directory + encryption key from Keychain
+- [x] `tmp` not in replicator configs
+- [x] `"show source"` on every push filter
+- [x] SessionAuthenticator + stored `expires`
+- [x] 401 path tested
+- [x] `start(false)`
+- [x] No password in `app.json` (unlike the travel sample extra field)

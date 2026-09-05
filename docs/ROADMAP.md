@@ -46,7 +46,7 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 - [x] Expo Router: Login, Today placeholder, Profile
 - [x] Login UI (email or username + password) — [AUTH.md](./AUTH.md)
 - [x] `EXPO_PUBLIC_AUTH_STRATEGY=basic|oidc_implicit|oidc_code|demo` (default **basic**; `.env.example` uses **demo**)
-- [ ] Keychain/Keystore session + expiry; `RefreshAuth`; replicator 401/404 → re-auth (session write/restore/logout in PR-01; mint + 401 path with replicator)
+- [x] Keychain/Keystore session + expiry; `RefreshAuth`; replicator 401/404 → re-auth (session write/restore/logout in PR-01; mint + 401 path with replicator)
 - [x] Phone-first tabs; large-phone / small-tablet safe areas
 - [x] Camera / location **usage strings** in `app.json` (runtime prompts in later PRs)
 - [x] Jest (or equivalent) test runner wired
@@ -226,17 +226,17 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 10 — Sync
 
-- [ ] Lab SG/App Services **fixture documented** in DESIGN (collections `field.*` except `tmp`, session auth, channels `emp:{employeeId}`)
-- [ ] `SessionAuthenticator` after `POST /_session` (default); optional `BasicAuthenticator` or `Authorization: Bearer` header ([AUTH.md](./AUTH.md))
-- [ ] Replicator change listener: 401 / 404 / 10401 → `OnReplicatorAuthFailure`
-- [ ] `await Replicator.create`; collection allow-list; **`local.tmp` not included**
-- [ ] RN `"show source"` push filters (never-push for pull-only; woout/notes/tasks/tx as specified)
-- [ ] **No pull filters** in v1
-- [ ] `addDocumentChangeListener` → `syncState` `pushed` / `push_error`
-- [ ] Feature-detect pending-ids; else COUNT `ready_to_push`
-- [ ] Sync status on Profile; foreground restart
-- [ ] `ReconcileDuplicateOutbound` on pull
-- [ ] Channels sketch; SG sync function is **external**
+- [x] Lab SG/App Services **fixture documented** in DESIGN (collections `field.*` except `tmp`, session auth, channels `emp:{employeeId}`)
+- [x] `SessionAuthenticator` after `POST /_session` (default); optional `BasicAuthenticator` or `Authorization: Bearer` header ([AUTH.md](./AUTH.md))
+- [x] Replicator change listener: 401 / 404 / 10401 → `OnReplicatorAuthFailure`
+- [x] `await Replicator.create`; collection allow-list; **`local.tmp` not included**
+- [x] RN `"show source"` push filters (never-push for pull-only; woout/notes/tasks/tx as specified)
+- [x] **No pull filters** in v1
+- [x] `addDocumentChangeListener` → `syncState` `pushed` / `push_error`
+- [x] Feature-detect pending-ids; else COUNT `ready_to_push`
+- [x] Sync status on Profile; foreground restart
+- [x] `ReconcileDuplicateOutbound` on pull
+- [x] Channels sketch; SG sync function is **external**
 
 **Exit:** lab SG round-trip: pull inbound, push submitted outbound + blobs + txs.
 
@@ -246,7 +246,7 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 - [x] FTS notes / products / assets
 - [x] Structured logs (no PII/doc dumps)
-- [x] Metrics: query latency, copy-on-write, blob bytes (replicator → S11)
+- [x] Metrics: query latency, copy-on-write, blob bytes, replicator
 - [x] Database compact on idle after photo deletes
 - [x] Customer history (local complete `workordersout`)
 

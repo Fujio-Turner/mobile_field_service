@@ -8,8 +8,10 @@ import {
   type ReactNode,
 } from 'react';
 import { log } from '../log/logger';
+import { stopReplicator } from '../sync/replicator';
 import { authStrategy, buildDemoSession, sessionIsLive } from './strategy';
-import { clearAuthKeys, readSession, writeSession } from './enclave';
+import { clearAuthKeys, clearPassword, readPassword, readSession, writeSession } from './enclave';
+import { loginRemoteBasic, refreshBasicSession } from './loginRemote';
 import type { Session } from './types';
 
 type AuthState = {
@@ -17,8 +19,11 @@ type AuthState = {
   session: Session | null;
   error: string | null;
   busy: boolean;
+  needsReauth: boolean;
   login: (identifier: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
+  refreshAuth: () => Promise<Session | null>;
+  onAuthLost: () => void;
 };
 
 const Ctx = createContext<AuthState | null>(null);
@@ -32,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [needsReauth, setNeedsReauth] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,25 +71,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         await writeSession(result.session);
         setSession(result.session);
+        setNeedsReauth(false);
         log.info('mfs.auth.login_ok', { op: 'LoginRemote', employeeId: result.session.employeeId });
         return true;
       }
       if (strategy === 'basic') {
-        const sgUrl = process.env.EXPO_PUBLIC_SG_URL ?? '';
-        if (!identifier.trim() || !password) {
-          setError('Enter an email or username and a password.');
+        const result = await loginRemoteBasic(identifier, password, nowSec());
+        if (!result.ok) {
+          setError(result.error);
           log.warn('mfs.auth.login_fail', { op: 'LoginRemote' });
           return false;
         }
-        if (!sgUrl) {
-          setError("Can't reach the server. You can still open last session if it hasn't expired.");
-          log.warn('mfs.auth.login_fail', { op: 'LoginRemote' });
-          return false;
-        }
-        // HTTP mint of POST /_session lands in a later slice (replicator).
-        setError("Can't reach the server. You can still open last session if it hasn't expired.");
-        log.warn('mfs.auth.login_fail', { op: 'LoginRemote' });
-        return false;
+        await writeSession(result.session, password);
+        setSession(result.session);
+        setNeedsReauth(false);
+        log.info('mfs.auth.login_ok', { op: 'LoginRemote', employeeId: result.session.employeeId });
+        return true;
       }
       setError('This sign-in method is not in this build.');
       log.warn('mfs.auth.login_fail', { op: 'LoginRemote' });
@@ -97,19 +100,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const refreshAuth = useCallback(async (): Promise<Session | null> => {
+    if (!session || session.strategy === 'demo') return session;
+    const password = await readPassword();
+    if (!password) return null;
+    const result = await refreshBasicSession(session, password, nowSec());
+    if (!result.ok) {
+      log.warn('mfs.auth.refresh', { op: 'RefreshAuth', err: result.error });
+      return null;
+    }
+    await writeSession(result.session, password);
+    setSession(result.session);
+    setNeedsReauth(false);
+    log.info('mfs.auth.refresh', { op: 'RefreshAuth', employeeId: result.session.employeeId });
+    return result.session;
+  }, [session]);
+
+  const onAuthLost = useCallback(() => {
+    void (async () => {
+      await clearPassword();
+      setNeedsReauth(true);
+      log.warn('mfs.auth.login_fail', { op: 'OnReplicatorAuthFailure' });
+    })();
+  }, []);
+
   const logout = useCallback(async () => {
     setBusy(true);
     try {
+      await stopReplicator();
       await clearAuthKeys();
       setSession(null);
+      setNeedsReauth(false);
     } finally {
       setBusy(false);
     }
   }, []);
 
   const value = useMemo(
-    () => ({ ready, session, error, busy, login, logout }),
-    [ready, session, error, busy, login, logout],
+    () => ({ ready, session, error, busy, needsReauth, login, logout, refreshAuth, onAuthLost }),
+    [ready, session, error, busy, needsReauth, login, logout, refreshAuth, onAuthLost],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

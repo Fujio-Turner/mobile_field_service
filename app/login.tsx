@@ -16,13 +16,13 @@ import { theme } from '@/src/theme';
 import { appVersion } from '@/src/version';
 
 export default function LoginScreen() {
-  const { session, login, error, busy } = useAuth();
+  const { session, login, error, busy, needsReauth } = useAuth();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const strategy = authStrategy();
   const demo = strategy === 'demo';
 
-  if (session) return <Redirect href="/(tabs)" />;
+  if (session && !needsReauth) return <Redirect href="/(tabs)" />;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -33,9 +33,11 @@ export default function LoginScreen() {
         <View style={styles.body}>
           <Text style={styles.title}>Sign in</Text>
           <Text style={styles.hint}>
-            {demo
-              ? 'Demo mode — any email or username, no server.'
-              : 'Work email and password. Session is stored in the device keychain.'}
+            {needsReauth
+              ? 'Sign in to sync. Local work stays on this device.'
+              : demo
+                ? 'Demo mode — any email or username, no server.'
+                : 'Work email and password. Session is stored in the device keychain.'}
           </Text>
 
           <Text style={styles.label}>Email or username</Text>

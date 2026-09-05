@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useAuth } from '../session/AuthContext';
+import { startReplicator, stopReplicator } from '../sync/replicator';
 import { closeFieldDatabase, nativeDbAvailable, openFieldDatabase } from './database';
 
 export type DbStatus = 'idle' | 'opening' | 'ready' | 'unavailable' | 'error';
@@ -21,7 +22,7 @@ type DbState = {
 const Ctx = createContext<DbState | null>(null);
 
 export function DatabaseProvider({ children }: { children: ReactNode }) {
-  const { session } = useAuth();
+  const { session, refreshAuth, onAuthLost } = useAuth();
   const [status, setStatus] = useState<DbStatus>('idle');
   const [dbName, setDbName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +31,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     if (!session) {
-      void closeFieldDatabase();
+      void stopReplicator().then(() => closeFieldDatabase());
       setStatus('idle');
       setDbName(null);
       setError(null);
@@ -48,6 +49,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         setDbName(opened.name);
         setStatus('ready');
         setError(null);
+        void startReplicator(session, { refreshAuth, onAuthLost });
       } catch (e) {
         if (cancelled) return;
         setStatus('error');
@@ -57,7 +59,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [session, nativeAvailable]);
+  }, [session, nativeAvailable, refreshAuth, onAuthLost]);
 
   const value = useMemo(
     () => ({ status, nativeAvailable, dbName, error }),

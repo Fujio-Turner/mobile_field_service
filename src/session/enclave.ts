@@ -42,6 +42,15 @@ export async function readSession(): Promise<Session | null> {
   return { strategy, username, email, employeeId, sessionId, cookieName, sessionExpiresAt };
 }
 
+export async function readPassword(): Promise<string | null> {
+  return get(AUTH_KEYS.password);
+}
+
+/** 401 after failed refresh: drop password so a stolen phone cannot mint sessions. */
+export async function clearPassword(): Promise<void> {
+  await del(AUTH_KEYS.password);
+}
+
 /** Logout: drop auth.* including password. Keep mfs.dbkey.* */
 export async function clearAuthKeys(): Promise<void> {
   await Promise.all(Object.values(AUTH_KEYS).map((k) => del(k)));
