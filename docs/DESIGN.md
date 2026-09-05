@@ -725,7 +725,7 @@ Algorithm:
 3. `get` or create `{ type, employeeId, email, day, thresholdM, last: null, capped: false, tracking: {} }`. `stampAuditCreate` on create (**no** `history[]`).
 4. If `capped` or `Object.keys(tracking).length >= 4000`, set `capped: true` and return.
 5. If `last` exists and haversine(`last`, fix) < `thresholdM`, return. If `ts === last[2]`, overwrite that key.
-6. `tracking[String(ts)] = [lat, lon, ts]`; `last = [lat, lon, ts]`; `stampAuditUpdate`; `save`.
+6. `tracking[String(ts)] = [lat, lon]`; `last = [lat, lon, ts]`; `stampAuditUpdate`; `save`.
 7. Metric `mfs_track_point_total`. Log `mfs.track.point` with `docId` + `ts` only — **never** the `tracking` map.
 
 Do not sample on a timer if the user is still. v1 is **foreground / while-using**. Background always-on is a later ROADMAP item.
@@ -1551,7 +1551,7 @@ Jurisdictions, `rateBps` (basis points, integer). **Never `save` on device.** Or
 
 ### `tracking` — type `tracking` — push + pull
 
-Per-employee, per-day GPS crumbs. Id `track:{YYYY-MM-DD}:{employeeId}` (device-local day). Map `tracking` keyed by unix seconds → `[lat, lon, ts]`. Threshold default 100 m (`EXPO_PUBLIC_TRACK_MIN_MOVE_M`). Cap 4000 points/day. **No** `history[]` on these docs.
+Per-employee, per-day GPS crumbs. Id `track:{YYYY-MM-DD}:{employeeId}` (device-local day). Map `tracking` keyed by unix seconds → `[lat, lon]` (time is the key; do not repeat it in the array). Threshold default 100 m (`EXPO_PUBLIC_TRACK_MIN_MOVE_M`). Cap 4000 points/day. **No** `history[]` on these docs.
 
 Last 7 days = seven KV gets of constructed ids. Full field list: **[schema/SCHEMA_TRACKING.md](./schema/SCHEMA_TRACKING.md)**.
 
@@ -2238,7 +2238,7 @@ Closed for v1: `scheduled.day` is device-local; CLIP **512**; tech may cancel ou
 24. **v1 storage cap:** 20 photos/job + JPEG budget only. Age-out of pushed complete jobs after 14 days is a follow-up.
 25. **Channels:** `emp:{employeeId}` is the durable grant. Email is login alias. Reassignment moves inbound access; outbound copies still push.
 26. **Complete freezes + transfers ownership** to the backend. Forgotten facts → `CreateAmendment` (`role: amendment`, `amends.id`). Many documents per WO are OK (eventual consistency).
-27. **`history[]`:** user/device saves (except `SetSyncState`) append path + from/to + dt + lat/lon. Cap 100. Pull catalogs omit it. **`tracking`:** per-day crumbs `track:{day}:{employeeId}`, map keyed by unix seconds → `[lat, lon, ts]`, write when moved ≥ `EXPO_PUBLIC_TRACK_MIN_MOVE_M` (default 100 m). Last 7 days = seven KV gets. No `lastAction` object.
+27. **`history[]`:** user/device saves (except `SetSyncState`) append path + from/to + dt + lat/lon. Cap 100. Pull catalogs omit it. **`tracking`:** per-day crumbs `track:{day}:{employeeId}`, map keyed by unix seconds → `[lat, lon]`, write when moved ≥ `EXPO_PUBLIC_TRACK_MIN_MOVE_M` (default 100 m). Last 7 days = seven KV gets. No `lastAction` object.
 28. **Chat:** `field.messages`, **employees only**, push on create, job thread `thr:wo:{woinId}` / DM `thr:dm:{empA}:{empB}`.
 29. **Today Reassigned badge** when inbound `assignedTo.employeeId` ≠ session (or inbound purged) while a local outbound exists.
 30. **Project:** Fujio-Turner (`github.com/Fujio-Turner/mobile_field_service`), not koten-ai. Use-case SoT: [DAY_IN_LIFE.md](./DAY_IN_LIFE.md).

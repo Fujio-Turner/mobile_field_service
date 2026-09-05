@@ -33,7 +33,7 @@ v1 records while the app is **foreground** (or the OS still delivers a “while 
 
 ## Body
 
-`tracking` is a **map** (JSON object), not a JSON array. Key = unix **seconds** as a string. Value = `[lat, lon, unixSeconds]` (third element equals the key, for readers that only look at values).
+`tracking` is a **map** (JSON object), not a JSON array. Key = unix **seconds** as a string. Value = `[lat, lon]` — do **not** repeat the timestamp in the array; the key is the time.
 
 ```json
 {
@@ -49,8 +49,8 @@ v1 records while the app is **foreground** (or the OS still delivers a “while 
   "last": [41.7669, -72.6710, 1768438920],
   "capped": false,
   "tracking": {
-    "1768438800": [41.7658, -72.6734, 1768438800],
-    "1768438920": [41.7669, -72.6710, 1768438920]
+    "1768438800": [41.7658, -72.6734],
+    "1768438920": [41.7669, -72.6710]
   }
 }
 ```
@@ -61,7 +61,7 @@ v1 records while the app is **foreground** (or the OS still delivers a “while 
 | `email` | Login alias on the body only. |
 | `day` | Device-local `YYYY-MM-DD`. |
 | `thresholdM` | Meters used for this doc (copied from the env at create). |
-| `last` | Last stored `[lat, lon, ts]` so the next move check is O(1). |
+| `last` | Last stored `[lat, lon, ts]` so the next move check is O(1). Keeps `ts` because this field is **not** keyed. |
 | `capped` | `true` after **4000** points; skip new points (do not drop the start of the day). |
 | `tracking` | Map of points. **Never log this map.** |
 

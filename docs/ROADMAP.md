@@ -186,7 +186,7 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 - [ ] Collection `field.tracking`, id `track:{YYYY-MM-DD}:{employeeId}` (device-local day; not email)
 - [ ] `RecordTrackPoint` when haversine ≥ `EXPO_PUBLIC_TRACK_MIN_MOVE_M` (default 100 m; `152` ≈ 500 ft)
-- [ ] Map `tracking` keyed by unix seconds → `[lat, lon, ts]`; cap 4000/day; `last` tuple for O(1) compare
+- [ ] Map `tracking` keyed by unix seconds → `[lat, lon]`; cap 4000/day; `last` `[lat, lon, ts]` for O(1) compare
 - [ ] `GetTrackingDay` / `GetTrackingLastNDays(n=7)` — seven KV gets, no query
 - [ ] Push filter always true; never log the map
 - [ ] Foreground / while-using only in v1 (background trail later)
@@ -393,7 +393,7 @@ Ordered, independently reviewable PRs. Each PR should build, typecheck, and leav
 | Title | `feat: per-day tracking collection and RecordTrackPoint` |
 | Files | `src/ops/tracking.ts`, `src/geo/haversine.ts`, location watch in app shell |
 | Deps | **PR-02** (collection); **PR-09** (location permission). Replicator allow-list in PR-11. |
-| Description | `field.tracking`, id `track:{YYYY-MM-DD}:{employeeId}`. Map keyed by unix seconds → `[lat, lon, ts]`. Write when moved ≥ `EXPO_PUBLIC_TRACK_MIN_MOVE_M` (default 100 m). `GetTrackingLastNDays` = N KV gets. Cap 4000/day. Never log the map. Foreground / while-using only. |
+| Description | `field.tracking`, id `track:{YYYY-MM-DD}:{employeeId}`. Map keyed by unix seconds → `[lat, lon]`. Write when moved ≥ `EXPO_PUBLIC_TRACK_MIN_MOVE_M` (default 100 m). `GetTrackingLastNDays` = N KV gets. Cap 4000/day. Never log the map. Foreground / while-using only. |
 
 ### PR-10 — Inventory and products
 
