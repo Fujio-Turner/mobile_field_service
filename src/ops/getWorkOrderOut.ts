@@ -2,6 +2,7 @@ import { FIELD_SCOPE } from '../db/collections';
 import { getOpenedDatabase, nativeDbAvailable } from '../db/database';
 import { memoryGet } from '../db/memoryStore';
 import { isFrozen } from './outStatus';
+import type { PhotoMeta } from './photoKeys';
 import { documentToObject } from './workOrderIn';
 
 export type WorkOrderOutOp = { id?: string; name?: string; status?: string; required?: boolean };
@@ -28,6 +29,7 @@ export type WorkOrderOut = {
   cancelledReason?: string;
   amendsId?: string;
   editable: boolean;
+  photos: PhotoMeta[];
 };
 
 export function parseWorkOrderOut(id: string, raw: Record<string, unknown> | null): WorkOrderOut | null {
@@ -79,6 +81,7 @@ export function parseWorkOrderOut(id: string, raw: Record<string, unknown> | nul
     cancelledReason: raw.cancelledReason != null ? String(raw.cancelledReason) : undefined,
     amendsId: raw.amends != null ? String((raw.amends as { id?: string }).id ?? '') : undefined,
     editable: !isFrozen(raw),
+    photos: Array.isArray(raw.photos) ? (raw.photos as PhotoMeta[]) : [],
   };
 }
 

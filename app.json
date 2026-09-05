@@ -34,6 +34,12 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Take photos of work, parts, and proof of delivery."
+        }
+      ],
       "./plugin.config.js",
       [
         "expo-build-properties",

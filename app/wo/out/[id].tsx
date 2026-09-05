@@ -22,6 +22,8 @@ import {
   completeWork,
   startOrResumeWork,
 } from '@/src/ops/transitionStatus';
+import { captureAndCommitPhoto } from '@/src/ops/capturePhoto';
+import { deletePhoto } from '@/src/ops/photos';
 import { updateWorkOrderOutFields } from '@/src/ops/updateWorkOrderOut';
 import { useAuth } from '@/src/session/AuthContext';
 import { theme } from '@/src/theme';
@@ -43,7 +45,9 @@ function showErr(e: unknown) {
               ? 'Complete or cancel before submit.'
               : code === 'not_frozen'
                 ? 'Follow-up is only after complete or cancel.'
-                : 'Could not update the job.';
+                : code === 'photo_cap'
+                  ? 'Photo cap is 20 on this copy.'
+                  : 'Could not update the job.';
   Alert.alert('Job', msg);
 }
 
@@ -199,6 +203,37 @@ export default function WorkOrderOutScreen() {
           </>
         ) : null}
 
+        <Text style={styles.section}>Photos {doc.photos.length}/20</Text>
+        {doc.photos.map((p) => (
+          <View key={p.id} style={styles.photoRow}>
+            <Text style={styles.value}>
+              {p.kind} · {p.id}
+            </Text>
+            {doc.editable ? (
+              <Pressable
+                disabled={busy}
+                onPress={() => void run(() => deletePhoto(doc.id, p.id, s))}
+                style={styles.rowBtn}
+              >
+                <Text style={styles.dangerLabel}>Delete</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ))}
+        {doc.editable ? (
+          <Pressable
+            disabled={busy}
+            style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
+            onPress={() =>
+              void run(async () => {
+                await captureAndCommitPhoto(doc.id, s);
+              })
+            }
+          >
+            <Text style={styles.secondaryLabel}>Add photo</Text>
+          </Pressable>
+        ) : null}
+
         {doc.editable && (doc.status === 'assigned' || doc.status === 'blocked') ? (
           <Pressable
             disabled={busy}
@@ -342,6 +377,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: theme.color.surface,
   },
-  dangerLabel: { color: theme.color.danger, fontSize: theme.type.lg, fontWeight: '600' },
+  dangerLabel: { color: theme.color.danger, fontSize: theme.type.md, fontWeight: '600' },
+  photoRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44 },
   pressed: { opacity: 0.85 },
 });
