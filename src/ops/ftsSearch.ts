@@ -47,14 +47,19 @@ export async function ftsSearch(q: string): Promise<FtsHit[]> {
   const needle = q.trim();
   if (!needle) return [];
   return timeQuery('fts', async () => {
+    const [products, notes, assets] = await Promise.all([
+      searchProducts(needle),
+      listNotes({ q: needle }),
+      searchAssetsFts(needle),
+    ]);
     const out: FtsHit[] = [];
-    for (const p of await searchProducts(needle)) {
+    for (const p of products) {
       out.push({ kind: 'product', id: p.id, title: p.name, sub: p.sku });
     }
-    for (const n of await listNotes({ q: needle })) {
+    for (const n of notes) {
       out.push({ kind: 'note', id: n.id, title: n.title ?? n.body.slice(0, 40), sub: n.kind });
     }
-    for (const a of await searchAssetsFts(needle)) {
+    for (const a of assets) {
       out.push({ kind: 'asset', id: a.id, title: a.name, sub: a.code });
     }
     return out;

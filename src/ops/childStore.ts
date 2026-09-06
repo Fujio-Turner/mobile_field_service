@@ -1,5 +1,4 @@
-import { FIELD_SCOPE } from '../db/collections';
-import { getOpenedDatabase, nativeDbAvailable } from '../db/database';
+import { collectionOf, getOpenedDatabase, nativeDbAvailable } from '../db/database';
 import { memoryAll, memoryDelete, memoryGet, memorySave } from '../db/memoryStore';
 import { runQuery } from '../db/query';
 import { saveJsonDoc } from '../db/saveJson';
@@ -16,8 +15,7 @@ export async function queryChildRowsIfNative(
 
 export async function loadChild(collection: string, id: string): Promise<Record<string, unknown> | null> {
   if (nativeDbAvailable() && getOpenedDatabase()) {
-    const db = getOpenedDatabase();
-    const col = (await db!.collection(collection, FIELD_SCOPE)) as {
+    const col = (await collectionOf(collection)) as {
       document: (docId: string) => Promise<unknown>;
     } | null;
     if (!col) return null;
@@ -28,8 +26,7 @@ export async function loadChild(collection: string, id: string): Promise<Record<
 
 export async function saveChild(collection: string, id: string, body: Record<string, unknown>): Promise<void> {
   if (nativeDbAvailable() && getOpenedDatabase()) {
-    const db = getOpenedDatabase();
-    const col = (await db!.collection(collection, FIELD_SCOPE)) as {
+    const col = (await collectionOf(collection)) as {
       save: (doc: unknown) => Promise<void>;
     } | null;
     if (!col) throw new Error('missing');
@@ -41,8 +38,7 @@ export async function saveChild(collection: string, id: string, body: Record<str
 
 export async function deleteChild(collection: string, id: string): Promise<void> {
   if (nativeDbAvailable() && getOpenedDatabase()) {
-    const db = getOpenedDatabase();
-    const col = (await db!.collection(collection, FIELD_SCOPE)) as {
+    const col = (await collectionOf(collection)) as {
       purge?: (docId: string) => Promise<void>;
     } | null;
     if (col?.purge) await col.purge(id);

@@ -15,12 +15,20 @@ type ML = {
   UserLocation: ComponentType<Record<string, unknown>>;
 };
 
+let mapLibreCache: ML | null | undefined;
+
 function loadMapLibre(): ML | null {
-  if (!mapLibreNativeAvailable()) return null;
+  if (mapLibreCache !== undefined) return mapLibreCache;
+  if (!mapLibreNativeAvailable()) {
+    mapLibreCache = null;
+    return null;
+  }
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require('@maplibre/maplibre-react-native') as ML;
+    mapLibreCache = require('@maplibre/maplibre-react-native') as ML;
+    return mapLibreCache;
   } catch {
+    mapLibreCache = null;
     return null;
   }
 }

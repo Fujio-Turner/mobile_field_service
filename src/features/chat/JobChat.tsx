@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FieldInput } from '@/src/ui/FieldInput';
 import type { StartSession } from '@/src/ops/copyInbound';
 import {
   ChatError,
@@ -64,13 +65,13 @@ export function JobChat({ woinId, wooutId, session }: Props) {
         </View>
       ))}
       {rows.length === 0 ? <Text style={styles.muted}>No messages yet</Text> : null}
-      <TextInput
+      <FieldInput
         value={body}
         onChangeText={setBody}
         placeholder="Message dispatch"
-        placeholderTextColor={theme.color.muted}
         style={styles.input}
         editable={!busy}
+        returnKeyType="send"
       />
       <Pressable
         disabled={busy}

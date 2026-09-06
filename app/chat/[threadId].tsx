@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FieldInput } from '@/src/ui/FieldInput';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { memorySave } from '@/src/db/memoryStore';
 import { nativeDbAvailable } from '@/src/db/database';
@@ -79,13 +80,13 @@ export default function ChatThreadScreen() {
           )}
           ListEmptyComponent={<Text style={styles.muted}>No messages yet</Text>}
         />
-        <TextInput
+        <FieldInput
           value={body}
           onChangeText={setBody}
           placeholder="Message"
-          placeholderTextColor={theme.color.muted}
           style={styles.input}
           editable={!busy}
+          returnKeyType="send"
         />
         <Pressable
           disabled={busy}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FieldInput } from '@/src/ui/FieldInput';
 import { loadChild } from '@/src/ops/childStore';
 import { deleteNote, parseNote, updateNote, type NoteItem } from '@/src/ops/notes';
 import { OutError } from '@/src/ops/outError';
@@ -105,7 +106,7 @@ export default function NoteDetailScreen() {
           {note.workOrderOutId ? ` · ${note.workOrderOutId}` : ''}
         </Text>
         {note.title ? <Text style={styles.title}>{note.title}</Text> : null}
-        <TextInput
+        <FieldInput
           value={body}
           onChangeText={setBody}
           onEndEditing={() => {

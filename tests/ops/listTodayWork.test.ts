@@ -1,5 +1,8 @@
 import { collapseTodayPage, sourceIdsFromRows } from '../../src/ops/collapseToday';
-import { parseOutboundRefs } from '../../src/ops/findOutboundForSources';
+import { parseOutboundRefs, sourceIdsNeedingOutboundLookup } from '../../src/ops/findOutboundForSources';
+import { TODAY_ORDERS_SQL } from '../../src/ops/orders';
+import { ASSETS_BBOX_SQL } from '../../src/ops/assets';
+import { inboundTodaySql } from '../../src/ops/todaySql';
 import { parseInboundHits } from '../../src/ops/listTodayWork';
 import type { InboundHit, OutboundHit } from '../../src/ops/todayTypes';
 
@@ -116,11 +119,32 @@ describe('parse helpers', () => {
     expect(hits[0].startDt).toBe(3);
   });
 
+  it('skips outbound lookup for sources already on the active list', () => {
+    expect(
+      sourceIdsNeedingOutboundLookup(['woin:a', 'woin:b', 'woin:c'], [
+        { id: 'woout:a', sourceId: 'woin:a' },
+      ]),
+    ).toEqual(['woin:b', 'woin:c']);
+  });
+
   it('maps outbound refs by source, preferring primary', () => {
     const map = parseOutboundRefs([
       { id: 'woout:am', sourceId: 'woin:a', role: 'amendment', status: 'assigned' },
       { id: 'woout:p', sourceId: 'woin:a', role: 'primary', status: 'in_progress' },
     ]);
     expect(map.get('woin:a')?.id).toBe('woout:p');
+  });
+});
+
+describe('mobile SQL++ does not use IN or $limit', () => {
+  it('today inbound, orders, and asset bbox queries stay CBL-safe', () => {
+    const inbound = inboundTodaySql(20, 0);
+    expect(inbound).not.toMatch(/\bIN\s*\[/);
+    expect(inbound).not.toMatch(/\$limit|\$offset/);
+    expect(inbound).toMatch(/LIMIT 20/);
+    expect(TODAY_ORDERS_SQL).not.toMatch(/\bIN\s*\[/);
+    expect(TODAY_ORDERS_SQL).toMatch(/\$day/);
+    expect(ASSETS_BBOX_SQL).not.toMatch(/\$limit/);
+    expect(ASSETS_BBOX_SQL).toMatch(/LIMIT 500/);
   });
 });

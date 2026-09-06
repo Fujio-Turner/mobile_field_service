@@ -44,13 +44,19 @@ export function parseReplicatedDocs(change: unknown): ReplicatedDocEvent[] {
 
 export async function handleReplicatedDoc(ev: ReplicatedDocEvent, session: StartSession): Promise<void> {
   const errCode = ev.error?.code != null ? String(ev.error.code) : ev.error ? 'error' : undefined;
-  log.info('mfs.repl.doc', {
-    op: 'OnReplicatedDoc',
-    collection: ev.collection,
-    docId: ev.id,
-    isPush: ev.isPush,
-    errCode,
-  });
+  const actionable = ev.collection === 'workordersout' || ev.collection === 'orders';
+  if (!actionable) {
+    if (ev.error) {
+      log.warn('mfs.repl.doc', {
+        op: 'OnReplicatedDoc',
+        collection: ev.collection,
+        docId: ev.id,
+        isPush: ev.isPush,
+        errCode,
+      });
+    }
+    return;
+  }
   try {
     if (ev.isPush && ev.collection === 'workordersout') {
       if (ev.error) await setSyncState(ev.id, 'push_error', session, errCode);

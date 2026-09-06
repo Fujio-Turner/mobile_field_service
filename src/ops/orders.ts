@@ -25,11 +25,24 @@ const DROP_FROM_ORDER_COPY = new Set([
   'readyToPush',
 ]);
 
-const TODAY_ORDERS_SQL = `
+/** Projection only — Today does not KV-get each order. No `IN [...]`. */
+export const TODAY_ORDERS_SQL = `
 SELECT META().id AS id, number, role, status, scheduled.day AS day
 FROM field.orders
 WHERE assignedTo.employeeId = $employeeId
   AND type = 'order'
+  AND (
+    (role = 'inbound' AND scheduled.day = $day AND status != 'cancelled')
+    OR (
+      (role = 'working' OR role = 'amendment')
+      AND (
+        status = 'draft'
+        OR status = 'quoted'
+        OR status = 'accepted'
+        OR status = 'in_fulfillment'
+      )
+    )
+  )
 `;
 
 export type OrderRole = 'inbound' | 'working' | 'amendment';
@@ -100,15 +113,18 @@ export async function listTodayOrders(
   employeeId: string,
   day: string,
 ): Promise<Array<{ id: string; doc: Record<string, unknown> }>> {
-  const native = await queryChildRowsIfNative(TODAY_ORDERS_SQL, { employeeId });
+  const native = await queryChildRowsIfNative(TODAY_ORDERS_SQL, { employeeId, day });
   if (native) {
-    const out: Array<{ id: string; doc: Record<string, unknown> }> = [];
-    for (const row of native) {
-      const id = String(row.id ?? '');
-      const doc = await loadOrder(id);
-      if (doc && orderMatchesToday(doc, employeeId, day)) out.push({ id, doc });
-    }
-    return out;
+    return native.map((row) => ({
+      id: String(row.id ?? ''),
+      doc: {
+        type: 'order',
+        number: row.number,
+        role: row.role,
+        status: row.status,
+        scheduled: { day: row.day },
+      },
+    }));
   }
   return listChildrenMemory('orders', (_id, doc) => orderMatchesToday(doc, employeeId, day));
 }

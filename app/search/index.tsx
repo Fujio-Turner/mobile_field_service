@@ -1,7 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FieldInput } from '@/src/ui/FieldInput';
 import { Stack } from 'expo-router';
 import { memorySave } from '@/src/db/memoryStore';
 import { nativeDbAvailable } from '@/src/db/database';
@@ -24,17 +25,30 @@ export default function SearchScreen() {
   const [q, setQ] = useState('');
   const [rows, setRows] = useState<FtsHit[]>([]);
   const [history, setHistory] = useState<CustomerHistoryRow[]>([]);
+  const qRef = useRef(q);
+  qRef.current = q;
 
-  const run = useCallback(async () => {
+  const search = useCallback(async () => {
     ensure();
-    setRows(await ftsSearch(q));
-    setHistory(await listCustomerHistory(SEED_CUSTOMER_ID));
-  }, [q]);
+    const needle = qRef.current.trim();
+    setRows(needle ? await ftsSearch(needle) : []);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      void run();
-    }, [run]),
+      let cancelled = false;
+      (async () => {
+        ensure();
+        const hist = await listCustomerHistory(SEED_CUSTOMER_ID);
+        if (!cancelled) setHistory(hist);
+        const needle = qRef.current.trim();
+        const hits = needle ? await ftsSearch(needle) : [];
+        if (!cancelled) setRows(hits);
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, []),
   );
 
   function openHit(item: FtsHit) {
@@ -47,11 +61,12 @@ export default function SearchScreen() {
       <Stack.Screen options={{ title: 'Search' }} />
       <View style={styles.wrap}>
         <NativeBanner />
-        <TextInput
+        <FieldInput
           value={q}
           onChangeText={setQ}
-          onEndEditing={() => void run()}
+          onEndEditing={() => void search()}
           placeholder="Notes / products / assets"
+          returnKeyType="search"
           placeholderTextColor={theme.color.muted}
           style={styles.input}
         />

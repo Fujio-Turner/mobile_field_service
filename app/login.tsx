@@ -6,13 +6,14 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/session/AuthContext';
 import { authStrategy } from '@/src/session/strategy';
 import { theme } from '@/src/theme';
+import { FieldInput } from '@/src/ui/FieldInput';
+import { useThumbActionStyle } from '@/src/ui/HandednessContext';
 import { appVersion } from '@/src/version';
 
 export default function LoginScreen() {
@@ -21,6 +22,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const strategy = authStrategy();
   const demo = strategy === 'demo';
+  const thumb = useThumbActionStyle();
 
   if (session && !needsReauth) return <Redirect href="/(tabs)" />;
 
@@ -31,6 +33,7 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.body}>
+          <Text style={styles.brand}>Field Service</Text>
           <Text style={styles.title}>Sign in</Text>
           <Text style={styles.hint}>
             {needsReauth
@@ -41,7 +44,7 @@ export default function LoginScreen() {
           </Text>
 
           <Text style={styles.label}>Email or username</Text>
-          <TextInput
+          <FieldInput
             value={identifier}
             onChangeText={setIdentifier}
             autoCapitalize="none"
@@ -49,23 +52,23 @@ export default function LoginScreen() {
             keyboardType="email-address"
             textContentType="username"
             placeholder="jon.hale@example.com"
-            placeholderTextColor={theme.color.muted}
             style={styles.input}
             editable={!busy}
+            returnKeyType="done"
           />
 
           {!demo ? (
             <>
               <Text style={styles.label}>Password</Text>
-              <TextInput
+              <FieldInput
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
                 textContentType="password"
                 placeholder="Password"
-                placeholderTextColor={theme.color.muted}
                 style={styles.input}
                 editable={!busy}
+                returnKeyType="go"
               />
             </>
           ) : null}
@@ -80,6 +83,7 @@ export default function LoginScreen() {
             disabled={busy}
             style={({ pressed }) => [
               styles.primary,
+              thumb,
               pressed && styles.pressed,
               busy && styles.disabled,
             ]}
@@ -97,11 +101,20 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.color.bg },
   flex: { flex: 1, paddingHorizontal: theme.space.lg },
   body: { flex: 1, justifyContent: 'center' },
-  title: {
-    fontSize: theme.type.title,
-    color: theme.color.text,
-    fontWeight: '600',
+  brand: {
+    fontSize: theme.type.sm,
+    color: theme.color.accent,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
     marginBottom: theme.space.sm,
+  },
+  title: {
+    fontSize: theme.type.clock,
+    color: theme.color.text,
+    fontWeight: '700',
+    marginBottom: theme.space.sm,
+    letterSpacing: -0.6,
   },
   hint: {
     fontSize: theme.type.md,
@@ -122,7 +135,7 @@ const styles = StyleSheet.create({
     paddingVertical: theme.space.md,
     fontSize: theme.type.lg,
     color: theme.color.text,
-    minHeight: 48,
+    minHeight: 52,
     marginBottom: theme.space.lg,
   },
   error: {
@@ -132,7 +145,6 @@ const styles = StyleSheet.create({
   },
   primary: {
     backgroundColor: theme.color.accent,
-    minHeight: 48,
     borderRadius: theme.radius,
     alignItems: 'center',
     justifyContent: 'center',

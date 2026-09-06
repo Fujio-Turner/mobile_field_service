@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { useDatabase } from '@/src/db/DatabaseProvider';
 import { deviceLocalDay } from '@/src/ids';
 import { syncSnapshot, type SyncSnapshot } from '@/src/ops/syncSnapshot';
@@ -9,12 +9,15 @@ import { getTrackingDay, getTrackingLastNDays } from '@/src/ops/tracking';
 import { refreshPendingCount } from '@/src/sync/replicator';
 import { useAuth } from '@/src/session/AuthContext';
 import { NativeBanner } from '@/src/ui/NativeBanner';
+import { useHandedness, useThumbActionStyle } from '@/src/ui/HandednessContext';
 import { theme } from '@/src/theme';
 import { appVersion } from '@/src/version';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { session, logout, busy, needsReauth } = useAuth();
+  const { thumbOptimize, setThumbOptimize, leftHand, setLeftHand } = useHandedness();
+  const thumb = useThumbActionStyle();
   const { dbName, status } = useDatabase();
   const [crumbToday, setCrumbToday] = useState<number | null>(null);
   const [crumbDays, setCrumbDays] = useState<number | null>(null);
@@ -51,6 +54,41 @@ export default function ProfileScreen() {
         </Text>
       ) : null}
 
+      <Text style={styles.label}>Reach</Text>
+      <View style={styles.toggleRow}>
+        <View style={styles.toggleCopy}>
+          <Text style={styles.toggleTitle}>Large screen optimize</Text>
+          <Text style={styles.muted}>
+            Moves primary buttons into the easy right-thumb zone and sizes them for this screen. Off keeps full-width
+            buttons.
+          </Text>
+        </View>
+        <Switch
+          value={thumbOptimize}
+          onValueChange={setThumbOptimize}
+          accessibilityLabel="Large screen optimize"
+          trackColor={{ false: theme.color.border, true: theme.color.accent }}
+          thumbColor={theme.color.surface}
+        />
+      </View>
+      {thumbOptimize ? (
+        <Pressable
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: leftHand }}
+          accessibilityLabel="Left hand"
+          onPress={() => setLeftHand(!leftHand)}
+          style={styles.checkRow}
+        >
+          <View style={[styles.check, leftHand && styles.checkOn]}>
+            {leftHand ? <Text style={styles.checkMark}>✓</Text> : null}
+          </View>
+          <View style={styles.toggleCopy}>
+            <Text style={styles.toggleTitle}>Left hand</Text>
+            <Text style={styles.muted}>Mirror the zone for left-thumb reach.</Text>
+          </View>
+        </Pressable>
+      ) : null}
+
       <Text style={styles.label}>Sync</Text>
       <Text style={styles.muted}>
         {sync
@@ -72,7 +110,7 @@ export default function ProfileScreen() {
           accessibilityRole="button"
           accessibilityLabel="Sign in to sync"
           onPress={() => router.push('/login')}
-          style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.secondary, thumb, pressed && styles.pressed]}
         >
           <Text style={styles.secondaryLabel}>Sign in to sync</Text>
         </Pressable>
@@ -82,7 +120,7 @@ export default function ProfileScreen() {
         accessibilityRole="button"
         accessibilityLabel="Search"
         onPress={() => router.push('/search')}
-        style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
+        style={({ pressed }) => [styles.secondary, thumb, pressed && styles.pressed]}
       >
         <Text style={styles.secondaryLabel}>Search</Text>
       </Pressable>
@@ -94,7 +132,7 @@ export default function ProfileScreen() {
           void logout();
         }}
         disabled={busy}
-        style={({ pressed }) => [styles.danger, pressed && styles.pressed]}
+        style={({ pressed }) => [styles.danger, thumb, pressed && styles.pressed]}
       >
         <Text style={styles.dangerLabel}>Sign out</Text>
       </Pressable>
@@ -107,9 +145,36 @@ const styles = StyleSheet.create({
   label: { fontSize: theme.type.sm, color: theme.color.muted, marginTop: theme.space.lg },
   name: { fontSize: theme.type.title, color: theme.color.text, fontWeight: '600', marginBottom: theme.space.sm },
   muted: { fontSize: theme.type.md, color: theme.color.muted, marginBottom: theme.space.xs },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.space.md,
+    marginTop: theme.space.sm,
+    marginBottom: theme.space.md,
+  },
+  toggleCopy: { flex: 1 },
+  toggleTitle: { fontSize: theme.type.lg, color: theme.color.text, fontWeight: '600', marginBottom: 2 },
+  checkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.space.md,
+    minHeight: 48,
+    marginBottom: theme.space.md,
+  },
+  check: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: theme.color.accent,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkOn: { backgroundColor: theme.color.accent },
+  checkMark: { color: theme.color.onAccent, fontSize: 16, fontWeight: '700', lineHeight: 18 },
   danger: {
     marginTop: theme.space.xl,
-    minHeight: 48,
     borderRadius: theme.radius,
     borderWidth: 1,
     borderColor: theme.color.danger,
@@ -120,7 +185,6 @@ const styles = StyleSheet.create({
   dangerLabel: { color: theme.color.danger, fontSize: theme.type.lg, fontWeight: '600' },
   secondary: {
     marginTop: theme.space.lg,
-    minHeight: 48,
     borderRadius: theme.radius,
     borderWidth: 1,
     borderColor: theme.color.accent,

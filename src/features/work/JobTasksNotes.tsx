@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { FieldInput } from '@/src/ui/FieldInput';
 import type { StartSession } from '@/src/ops/copyInbound';
 import { createNote, deleteNote, type NoteItem } from '@/src/ops/notes';
 import { cycleTaskStatus, deleteTask, type TaskItem, upsertTask } from '@/src/ops/tasks';
@@ -55,13 +56,13 @@ export function JobTasksNotes({ wooutId, editable, busy, session, tasks, notes, 
       ))}
       {editable ? (
         <>
-          <TextInput
+          <FieldInput
             value={taskTitle}
             onChangeText={setTaskTitle}
             placeholder="New task"
-            placeholderTextColor={theme.color.muted}
             style={styles.input}
             editable={!busy}
+            returnKeyType="done"
           />
           <Pressable
             disabled={busy}
@@ -100,11 +101,10 @@ export function JobTasksNotes({ wooutId, editable, busy, session, tasks, notes, 
       ))}
       {editable ? (
         <>
-          <TextInput
+          <FieldInput
             value={noteBody}
             onChangeText={setNoteBody}
             placeholder="Job note"
-            placeholderTextColor={theme.color.muted}
             style={[styles.input, styles.noteInput]}
             editable={!busy}
             multiline

@@ -27,9 +27,24 @@ export type OpenedDatabase = {
 };
 
 let opened: { db: CblDatabase; name: string } | null = null;
+const collectionCache = new Map<string, unknown>();
 
 export function getOpenedDatabase(): CblDatabase | null {
   return opened?.db ?? null;
+}
+
+export function resetCollectionCache(): void {
+  collectionCache.clear();
+}
+
+export async function collectionOf(name: string, scope = FIELD_SCOPE): Promise<unknown | null> {
+  const db = getOpenedDatabase();
+  if (!db) return null;
+  const key = `${scope}.${name}`;
+  if (collectionCache.has(key)) return collectionCache.get(key) ?? null;
+  const col = await db.collection(name, scope);
+  if (col) collectionCache.set(key, col);
+  return col ?? null;
 }
 
 export async function openFieldDatabase(employeeId: string): Promise<OpenedDatabase> {
@@ -49,7 +64,11 @@ export async function openFieldDatabase(employeeId: string): Promise<OpenedDatab
   if (opened && opened.name === name) {
     return { name, close: () => closeFieldDatabase() };
   }
-  if (opened) await opened.db.close();
+  if (opened) {
+    await opened.db.close();
+    opened = null;
+    resetCollectionCache();
+  }
 
   const key = await getOrCreateDbKey(employeeId);
   const fileSystem = new FileSystem();
@@ -76,6 +95,7 @@ export async function closeFieldDatabase(): Promise<void> {
     await opened.db.close();
   } finally {
     opened = null;
+    resetCollectionCache();
   }
 }
 

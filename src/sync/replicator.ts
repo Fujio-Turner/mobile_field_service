@@ -50,6 +50,8 @@ let fatalTls = false;
 let pendingOverride: number | null = null;
 let hooks: ReplicatorHooks | null = null;
 let liveSession: StartSession | null = null;
+let pendingTimer: ReturnType<typeof setTimeout> | null = null;
+let lastStatusLog = '';
 
 export function isReplicatorStarted(): boolean {
   return started;
@@ -105,6 +107,7 @@ async function pendingFromNative(repl: NativeReplicator): Promise<number | null>
   try {
     let total = 0;
     for (const name of buildCollectionAllowList()) {
+      if ((FIELD_PUSH_FILTERS[name] ?? neverPushFilter) === neverPushFilter) continue;
       const col = await db.collection(name, FIELD_SCOPE);
       const ids = await repl.pendingDocumentIdsInCollection(col);
       if (ids && typeof (ids as { size?: number }).size === 'number') total += (ids as { size: number }).size;
@@ -145,8 +148,9 @@ async function onStatus(raw: unknown): Promise<void> {
     typeof st.getActivityLevel === 'function'
       ? st.getActivityLevel()
       : Number(st.activity ?? activityLevel);
-  activityLevel = Number.isFinite(level) ? level : 0;
-  recordMetric('mfs_replicator_activity', activityLevel);
+  const nextLevel = Number.isFinite(level) ? level : 0;
+  if (nextLevel !== activityLevel) recordMetric('mfs_replicator_activity', nextLevel);
+  activityLevel = nextLevel;
 
   const errObj = typeof st.getError === 'function' ? st.getError() : st.error;
   const code =
@@ -196,8 +200,20 @@ async function onStatus(raw: unknown): Promise<void> {
     return;
   }
   if (isTransientCode(code) || activityLevel === 1) {
-    log.warn('mfs.repl.offline', { op: 'OnReplicatorStatus', errCode: code });
+    const key = `${activityLevel}:${code ?? ''}`;
+    if (key !== lastStatusLog) {
+      lastStatusLog = key;
+      log.warn('mfs.repl.offline', { op: 'OnReplicatorStatus', errCode: code });
+    }
   }
+}
+
+function schedulePendingRefresh(): void {
+  if (pendingTimer) clearTimeout(pendingTimer);
+  pendingTimer = setTimeout(() => {
+    pendingTimer = null;
+    void refreshPendingCount();
+  }, 400);
 }
 
 export async function startReplicator(session: Session, nextHooks?: ReplicatorHooks): Promise<{ ok: boolean; reason?: string }> {
@@ -276,14 +292,14 @@ export async function startReplicator(session: Session, nextHooks?: ReplicatorHo
       for (const ev of parseReplicatedDocs(change)) {
         await handleReplicatedDoc(ev, liveSession);
       }
-      void refreshPendingCount();
+      schedulePendingRefresh();
     });
     await replicator.start(false);
     started = true;
     authRefreshTried = false;
     activityLevel = 2;
     log.info('mfs.repl.start', { op: 'StartReplicator' });
-    void refreshPendingCount();
+    schedulePendingRefresh();
     return { ok: true };
   } catch (err) {
     log.error('mfs.repl.start_fail', { op: 'StartReplicator', err });
@@ -293,6 +309,11 @@ export async function startReplicator(session: Session, nextHooks?: ReplicatorHo
 }
 
 export async function stopReplicator(): Promise<void> {
+  if (pendingTimer) {
+    clearTimeout(pendingTimer);
+    pendingTimer = null;
+  }
+  lastStatusLog = '';
   const repl = nativeRepl;
   nativeRepl = null;
   started = false;
@@ -327,4 +348,9 @@ export function resetReplicatorTestState(): void {
   pendingOverride = null;
   hooks = null;
   liveSession = null;
+  if (pendingTimer) {
+    clearTimeout(pendingTimer);
+    pendingTimer = null;
+  }
+  lastStatusLog = '';
 }

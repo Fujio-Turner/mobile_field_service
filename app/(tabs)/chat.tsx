@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FieldInput } from '@/src/ui/FieldInput';
 import { memorySave } from '@/src/db/memoryStore';
 import { nativeDbAvailable } from '@/src/db/database';
 import {
@@ -77,21 +78,22 @@ export default function ChatScreen() {
       <NativeBanner />
       <Text style={styles.title}>Employee chat</Text>
       <Text style={styles.muted}>Employees only. Completing a job does not freeze threads. Messages push on send.</Text>
-      <TextInput
+      <FieldInput
         value={toEmp}
         onChangeText={setToEmp}
         placeholder="DM employeeId"
-        placeholderTextColor={theme.color.muted}
         style={styles.input}
         editable={!busy}
+        autoCapitalize="none"
+        returnKeyType="next"
       />
-      <TextInput
+      <FieldInput
         value={body}
         onChangeText={setBody}
         placeholder="Message"
-        placeholderTextColor={theme.color.muted}
         style={styles.input}
         editable={!busy}
+        returnKeyType="send"
       />
       <Pressable
         disabled={busy}

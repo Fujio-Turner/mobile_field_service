@@ -1,6 +1,5 @@
 import { nowSec } from '../audit';
-import { FIELD_SCOPE } from '../db/collections';
-import { getOpenedDatabase, nativeDbAvailable } from '../db/database';
+import { collectionOf, getOpenedDatabase, nativeDbAvailable } from '../db/database';
 import { runQuery } from '../db/query';
 import { memoryAll, memoryDelete, memoryGet, memorySave } from '../db/memoryStore';
 import { purgeJsonDoc, saveJsonDoc } from '../db/saveJson';
@@ -92,14 +91,14 @@ async function startWorkCbl(woinId: string, session: StartSession): Promise<Star
 async function startWorkCblInner(woinId: string, session: StartSession): Promise<StartWorkResult> {
   const db = getOpenedDatabase();
   if (!db) throw new StartWorkError('missing');
-  const inCol = (await db.collection('workordersin', FIELD_SCOPE)) as {
+  const inCol = (await collectionOf('workordersin')) as {
     document: (id: string) => Promise<unknown>;
   } | null;
-  const outCol = (await db.collection('workordersout', FIELD_SCOPE)) as {
+  const outCol = (await collectionOf('workordersout')) as {
     save: (doc: unknown) => Promise<void>;
     purge?: (id: string) => Promise<void>;
   } | null;
-  const taskCol = (await db.collection('tasks', FIELD_SCOPE)) as {
+  const taskCol = (await collectionOf('tasks')) as {
     document: (id: string) => Promise<unknown>;
     save: (doc: unknown) => Promise<void>;
     purge?: (id: string) => Promise<void>;
@@ -155,8 +154,9 @@ async function persistCopy(fns: PersistFns): Promise<StartWorkResult> {
   const ver = appVersion();
   const dt = nowSec();
   const outId = newDocId('woout');
-  let cloned = cloneTaskIds(fns.inbound.taskIds, fns.loadTask, { outId, session: fns.session, ver, dt });
+  let cloned: { instanceIds: string[]; instances: Array<{ id: string; doc: Record<string, unknown> }> };
   if (fns.loadTaskAsync && Array.isArray(fns.inbound.taskIds)) {
+    cloned = { instanceIds: [], instances: [] };
     for (const templateId of fns.inbound.taskIds.map(String)) {
       const raw = await fns.loadTaskAsync(templateId);
       if (!shouldCloneTask(raw)) continue;
@@ -175,6 +175,8 @@ async function persistCopy(fns: PersistFns): Promise<StartWorkResult> {
       });
       cloned.instanceIds.push(instanceId);
     }
+  } else {
+    cloned = cloneTaskIds(fns.inbound.taskIds, fns.loadTask, { outId, session: fns.session, ver, dt });
   }
   const body = {
     ...buildWorkOrderOut({

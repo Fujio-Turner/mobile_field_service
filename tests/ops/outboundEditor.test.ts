@@ -3,7 +3,7 @@ import { seedInboundJobs } from '../../src/db/seedData';
 import { resetCopyOnWriteTotals } from '../../src/metrics/copyOnWrite';
 import { buildAmendment, createAmendment } from '../../src/ops/createAmendment';
 import { OutError } from '../../src/ops/outError';
-import { canTransition, completeBlockedReason, isFrozen } from '../../src/ops/outStatus';
+import { canTransition, completeBlockedReason, isFrozen, isOpDone, toggleOpDone } from '../../src/ops/outStatus';
 import { applySyncState, shouldWriteSyncState } from '../../src/ops/setSyncState';
 import { startWork } from '../../src/ops/startWork';
 import { submitWork } from '../../src/ops/submitWork';
@@ -54,6 +54,17 @@ describe('status machine', () => {
     expect(canTransition('assigned', 'CompleteWork')).toBe(false);
     expect(canTransition('in_progress', 'CompleteWork')).toBe(true);
     expect(canTransition('complete', 'StartOrResumeWork')).toBe(false);
+  });
+});
+
+describe('operation done toggle', () => {
+  it('marks pending/in_progress as done, and done back to pending', () => {
+    expect(toggleOpDone('pending')).toBe('done');
+    expect(toggleOpDone('in_progress')).toBe('done');
+    expect(toggleOpDone('skipped')).toBe('done');
+    expect(toggleOpDone('done')).toBe('pending');
+    expect(isOpDone('done')).toBe(true);
+    expect(isOpDone('in_progress')).toBe(false);
   });
 });
 

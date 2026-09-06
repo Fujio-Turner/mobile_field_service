@@ -7,11 +7,11 @@ export async function runQuery(
 ): Promise<Record<string, unknown>[]> {
   const query = db.createQuery(sql);
   await applyParams(query, params);
-  if (__DEV__ && typeof query.explain === 'function') {
+  if (process.env.EXPO_PUBLIC_QUERY_EXPLAIN === '1' && typeof query.explain === 'function') {
     try {
       await query.explain();
     } catch {
-      // explain is debug-only; never required
+      // explain is opt-in; never required
     }
   }
   const raw = await query.execute();

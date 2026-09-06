@@ -32,6 +32,19 @@ export function parseOutboundRefs(rows: Record<string, unknown>[]): Map<string, 
   return map;
 }
 
+/** Skip sources already covered by the active-outbound page. */
+export function sourceIdsNeedingOutboundLookup(
+  inboundIds: string[],
+  activeOutbound: Array<{ sourceId: string; id: string }>,
+): string[] {
+  const covered = new Set<string>();
+  for (const row of activeOutbound) {
+    const sourceId = row.sourceId || row.id;
+    if (sourceId) covered.add(sourceId);
+  }
+  return inboundIds.filter((id) => id && !covered.has(id));
+}
+
 export async function findOutboundForSources(
   employeeId: string,
   sourceIds: string[],

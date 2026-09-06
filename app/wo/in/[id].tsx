@@ -8,6 +8,8 @@ import { StartWorkError, startWork } from '@/src/ops/startWork';
 import type { WorkOrderIn } from '@/src/ops/workOrderIn';
 import { useAuth } from '@/src/session/AuthContext';
 import { theme } from '@/src/theme';
+import { useThumbActionStyle } from '@/src/ui/HandednessContext';
+import { ThumbDock } from '@/src/ui/ThumbDock';
 
 function formatWindow(startDt: number, endDt?: number): string {
   if (!startDt) return '—';
@@ -28,6 +30,7 @@ export default function WorkOrderInScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { session } = useAuth();
+  const thumb = useThumbActionStyle();
   const [doc, setDoc] = useState<WorkOrderIn | null | undefined>(undefined);
   const [outId, setOutId] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
@@ -78,7 +81,7 @@ export default function WorkOrderInScreen() {
   const canStart = mine && !outId;
 
   return (
-    <>
+    <View style={styles.screen}>
       <Stack.Screen options={{ title: doc.number }} />
       <ScrollView contentContainerStyle={styles.body}>
         <Text style={styles.kicker}>
@@ -150,60 +153,64 @@ export default function WorkOrderInScreen() {
           </>
         ) : null}
 
-        {outId ? (
-          <Pressable
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
-            onPress={() => router.push(`/wo/out/${outId}`)}
-          >
-            <Text style={styles.primaryLabel}>Open job</Text>
-          </Pressable>
-        ) : canStart ? (
-          <Pressable
-            accessibilityRole="button"
-            disabled={starting}
-            style={({ pressed }) => [styles.primary, pressed && styles.pressed, starting && styles.pressed]}
-            onPress={() => {
-              if (!session) return;
-              setStarting(true);
-              void (async () => {
-                try {
-                  const result = await startWork(doc.id, {
-                    employeeId: session.employeeId,
-                    email: session.email,
-                    username: session.username,
-                  });
-                  setOutId(result.wooutId);
-                  router.push(`/wo/out/${result.wooutId}`);
-                } catch (e) {
-                  const code = e instanceof StartWorkError ? e.code : 'error';
-                  log.error('mfs.wo.start', { op: 'StartWork', err: e, errCode: code, docId: doc.id });
-                  const msg =
-                    code === 'inbound_not_assigned'
-                      ? 'This job is not assigned to you.'
-                      : code === 'inbound_not_startable'
-                        ? 'This job cannot be started.'
-                        : e instanceof Error
-                          ? e.message
-                          : 'Could not start work.';
-                  Alert.alert('Start work', msg);
-                } finally {
-                  setStarting(false);
-                }
-              })();
-            }}
-          >
-            <Text style={styles.primaryLabel}>{starting ? 'Starting…' : 'Start work'}</Text>
-          </Pressable>
-        ) : (
-          <Text style={styles.muted}>This job is not assigned to you.</Text>
-        )}
+        {!outId && !canStart ? <Text style={styles.muted}>This job is not assigned to you.</Text> : null}
       </ScrollView>
-    </>
+      {outId || canStart ? (
+        <ThumbDock>
+          {outId ? (
+            <Pressable
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.primary, thumb, pressed && styles.pressed]}
+              onPress={() => router.push(`/wo/out/${outId}`)}
+            >
+              <Text style={styles.primaryLabel}>Open job</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              disabled={starting}
+              style={({ pressed }) => [styles.primary, thumb, pressed && styles.pressed]}
+              onPress={() => {
+                if (!session) return;
+                setStarting(true);
+                void (async () => {
+                  try {
+                    const result = await startWork(doc.id, {
+                      employeeId: session.employeeId,
+                      email: session.email,
+                      username: session.username,
+                    });
+                    setOutId(result.wooutId);
+                    router.push(`/wo/out/${result.wooutId}`);
+                  } catch (e) {
+                    const code = e instanceof StartWorkError ? e.code : 'error';
+                    log.error('mfs.wo.start', { op: 'StartWork', err: e, errCode: code, docId: doc.id });
+                    const msg =
+                      code === 'inbound_not_assigned'
+                        ? 'This job is not assigned to you.'
+                        : code === 'inbound_not_startable'
+                          ? 'This job cannot be started.'
+                          : e instanceof Error
+                            ? e.message
+                            : 'Could not start work.';
+                    Alert.alert('Start work', msg);
+                  } finally {
+                    setStarting(false);
+                  }
+                })();
+              }}
+            >
+              <Text style={styles.primaryLabel}>{starting ? 'Starting…' : 'Start work'}</Text>
+            </Pressable>
+          )}
+        </ThumbDock>
+      ) : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: theme.color.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.color.bg },
   empty: { fontSize: theme.type.lg, color: theme.color.text },
   body: { padding: theme.space.lg, paddingBottom: theme.space.xl * 2, backgroundColor: theme.color.bg },
@@ -219,9 +226,7 @@ const styles = StyleSheet.create({
   value: { fontSize: theme.type.md, color: theme.color.text, marginBottom: 2 },
   muted: { fontSize: theme.type.md, color: theme.color.muted, marginBottom: 2 },
   primary: {
-    marginTop: theme.space.xl,
     backgroundColor: theme.color.accent,
-    minHeight: 48,
     borderRadius: theme.radius,
     alignItems: 'center',
     justifyContent: 'center',

@@ -22,6 +22,7 @@ import type { TodayRow } from '@/src/ops/todayTypes';
 import { watchTodayWork, type WatchTodayHandle } from '@/src/ops/watchTodayWork';
 import { useAuth } from '@/src/session/AuthContext';
 import { NativeBanner } from '@/src/ui/NativeBanner';
+import { TodayClock } from '@/src/ui/TodayClock';
 import { theme } from '@/src/theme';
 
 export default function TodayScreen() {
@@ -50,9 +51,8 @@ export default function TodayScreen() {
     setHasMore(!isPreview && inboundCount >= TODAY_PAGE_SIZE);
   }, []);
 
-  const loadPage0 = useCallback(async () => {
+  const loadOrders = useCallback(async () => {
     if (!employeeId) return;
-    setError(null);
     try {
       if (!nativeDbAvailable()) {
         const catalog = seedProductsRatesTaxes('0.1.0+1', 1_700_000_000);
@@ -61,8 +61,6 @@ export default function TodayScreen() {
         const inbound = seedInboundOrder('0.1.0+1', 1_700_000_000, day);
         memorySave('orders', inbound.id, inbound.doc as never);
       }
-      const result = await listTodayWork({ employeeId, day, offset: 0 });
-      applyPage0(result.rows, result.preview, result.inboundCount);
       const todayOrders = await listTodayOrders(employeeId, day);
       setOrders(
         todayOrders.map((row) => ({
@@ -72,10 +70,22 @@ export default function TodayScreen() {
           status: String(row.doc.status ?? ''),
         })),
       );
+    } catch {
+      // work list is the primary surface
+    }
+  }, [employeeId, day]);
+
+  const loadPage0 = useCallback(async () => {
+    if (!employeeId) return;
+    setError(null);
+    try {
+      const result = await listTodayWork({ employeeId, day, offset: 0 });
+      applyPage0(result.rows, result.preview, result.inboundCount);
+      await loadOrders();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Query failed');
     }
-  }, [employeeId, day, applyPage0]);
+  }, [employeeId, day, applyPage0, loadOrders]);
 
   useEffect(() => {
     if (!employeeId) return;
@@ -92,13 +102,14 @@ export default function TodayScreen() {
         setError(null);
       });
       watchRef.current = handle;
+      if (!cancelled) void loadOrders();
     })();
     return () => {
       cancelled = true;
       void watchRef.current?.stop();
       watchRef.current = null;
     };
-  }, [employeeId, day, dbStatus, applyPage0]);
+  }, [employeeId, day, dbStatus, applyPage0, loadOrders]);
 
   useFocusEffect(
     useCallback(() => {
@@ -111,6 +122,14 @@ export default function TodayScreen() {
     await loadPage0();
     setRefreshing(false);
   }, [loadPage0]);
+
+  const openRow = useCallback(
+    (row: TodayRow) => {
+      if (row.openCollection === 'workordersout') router.push(`/wo/out/${row.openId}`);
+      else router.push(`/wo/in/${row.openId}`);
+    },
+    [router],
+  );
 
   const onEndReached = useCallback(async () => {
     if (!employeeId || preview || !hasMore || loadingMore) return;
@@ -138,14 +157,7 @@ export default function TodayScreen() {
         data={rows}
         keyExtractor={(item) => item.key}
         renderItem={({ item }) => (
-          <TodayRowView
-            row={item}
-            onPress={(row) => {
-              const path =
-                row.openCollection === 'workordersout' ? `/wo/out/${row.openId}` : `/wo/in/${row.openId}`;
-              router.push(path);
-            }}
-          />
+          <TodayRowView row={item} onPress={openRow} />
         )}
         contentContainerStyle={styles.list}
         refreshControl={
@@ -156,7 +168,7 @@ export default function TodayScreen() {
         ListHeaderComponent={
           <View>
             <NativeBanner />
-            <Text style={styles.day}>{day}</Text>
+            <TodayClock rows={rows} />
             {preview ? (
               <Text style={styles.preview}>Preview from seed. Live list needs a development build.</Text>
             ) : null}
@@ -166,26 +178,25 @@ export default function TodayScreen() {
                 <Text style={styles.retry}>Retry</Text>
               </Pressable>
             ) : null}
-            {orders.length > 0 ? (
-              <View>
-                <Text style={styles.section}>Orders</Text>
-                {orders.map((o) => (
+            <View style={styles.ordersCard}>
+              <Text style={styles.section}>Orders</Text>
+              {orders.length > 0 ? (
+                orders.map((o) => (
                   <Pressable key={o.id} onPress={() => router.push(`/order/${o.id}`)} style={styles.orderRow}>
                     <Text style={styles.orderTitle}>{o.number}</Text>
                     <Text style={styles.muted}>
                       {o.role} · {o.status}
                     </Text>
                   </Pressable>
-                ))}
-                <Pressable onPress={() => router.push('/order/new')} style={styles.orderRow}>
-                  <Text style={styles.retry}>New field order</Text>
-                </Pressable>
-              </View>
-            ) : (
-              <Pressable onPress={() => router.push('/order/new')} style={styles.orderRow}>
-                <Text style={styles.retry}>Orders</Text>
+                ))
+              ) : (
+                <Text style={styles.muted}>No orders on this day</Text>
+              )}
+              <Pressable onPress={() => router.push('/order/new')} style={styles.orderCta}>
+                <Text style={styles.retry}>New field order</Text>
               </Pressable>
-            )}
+            </View>
+            {rows.length > 0 ? <Text style={styles.section}>Jobs</Text> : null}
           </View>
         }
         ListEmptyComponent={
@@ -208,37 +219,42 @@ export default function TodayScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.color.bg },
-  list: { padding: theme.space.lg, flexGrow: 1 },
-  day: {
-    fontSize: theme.type.title,
-    fontWeight: '600',
-    color: theme.color.text,
-    marginBottom: theme.space.md,
-  },
+  list: { padding: theme.space.lg, flexGrow: 1, paddingBottom: theme.space.xl },
   preview: {
     fontSize: theme.type.sm,
     color: theme.color.muted,
     marginBottom: theme.space.md,
   },
   errorBox: {
-    backgroundColor: '#fef2f2',
+    backgroundColor: theme.color.dangerSoft,
     padding: theme.space.md,
     borderRadius: theme.radius,
     marginBottom: theme.space.md,
   },
   errorText: { color: theme.color.danger, fontSize: theme.type.md },
-  retry: { color: theme.color.accent, fontSize: theme.type.md, marginTop: theme.space.sm, fontWeight: '600' },
+  retry: { color: theme.color.accent, fontSize: theme.type.md, fontWeight: '600' },
   emptyWrap: { paddingTop: theme.space.xl },
   empty: { fontSize: theme.type.lg, color: theme.color.text, fontWeight: '600', marginBottom: theme.space.sm },
   muted: { fontSize: theme.type.md, color: theme.color.muted },
   spinner: { marginVertical: theme.space.lg },
   section: {
-    marginTop: theme.space.lg,
-    marginBottom: theme.space.xs,
+    marginBottom: theme.space.sm,
     fontSize: theme.type.sm,
     color: theme.color.muted,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
   },
-  orderRow: { minHeight: 48, justifyContent: 'center', marginBottom: theme.space.sm },
+  ordersCard: {
+    backgroundColor: theme.color.surface,
+    borderRadius: theme.radius,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    padding: theme.space.md,
+    marginBottom: theme.space.lg,
+    ...theme.shadow.card,
+  },
+  orderRow: { minHeight: 48, justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: theme.color.border },
   orderTitle: { fontSize: theme.type.md, color: theme.color.text, fontWeight: '600' },
+  orderCta: { minHeight: 44, justifyContent: 'center', marginTop: theme.space.sm },
 });

@@ -11,13 +11,14 @@ import { bboxAround, haversineM, inBBox, type BBox } from '../geo/haversine';
 export const ASSETS_BBOX_LIMIT = 500;
 export const NEAR_JOB_RADIUS_M = 250;
 
-const ASSETS_BBOX_SQL = `
+/** CBL SQL++ does not accept parameterized LIMIT. */
+export const ASSETS_BBOX_SQL = `
 SELECT META().id AS id, name, code, assetType, status, ownership, geo.lat AS lat, geo.lon AS lon
 FROM field.assets
 WHERE type = 'asset'
   AND geo.lat BETWEEN $minLat AND $maxLat
   AND geo.lon BETWEEN $minLon AND $maxLon
-LIMIT $limit
+LIMIT ${ASSETS_BBOX_LIMIT}
 `;
 
 const OPEN_JOBS_SQL = `
@@ -78,7 +79,6 @@ async function runAssetsBBox(
     maxLat: box.maxLat,
     minLon: box.minLon,
     maxLon: box.maxLon,
-    limit: ASSETS_BBOX_LIMIT,
   });
   let items: AssetItem[];
   if (native) {

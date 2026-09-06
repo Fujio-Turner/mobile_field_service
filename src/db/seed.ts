@@ -4,6 +4,7 @@ import { FIELD_SCOPE } from './collections';
 import {
   SEED_CUSTOMER_ID,
   SEED_DISPATCH_USER_ID,
+  SEED_INBOUND_ORDER_ID,
   SEED_USER_ID,
   seedAssets,
   seedCustomerDoc,
@@ -48,6 +49,14 @@ export async function seedIfNeeded(database: DbLike): Promise<void> {
   const ver = appVersion();
   const dt = nowSec();
   const users = (await database.collection('users', FIELD_SCOPE)) as CollectionLike | null;
+  const orders = (await database.collection('orders', FIELD_SCOPE)) as CollectionLike | null;
+  if (!users) return;
+
+  // Order is the last seed write. If both markers exist, skip every other KV get.
+  if ((await users.document(SEED_USER_ID)) && orders && (await orders.document(SEED_INBOUND_ORDER_ID))) {
+    return;
+  }
+
   const customers = (await database.collection('customers', FIELD_SCOPE)) as CollectionLike | null;
   const woin = (await database.collection('workordersin', FIELD_SCOPE)) as CollectionLike | null;
   const tasks = (await database.collection('tasks', FIELD_SCOPE)) as CollectionLike | null;
@@ -56,8 +65,7 @@ export async function seedIfNeeded(database: DbLike): Promise<void> {
   const rates = (await database.collection('rates', FIELD_SCOPE)) as CollectionLike | null;
   const taxes = (await database.collection('taxes', FIELD_SCOPE)) as CollectionLike | null;
   const inventory = (await database.collection('inventory', FIELD_SCOPE)) as CollectionLike | null;
-  const orders = (await database.collection('orders', FIELD_SCOPE)) as CollectionLike | null;
-  if (!users || !customers || !woin) return;
+  if (!customers || !woin) return;
 
   await saveIfMissing(users, SEED_USER_ID, seedUserDoc(ver, dt) as unknown as Record<string, unknown>);
   await saveIfMissing(

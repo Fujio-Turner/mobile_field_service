@@ -53,7 +53,16 @@ describe('deviceLocalDay', () => {
 });
 
 describe('ulid random default', () => {
-  it('returns 26 chars', () => {
-    expect(ulid().length).toBe(26);
+  it('returns 26 chars without web crypto', () => {
+    const prev = (globalThis as { crypto?: unknown }).crypto;
+    // Hermes has no global crypto — ids must not read it.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).crypto = undefined;
+    try {
+      expect(ulid().length).toBe(26);
+      expect(ulid()).not.toBe(ulid());
+    } finally {
+      (globalThis as { crypto?: unknown }).crypto = prev;
+    }
   });
 });

@@ -1,6 +1,5 @@
 import { nowSec } from '../audit';
-import { FIELD_SCOPE } from '../db/collections';
-import { getOpenedDatabase, nativeDbAvailable } from '../db/database';
+import { collectionOf, getOpenedDatabase, nativeDbAvailable } from '../db/database';
 import { seedInboundJobs } from '../db/seedData';
 import { appVersion } from '../version';
 import { getWorkOrderInFromCollection, parseWorkOrderIn, type WorkOrderIn } from './workOrderIn';
@@ -16,9 +15,7 @@ export async function getWorkOrderIn(id: string): Promise<WorkOrderIn | null> {
   if (!nativeDbAvailable() || !getOpenedDatabase()) {
     return getWorkOrderInFromSeed(id);
   }
-  const db = getOpenedDatabase();
-  if (!db) return null;
-  const col = (await db.collection('workordersin', FIELD_SCOPE)) as {
+  const col = (await collectionOf('workordersin')) as {
     document: (docId: string) => Promise<unknown>;
   } | null;
   if (!col) return null;

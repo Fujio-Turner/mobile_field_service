@@ -4,7 +4,7 @@ import { useAuth } from '../session/AuthContext';
 import { theme } from '../theme';
 
 export function NativeBanner() {
-  const { status, error, dbName } = useDatabase();
+  const { status, error } = useDatabase();
   const { needsReauth } = useAuth();
   if (needsReauth) {
     return (
@@ -29,13 +29,6 @@ export function NativeBanner() {
       </View>
     );
   }
-  if (status === 'ready' && dbName) {
-    return (
-      <View style={styles.ok}>
-        <Text style={styles.okText}>Local database {dbName}</Text>
-      </View>
-    );
-  }
   if (status === 'opening') {
     return (
       <View style={styles.warn}>
@@ -48,24 +41,17 @@ export function NativeBanner() {
 
 const styles = StyleSheet.create({
   warn: {
-    backgroundColor: '#fff7ed',
+    backgroundColor: theme.color.warnSoft,
     padding: theme.space.md,
     marginBottom: theme.space.md,
     borderRadius: theme.radius,
   },
   warnText: { color: theme.color.warn, fontSize: theme.type.md },
   err: {
-    backgroundColor: '#fef2f2',
+    backgroundColor: theme.color.dangerSoft,
     padding: theme.space.md,
     marginBottom: theme.space.md,
     borderRadius: theme.radius,
   },
   errText: { color: theme.color.danger, fontSize: theme.type.md },
-  ok: {
-    backgroundColor: '#f0fdf4',
-    padding: theme.space.md,
-    marginBottom: theme.space.md,
-    borderRadius: theme.radius,
-  },
-  okText: { color: theme.color.ok, fontSize: theme.type.sm },
 });

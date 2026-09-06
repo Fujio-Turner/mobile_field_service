@@ -89,9 +89,8 @@ export function applyTrackPoint(
   fix: { lat: number; lon: number; ts: number; accuracyM?: number },
   thresholdM: number,
 ): { next: Record<string, unknown>; wrote: boolean; reason?: string } {
-  const existing = { ...((doc.tracking as Record<string, TrackPoint>) ?? {}) };
-  if (doc.capped === true || Object.keys(existing).length >= TRACK_POINT_CAP) {
-    return { next: { ...doc, capped: true }, wrote: false, reason: 'capped' };
+  if (doc.capped === true) {
+    return { next: doc, wrote: false, reason: 'capped' };
   }
   if (fix.accuracyM != null && fix.accuracyM > thresholdM) {
     return { next: doc, wrote: false, reason: 'accuracy' };
@@ -103,9 +102,11 @@ export function applyTrackPoint(
       return { next: doc, wrote: false, reason: 'below_threshold' };
     }
   }
-  const map = existing;
-  const key = String(fix.ts);
-  map[key] = [fix.lat, fix.lon];
+  const existing = (doc.tracking as Record<string, TrackPoint> | undefined) ?? {};
+  if (Object.keys(existing).length >= TRACK_POINT_CAP) {
+    return { next: { ...doc, capped: true }, wrote: false, reason: 'capped' };
+  }
+  const map = { ...existing, [String(fix.ts)]: [fix.lat, fix.lon] as TrackPoint };
   const pointCount = Object.keys(map).length;
   return {
     next: {
@@ -146,7 +147,9 @@ export async function recordTrackPoint(
     if (reason === 'capped') totals.capped += 1;
     else totals.skipped += 1;
     recordMetric('mfs_track_point_total', 1, { result });
-    log.warn('mfs.track.point', { op: 'RecordTrackPoint', docId: id, ts, result });
+    if (reason === 'capped') {
+      log.warn('mfs.track.point', { op: 'RecordTrackPoint', docId: id, ts, result });
+    }
     return { id, wrote, reason, result };
   }
   delete (next as { history?: unknown }).history;

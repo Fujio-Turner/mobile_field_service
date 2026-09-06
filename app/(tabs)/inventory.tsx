@@ -1,7 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FieldInput } from '@/src/ui/FieldInput';
 import { memorySave } from '@/src/db/memoryStore';
 import { SEED_VAN_ID, seedProductsRatesTaxes, seedUserDoc } from '@/src/db/seedData';
 import { nativeDbAvailable } from '@/src/db/database';
@@ -36,14 +37,16 @@ export default function InventoryScreen() {
   const [stock, setStock] = useState<DisplayStock[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [busy, setBusy] = useState(false);
+  const qRef = useRef(q);
+  qRef.current = q;
 
   const reload = useCallback(async () => {
     ensureCatalog();
     const loc = session ? await vanLocationIdForEmployee(session.employeeId) : DEFAULT_VAN_ID;
     setLocationId(loc);
     setStock(await listStockAtLocation(loc));
-    setProducts(await searchProducts(q));
-  }, [q, session]);
+    setProducts(await searchProducts(qRef.current));
+  }, [session]);
 
   useFocusEffect(
     useCallback(() => {
@@ -80,13 +83,13 @@ export default function InventoryScreen() {
       <Text style={styles.muted}>
         Display qty = snapshot + txs newer than snapshot.audit.up.dt. Device never saves stock rows.
       </Text>
-      <TextInput
+      <FieldInput
         value={q}
         onChangeText={setQ}
         placeholder="Search catalog"
-        placeholderTextColor={theme.color.muted}
         style={styles.input}
         onEndEditing={() => void reload()}
+        returnKeyType="search"
       />
       <Text style={styles.section}>On hand ({locationId})</Text>
       <FlatList

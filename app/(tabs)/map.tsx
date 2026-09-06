@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { memorySave } from '@/src/db/memoryStore';
@@ -44,6 +44,7 @@ export default function MapScreen() {
   const [online, setOnline] = useState(true);
   const [gpsDenied, setGpsDenied] = useState(false);
   const nativeMap = canRenderLibreMap();
+  const regionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const job = useMemo(() => {
     if (wooutId) return jobs.find((j) => j.id === wooutId) ?? jobs[0];
@@ -60,17 +61,20 @@ export default function MapScreen() {
   );
 
   useEffect(() => {
-    void (async () => {
-      ensureMemoryAssets();
-      if (session) setJobs(await listOpenJobs(session.employeeId));
-      setOnline(await styleReachable());
-      await reload(bboxAround(SITE, DEFAULT_RADIUS_M), SITE);
-    })();
-  }, [session, reload]);
+    ensureMemoryAssets();
+    if (session) void listOpenJobs(session.employeeId).then(setJobs);
+    void styleReachable().then(setOnline);
+  }, [session]);
 
   useEffect(() => {
     void reload(box, center);
   }, [assetType, box, center, reload]);
+
+  useEffect(() => {
+    return () => {
+      if (regionTimer.current) clearTimeout(regionTimer.current);
+    };
+  }, []);
 
   const types = [...new Set(assets.map((a) => a.assetType))].sort();
   const clusters = clusterAssets(assets, nativeMap ? 0 : clusterCellM(box));
@@ -146,7 +150,8 @@ export default function MapScreen() {
           onPressAsset={openAsset}
           onRegion={(next, zoom) => {
             if (zoom < 11) return;
-            setBox(next);
+            if (regionTimer.current) clearTimeout(regionTimer.current);
+            regionTimer.current = setTimeout(() => setBox(next), 280);
           }}
         />
       ) : (

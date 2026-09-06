@@ -7,12 +7,9 @@ export async function configureCblLogSinks(): Promise<void> {
       LogLevel: { DEBUG: unknown; INFO: unknown };
       LogDomain: { ALL: unknown; REPLICATOR: unknown; NETWORK: unknown; DATABASE: unknown };
     };
-    const prod = process.env.NODE_ENV === 'production';
     await LogSinks.setConsole({
-      level: prod ? LogLevel.INFO : LogLevel.DEBUG,
-      domains: prod
-        ? [LogDomain.REPLICATOR, LogDomain.NETWORK, LogDomain.DATABASE]
-        : [LogDomain.ALL],
+      level: LogLevel.INFO,
+      domains: [LogDomain.REPLICATOR, LogDomain.NETWORK, LogDomain.DATABASE],
     });
   } catch {
     // native module or LogSinks missing (Expo Go / tests)

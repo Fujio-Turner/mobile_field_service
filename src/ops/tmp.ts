@@ -1,6 +1,6 @@
 import { stampAuditCreate } from '../audit';
 import { LOCAL_SCOPE, TMP_COLLECTION } from '../db/collections';
-import { getOpenedDatabase, nativeDbAvailable } from '../db/database';
+import { collectionOf, getOpenedDatabase, nativeDbAvailable } from '../db/database';
 import { memoryDelete, memoryGet, memorySave } from '../db/memoryStore';
 import { saveJsonDoc } from '../db/saveJson';
 import { tmpExpiryDate, TMP_TTL_MS } from '../db/tmp';
@@ -33,8 +33,7 @@ export function buildPhotoStageTmp(input: {
 
 export async function saveTmp(id: string, body: Record<string, unknown>): Promise<void> {
   if (nativeDbAvailable() && getOpenedDatabase()) {
-    const db = getOpenedDatabase();
-    const col = (await db!.collection(TMP_COLLECTION, LOCAL_SCOPE)) as {
+    const col = (await collectionOf(TMP_COLLECTION, LOCAL_SCOPE)) as {
       save: (doc: unknown) => Promise<void>;
       setDocumentExpiration?: (docId: string, date: Date) => Promise<void>;
     } | null;
@@ -50,8 +49,7 @@ export async function saveTmp(id: string, body: Record<string, unknown>): Promis
 
 export async function loadTmp(id: string): Promise<Record<string, unknown> | null> {
   if (nativeDbAvailable() && getOpenedDatabase()) {
-    const db = getOpenedDatabase();
-    const col = (await db!.collection(TMP_COLLECTION, LOCAL_SCOPE)) as {
+    const col = (await collectionOf(TMP_COLLECTION, LOCAL_SCOPE)) as {
       document: (docId: string) => Promise<unknown>;
     } | null;
     if (!col) return null;
@@ -62,8 +60,7 @@ export async function loadTmp(id: string): Promise<Record<string, unknown> | nul
 
 export async function purgeTmp(id: string): Promise<void> {
   if (nativeDbAvailable() && getOpenedDatabase()) {
-    const db = getOpenedDatabase();
-    const col = (await db!.collection(TMP_COLLECTION, LOCAL_SCOPE)) as {
+    const col = (await collectionOf(TMP_COLLECTION, LOCAL_SCOPE)) as {
       purge?: (docId: string) => Promise<void>;
     } | null;
     if (col?.purge) await col.purge(id);

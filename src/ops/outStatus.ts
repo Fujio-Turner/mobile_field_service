@@ -34,6 +34,15 @@ export function cycleOpStatus(current: string): OpStatus {
   return OP_STATUSES[(i + 1) % OP_STATUSES.length];
 }
 
+export function isOpDone(status: string | undefined): boolean {
+  return status === 'done';
+}
+
+/** Field toggle: not done ↔ done. Does not cycle in_progress/skipped. */
+export function toggleOpDone(current: string | undefined): OpStatus {
+  return current === 'done' ? 'pending' : 'done';
+}
+
 export type TaskLike = { required?: boolean; status?: string; title?: string; type?: string };
 
 export function completeBlockedReason(doc: Record<string, unknown>, tasks: TaskLike[] = []): string | null {

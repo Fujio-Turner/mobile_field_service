@@ -1,4 +1,15 @@
+import * as Crypto from 'expo-crypto';
+
 const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+
+function randomBytes10(): Uint8Array {
+  if (typeof Crypto.getRandomBytes === 'function') {
+    return Crypto.getRandomBytes(10);
+  }
+  const web = (globalThis as { crypto?: { getRandomValues?: (a: Uint8Array) => Uint8Array } }).crypto;
+  if (web?.getRandomValues) return web.getRandomValues(new Uint8Array(10));
+  throw new Error('CSPRNG unavailable');
+}
 
 export const ID_PREFIX = {
   workordersin: 'woin',
@@ -40,7 +51,7 @@ export function encodeUlid(timeMs: number, rand10: Uint8Array): string {
 }
 
 export function ulid(nowMs = Date.now(), rand10?: Uint8Array): string {
-  const bytes = rand10 ?? crypto.getRandomValues(new Uint8Array(10));
+  const bytes = rand10 ?? randomBytes10();
   return encodeUlid(nowMs, bytes);
 }
 

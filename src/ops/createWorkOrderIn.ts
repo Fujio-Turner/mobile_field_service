@@ -1,6 +1,5 @@
 import { nowSec, stampAuditCreate, stampHistory } from '../audit';
-import { FIELD_SCOPE } from '../db/collections';
-import { getOpenedDatabase, nativeDbAvailable } from '../db/database';
+import { collectionOf, getOpenedDatabase, nativeDbAvailable } from '../db/database';
 import { memorySave } from '../db/memoryStore';
 import { saveJsonDoc } from '../db/saveJson';
 import { newDocId } from '../ids';
@@ -86,8 +85,7 @@ export async function createWorkOrderIn(input: {
     dt: nowSec(),
   });
   if (nativeDbAvailable() && getOpenedDatabase()) {
-    const db = getOpenedDatabase();
-    const col = (await db!.collection('workordersin', FIELD_SCOPE)) as {
+    const col = (await collectionOf('workordersin')) as {
       save: (d: unknown) => Promise<void>;
     } | null;
     if (col) await saveJsonDoc(col, woinId, doc);

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import {
@@ -7,9 +7,9 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
+import { FieldInput } from '@/src/ui/FieldInput';
 import { createNote, listNotes, type NoteItem } from '@/src/ops/notes';
 import { OutError } from '@/src/ops/outError';
 import { useAuth } from '@/src/session/AuthContext';
@@ -23,15 +23,17 @@ export default function NotesScreen() {
   const [rows, setRows] = useState<NoteItem[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const qRef = useRef(q);
+  qRef.current = q;
 
   const reload = useCallback(async () => {
     try {
-      setRows(await listNotes({ q: q.trim() || undefined }));
+      setRows(await listNotes({ q: qRef.current.trim() || undefined }));
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load notes');
     }
-  }, [q]);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -62,19 +64,18 @@ export default function NotesScreen() {
         ListHeaderComponent={
           <View>
             <Text style={styles.title}>Notes</Text>
-            <TextInput
+            <FieldInput
               value={q}
               onChangeText={setQ}
               onEndEditing={() => void reload()}
               placeholder="Search notes"
-              placeholderTextColor={theme.color.muted}
               style={styles.input}
+              returnKeyType="search"
             />
-            <TextInput
+            <FieldInput
               value={body}
               onChangeText={setBody}
               placeholder="General note"
-              placeholderTextColor={theme.color.muted}
               style={[styles.input, styles.noteInput]}
               multiline
               editable={!busy}

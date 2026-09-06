@@ -1,5 +1,4 @@
-import { FIELD_SCOPE } from '../db/collections';
-import { getOpenedDatabase, nativeDbAvailable } from '../db/database';
+import { collectionOf, getOpenedDatabase, nativeDbAvailable } from '../db/database';
 import { memoryGet } from '../db/memoryStore';
 import { isFrozen } from './outStatus';
 import type { PhotoMeta } from './photoKeys';
@@ -98,8 +97,7 @@ export function parseWorkOrderOut(id: string, raw: Record<string, unknown> | nul
 
 export async function getWorkOrderOut(id: string): Promise<WorkOrderOut | null> {
   if (nativeDbAvailable() && getOpenedDatabase()) {
-    const db = getOpenedDatabase();
-    const col = (await db!.collection('workordersout', FIELD_SCOPE)) as {
+    const col = (await collectionOf('workordersout')) as {
       document: (docId: string) => Promise<unknown>;
     } | null;
     if (!col) return null;

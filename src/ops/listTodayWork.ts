@@ -3,7 +3,7 @@ import { timeQuery } from '../metrics';
 import { runQuery } from '../db/query';
 import { deviceLocalDay } from '../ids';
 import { collapseTodayPage, sourceIdsFromRows } from './collapseToday';
-import { findOutboundForSources } from './findOutboundForSources';
+import { findOutboundForSources, sourceIdsNeedingOutboundLookup } from './findOutboundForSources';
 import { memoryActiveOutbound, memoryInboundHits, memoryOutboundRefs } from './memoryToday';
 import { seedInboundAsHits } from './todaySeedFallback';
 import { ACTIVE_OUTBOUND_SQL, inboundTodaySql } from './todaySql';
@@ -74,7 +74,10 @@ export async function listTodayWork(input: ListTodayInput): Promise<ListTodayRes
     const activeOutbound = includeActiveOutbound ? memoryActiveOutbound(input.employeeId) : [];
     const outboundBySource = memoryOutboundRefs(
       input.employeeId,
-      sliced.map((h) => h.id),
+      sourceIdsNeedingOutboundLookup(
+        sliced.map((h) => h.id),
+        activeOutbound,
+      ),
     );
     return {
       preview: true,
@@ -109,7 +112,10 @@ export async function listTodayWork(input: ListTodayInput): Promise<ListTodayRes
 
   const outboundBySource = await findOutboundForSources(
     input.employeeId,
-    inbound.map((h) => h.id),
+    sourceIdsNeedingOutboundLookup(
+      inbound.map((h) => h.id),
+      activeOutbound,
+    ),
   );
 
   return {
