@@ -19,7 +19,9 @@ import { seedInboundOrder, seedProductsRatesTaxes } from '@/src/db/seedData';
 import { listTodayWork, sourceIdsFromRows, TODAY_PAGE_SIZE } from '@/src/ops/listTodayWork';
 import { listTodayOrders } from '@/src/ops/orders';
 import type { TodayRow } from '@/src/ops/todayTypes';
+import { watchTodayOrders, type TodayOrderRow } from '@/src/ops/watchTodayOrders';
 import { watchTodayWork, type WatchTodayHandle } from '@/src/ops/watchTodayWork';
+import type { LiveQueryHandle } from '@/src/db/liveQuery';
 import { useAuth } from '@/src/session/AuthContext';
 import { NativeBanner } from '@/src/ui/NativeBanner';
 import { TodayClock } from '@/src/ui/TodayClock';
@@ -36,10 +38,11 @@ export default function TodayScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [orders, setOrders] = useState<Array<{ id: string; number: string; role: string; status: string }>>([]);
+  const [orders, setOrders] = useState<TodayOrderRow[]>([]);
   const skipRef = useRef(new Set<string>());
   const inboundOffset = useRef(0);
   const watchRef = useRef<WatchTodayHandle | null>(null);
+  const ordersWatchRef = useRef<LiveQueryHandle | null>(null);
 
   const employeeId = session?.employeeId;
 
@@ -102,14 +105,21 @@ export default function TodayScreen() {
         setError(null);
       });
       watchRef.current = handle;
-      if (!cancelled) void loadOrders();
+      const ordersHandle = await watchTodayOrders({ employeeId, day }, (next, meta) => {
+        if (cancelled) return;
+        if (meta.error) return;
+        setOrders(next);
+      });
+      ordersWatchRef.current = ordersHandle;
     })();
     return () => {
       cancelled = true;
       void watchRef.current?.stop();
       watchRef.current = null;
+      void ordersWatchRef.current?.stop();
+      ordersWatchRef.current = null;
     };
-  }, [employeeId, day, dbStatus, applyPage0, loadOrders]);
+  }, [employeeId, day, dbStatus, applyPage0]);
 
   useFocusEffect(
     useCallback(() => {

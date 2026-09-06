@@ -4,8 +4,8 @@ A **phone app for people who work in the field** — inspect a pump, deliver par
 
 When the radio comes back, the phone syncs with Couchbase (Sync Gateway or Capella). The office sees **your copy** of the work, not a tug-of-war on the same document.
 
-**Status:** Expo SDK 52 shell + demo login (PR-01). Couchbase Lite is not wired yet.  
-**Platforms:** iOS and Android. After CBL lands, **development builds** (not Expo Go).  
+**Status:** Expo SDK 52 + Couchbase Lite (encrypted `field.*` + replicator). Vector search is **not** on.  
+**Platforms:** iOS and Android **development builds** (not Expo Go).  
 **Repo:** [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service)
 
 ![Three modes: assets, customer, sales](images/overview.svg)
@@ -16,11 +16,12 @@ When the radio comes back, the phone syncs with Couchbase (Sync Gateway or Capel
 
 ![Sign in, Today list, open a job, work offline, complete and sync](images/app-flow.svg)
 
-1. **Sign in** with work email (or Sign in with your company IdP).
-2. **Today** shows the jobs (or orders) for this calendar day, newest first. Scroll for more.
-3. **Tap a row** to open it by document id. **Start** makes **your copy**.
-4. **Do the work** with no network: photos, parts, notes, employee chat, map of nearby assets. Each save keeps a **history** of what changed (qty 10 → 5) with time and place. Driving around writes **tracking** crumbs for that employee and day.
+1. **Sign in** with work email (or Sign in with your company IdP). Demo builds accept any identifier.
+2. **Today** shows a live clock and a seconds countdown (next start, in-progress end, late-by, or end of day), then jobs and orders for this calendar day, newest first. Scroll for more.
+3. **Tap a row** to open it by document id. **Start work** (bottom of the inbound screen) makes **your copy**. Hermes has no `crypto`; ids use **expo-crypto**.
+4. **Do the work** with no network: photos, parts, notes, employee chat, map of nearby assets. Mark operations and checklist with **outline vs filled** buttons (not a cycling row tap). Each save keeps a **history** of what changed (qty 10 → 5) with time and place. Driving around writes **tracking** crumbs for that employee and day.
 5. **Complete.** That copy **freezes** and the office owns it. Forgot a photo? You add a **new sheet of paper** that points at the original — you do not reopen the frozen one.
+6. **Profile** has sync status, optional **Large screen optimize** (right-thumb zone; **Left hand** checkbox when that is on), and **Settings / debug** (versions, database path, replicator URL/status, collection counts, optional channel filters).
 
 Walk through a real day:
 
@@ -68,30 +69,30 @@ Chat is **employees only** (you ↔ dispatch), not customers. Orders **snapshot 
 
 ---
 
-## Run the shell (PR-01)
+## Run (development build)
 
-Node **≥ 20**. Copy env, install, start:
+Node **≥ 20**. Couchbase Lite is **native** — Expo Go cannot open the encrypted DB or MapLibre. `npm install` runs `scripts/fetch-cbl-native.sh` (CBL Swift + JS submodules npm does not fetch).
 
 ```bash
 cp .env.example .env   # demo login, no Sync Gateway
 npm install
 npm test
-npx expo start
-```
-
-**Map.** Asset pins always come from local `field.assets` (bbox SQL++), including airplane mode. The basemap is OpenFreeMap Liberty via MapLibre and **needs network** (or MapLibre’s last style cache). Expo Go has no MapLibre native view — you get the pin list; a **development build** (`npx expo run:ios`) shows the map. Style URL: `EXPO_PUBLIC_MAP_STYLE_URL` (default `https://tiles.openfreemap.org/styles/liberty`). MBTiles is later.
-
-`.env.example` sets `EXPO_PUBLIC_AUTH_STRATEGY=demo`. Sign in with any email; you should land on **Today** (empty). Version on the login footer and Profile comes from `app.json`, not a hard-coded string.
-
-Couchbase Lite is wired but **not in Expo Go**. After login, Today shows a banner until you run a **development build**:
-
-```bash
-npx expo run:ios
+npx expo run:ios -d "iPhone 16 Pro"
 # or
 npx expo run:android
 ```
 
-Binding: [Fujio-Turner/cbl-reactnative](https://github.com/Fujio-Turner/cbl-reactnative) (`feat/vector-search-support`). Shipping encryption + vector still needs a Couchbase Lite **Enterprise** license; lab/testing the module does not.
+`.env.example` sets `EXPO_PUBLIC_AUTH_STRATEGY=demo`. Sign in with any email or username; you land on **Today** with seed jobs (WO-10470 / 10482 / 10490) once the DB is open. Version on the login footer and Profile comes from `app.json`, not a hard-coded string.
+
+Replication schema is **build-time** (`EXPO_PUBLIC_REPL_SCHEMA=simple|oneshot`), not a Profile setting. `simple` (default) keeps one continuous replicator. `oneshot` pulls `workordersin` + `orders` first, then one-shots all field collections every `EXPO_PUBLIC_REPL_ONESHOT_SEC` seconds (default 300) and when the app comes to the foreground.
+
+**Simulator keyboard.** If a field focuses but no keyboard appears, the Mac keyboard is attached: **⌘K** (I/O → Keyboard → Toggle Software Keyboard).
+
+**CBL SQL++ for Mobile** does not accept `IN ['a','b']` or parameterized `LIMIT $limit` / `OFFSET $offset`. Today and bbox queries use equality/`OR` and a numeric `LIMIT` baked into the SQL string.
+
+**Map.** Asset pins always come from local `field.assets` (bbox SQL++), including airplane mode. The basemap is OpenFreeMap Liberty via MapLibre and **needs network** (or MapLibre’s last style cache). Style URL: `EXPO_PUBLIC_MAP_STYLE_URL` (default `https://tiles.openfreemap.org/styles/liberty`). MBTiles is later.
+
+Binding: [Fujio-Turner/cbl-reactnative](https://github.com/Fujio-Turner/cbl-reactnative) (`feat/vector-search-support`). Shipping encryption + vector still needs a Couchbase Lite **Enterprise** license; lab/testing the module does not. Vector search is **not** in this train (S15).
 
 ---
 
@@ -103,6 +104,7 @@ Binding: [Fujio-Turner/cbl-reactnative](https://github.com/Fujio-Turner/cbl-reac
 | See collections, queries, freeze rules | [DESIGN.md](docs/DESIGN.md) |
 | See document / collection fields | [docs/schema/](docs/schema/README.md) |
 | See login, Keychain, 401 handling | [AUTH.md](docs/AUTH.md) |
+| Inspect versions, DB path, replication | Profile → **Settings / debug** |
 | See what we build in what order | [ROADMAP.md](docs/ROADMAP.md) |
 | Log, style UI, cut a release, sync | [guides/](guides/README.md) |
 | Agent / coding rules | [AGENT.md](AGENT.md) |

@@ -28,6 +28,8 @@ describe('syncSnapshot', () => {
     expect(snap.collections).toEqual([...FIELD_COLLECTIONS]);
     expect(snap.tmpExcluded).toBe(true);
     expect(snap.collections.includes('tmp')).toBe(false);
+    expect(snap.schema).toBe('simple');
+    expect(snap.continuous).toBe(true);
     expect(snap.filters.tracking).toMatch(/trackingPushFilter|alwaysPush|fn/);
   });
 });

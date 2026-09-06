@@ -1,4 +1,11 @@
-import { FIELD_COLLECTIONS, TMP_COLLECTION, isReplicatorCollection, replicatorAllowList } from '../../src/db/collections';
+import {
+  FIELD_COLLECTIONS,
+  OPERATOR_COLLECTIONS,
+  TMP_COLLECTION,
+  isOperatorCollection,
+  isReplicatorCollection,
+  replicatorAllowList,
+} from '../../src/db/collections';
 import { tmpExpiryDate, TMP_TTL_MS } from '../../src/db/tmp';
 import { FTS_INDEXES, VALUE_INDEXES } from '../../src/db/indexes';
 import { trackingDocId } from '../../src/ids';
@@ -15,6 +22,14 @@ describe('collections', () => {
     expect(replicatorAllowList()).not.toContain('tmp');
     expect(isReplicatorCollection('tmp')).toBe(false);
     expect(isReplicatorCollection('tracking')).toBe(true);
+  });
+
+  it('hides tracking from operator-facing lists', () => {
+    expect(OPERATOR_COLLECTIONS).not.toContain('tracking');
+    expect(OPERATOR_COLLECTIONS).toContain('workordersin');
+    expect(isOperatorCollection('tracking')).toBe(false);
+    expect(isOperatorCollection('tmp')).toBe(false);
+    expect(isOperatorCollection('orders')).toBe(true);
   });
 
   it('defines today-list index keys', () => {

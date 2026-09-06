@@ -1,14 +1,8 @@
 import { Stack } from 'expo-router';
-import { theme } from '@/src/theme';
+import { useLeftHand } from '@/src/ui/HandednessContext';
+import { stackScreenOptions } from '@/src/ui/stackHeader';
 
 export default function ChatLayout() {
-  return (
-    <Stack
-      screenOptions={{
-        headerStyle: { backgroundColor: theme.color.surface },
-        headerTintColor: theme.color.accent,
-        contentStyle: { backgroundColor: theme.color.bg },
-      }}
-    />
-  );
+  const leftHand = useLeftHand();
+  return <Stack screenOptions={stackScreenOptions(leftHand)} />;
 }

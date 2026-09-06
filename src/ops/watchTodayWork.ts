@@ -1,4 +1,5 @@
 import { getOpenedDatabase, nativeDbAvailable } from '../db/database';
+import { attachLiveQuery, type LiveQueryHandle } from '../db/liveQuery';
 import { applyParams, normalizeResults } from '../db/query';
 import { deviceLocalDay } from '../ids';
 import { collapseTodayPage } from './collapseToday';
@@ -11,23 +12,10 @@ export type WatchTodayHandle = {
   stop: () => Promise<void>;
 };
 
-type QueryLike = {
-  execute: () => Promise<unknown>;
-  addChangeListener?: (cb: (change: { error?: string; results?: unknown }) => void) => Promise<unknown>;
-  removeChangeListener?: (token: unknown) => Promise<void>;
-};
-
-async function detachListener(query: QueryLike, token: unknown): Promise<void> {
-  if (token && typeof (token as { remove?: () => Promise<void> }).remove === 'function') {
-    await (token as { remove: () => Promise<void> }).remove();
-  } else if (typeof query.removeChangeListener === 'function') {
-    await query.removeChangeListener(token);
-  }
-}
-
 /**
- * Live page 0. Inbound and outbound listeners share last hits so a change on
- * one side does not re-query the other. Lookup skips sources already in active outbound.
+ * CBL live queries for Today page 0.
+ * Two SQL++ listeners (inbound today + active outbound). Each update only its
+ * own hits; a ~50 ms coalesce then collapses. Pages 2+ stay one-shot execute().
  */
 export async function watchTodayWork(
   input: { employeeId: string; day?: string },
@@ -100,42 +88,26 @@ export async function watchTodayWork(
     }, 50);
   };
 
-  const tokens: Array<{ query: QueryLike; token: unknown }> = [];
-  const watchOutbound = typeof outboundQuery.addChangeListener === 'function';
+  const lives: LiveQueryHandle[] = [];
 
-  if (typeof inboundQuery.addChangeListener === 'function') {
-    tokens.push({
-      query: inboundQuery,
-      token: await inboundQuery.addChangeListener((change) => {
-        if (change.error) {
-          onRows([], { preview: false, error: change.error });
-          return;
-        }
-        lastInbound = parseInboundHits(normalizeResults(change.results));
-        if (!watchOutbound) {
-          void outboundQuery.execute().then((raw) => {
-            lastActive = parseOutboundHits(normalizeResults(raw));
-            schedule();
-          });
-          return;
-        }
-        schedule();
-      }),
-    });
-  }
+  const inboundLive = await attachLiveQuery(inboundQuery, (rows, error) => {
+    if (error) {
+      onRows([], { preview: false, error });
+      return;
+    }
+    lastInbound = parseInboundHits(rows);
+    schedule();
+  });
+  if (inboundLive) lives.push(inboundLive);
 
-  if (watchOutbound) {
-    tokens.push({
-      query: outboundQuery,
-      token: await outboundQuery.addChangeListener!((change) => {
-        if (change.error) return;
-        lastActive = parseOutboundHits(normalizeResults(change.results));
-        schedule();
-      }),
-    });
-  }
+  const outboundLive = await attachLiveQuery(outboundQuery, (rows, error) => {
+    if (error) return;
+    lastActive = parseOutboundHits(rows);
+    schedule();
+  });
+  if (outboundLive) lives.push(outboundLive);
 
-  if (tokens.length === 0) {
+  if (lives.length === 0) {
     const first = await listTodayWork({ employeeId: input.employeeId, day, offset: 0 });
     onRows(first.rows, { preview: first.preview, inboundCount: first.inboundCount });
     return { stop: async () => undefined };
@@ -154,7 +126,7 @@ export async function watchTodayWork(
       stopped = true;
       if (timer) clearTimeout(timer);
       timer = null;
-      for (const { query, token } of tokens) await detachListener(query, token);
+      for (const live of lives) await live.stop();
     },
   };
 }

@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useDatabase } from '@/src/db/DatabaseProvider';
 import { deviceLocalDay } from '@/src/ids';
 import { syncSnapshot, type SyncSnapshot } from '@/src/ops/syncSnapshot';
@@ -39,7 +39,7 @@ export default function ProfileScreen() {
   );
 
   return (
-    <View style={styles.wrap}>
+    <ScrollView style={styles.wrap} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <NativeBanner />
       <Text style={styles.label}>Signed in as</Text>
       <Text style={styles.name}>{session?.username ?? '—'}</Text>
@@ -118,6 +118,15 @@ export default function ProfileScreen() {
 
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel="Settings and debug"
+        onPress={() => router.push('/debug')}
+        style={({ pressed }) => [styles.secondary, thumb, pressed && styles.pressed]}
+      >
+        <Text style={styles.secondaryLabel}>Settings / debug</Text>
+      </Pressable>
+
+      <Pressable
+        accessibilityRole="button"
         accessibilityLabel="Search"
         onPress={() => router.push('/search')}
         style={({ pressed }) => [styles.secondary, thumb, pressed && styles.pressed]}
@@ -136,12 +145,13 @@ export default function ProfileScreen() {
       >
         <Text style={styles.dangerLabel}>Sign out</Text>
       </Pressable>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: theme.color.bg, padding: theme.space.lg },
+  wrap: { flex: 1, backgroundColor: theme.color.bg },
+  content: { padding: theme.space.lg, paddingBottom: theme.space.xl },
   label: { fontSize: theme.type.sm, color: theme.color.muted, marginTop: theme.space.lg },
   name: { fontSize: theme.type.title, color: theme.color.text, fontWeight: '600', marginBottom: theme.space.sm },
   muted: { fontSize: theme.type.md, color: theme.color.muted, marginBottom: theme.space.xs },

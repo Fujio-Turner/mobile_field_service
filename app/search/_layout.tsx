@@ -1,15 +1,8 @@
 import { Stack } from 'expo-router';
-import { theme } from '@/src/theme';
+import { useLeftHand } from '@/src/ui/HandednessContext';
+import { stackScreenOptions } from '@/src/ui/stackHeader';
 
 export default function SearchLayout() {
-  return (
-    <Stack
-      screenOptions={{
-        headerStyle: { backgroundColor: theme.color.surface },
-        headerTitleStyle: { color: theme.color.text },
-        headerTintColor: theme.color.accent,
-        contentStyle: { backgroundColor: theme.color.bg },
-      }}
-    />
-  );
+  const leftHand = useLeftHand();
+  return <Stack screenOptions={stackScreenOptions(leftHand)} />;
 }

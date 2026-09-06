@@ -33,6 +33,7 @@ export async function applyParams(query: QueryLike, params: Record<string, strin
       p.setValue(k, v);
     }
     if (typeof query.setParameters === 'function') query.setParameters(p);
+    else if (typeof query.addParameter === 'function') query.addParameter(p);
     else (query as { parameters?: unknown }).parameters = p;
   } catch {
     // native Parameters missing — queries that need params will fail execute

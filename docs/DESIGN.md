@@ -5,8 +5,8 @@
 | Title | Offline-first field service mobile app |
 | Repo | [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service) |
 | Author | Fujio-Turner / mobile_field_service |
-| Date | 2026-09-04 |
-| Status | Draft |
+| Date | 2026-09-05 |
+| Status | Implemented through S16 except vector (S15). Train `feat/pr-01-expo-shell` → `main`. |
 | Audience | Senior engineers implementing the Expo + Couchbase Lite RN app |
 
 This is a **Fujio-Turner** project, not koten-ai. The architecture, data model, operations catalog, and query contract live here. Use cases: [DAY_IN_LIFE.md](./DAY_IN_LIFE.md) (assets / customer / sales). Auth: [AUTH.md](./AUTH.md). Phased delivery: [ROADMAP.md](./ROADMAP.md). Collection schemas: [schema/](./schema/README.md).
@@ -27,7 +27,7 @@ The phone is a **general field app**. One database, three company modes (`users.
 
 Technicians work with poor or no radio. Today’s board is work orders and/or orders. Open by document ID, capture photos, consume van stock, map assets, price lines from catalogs — all offline. Sync when the network returns.
 
-The app is **React Native + Expo (development builds)** with **Couchbase Lite 3.3.3 Enterprise** via `@couchbase/couchbase-lite-react-native` **1.1.x** (Turbo Module). Native CBL **4.x** exists (version vectors, LWW default) but the RN plugin does **not** wrap it; 4.x is a future bump when the plugin ships it. Local data lives in scope `field` (**fourteen** synced collections, including `tracking`) plus scope `local` collection `tmp`.
+The app is **React Native + Expo (development builds)** with Couchbase Lite via **[Fujio-Turner/cbl-reactnative](https://github.com/Fujio-Turner/cbl-reactnative)** (`feat/vector-search-support`, CBL **4.x EE** target). Official `@couchbase/couchbase-lite-react-native` 1.1 is **not** SoT. Local data lives in scope `field` (**fourteen** synced collections, including `tracking`) plus scope `local` collection `tmp`. `npm install` fetches `ios/cbl-js-swift` and `src/cblite-js` (npm does not clone those submodules). Vector search is **not** on this train.
 
 **Pulled dispatch inbound is never mutated on the device.** The phone **may create** new inbound work orders/jobs (`origin: field`, new `woin:`). Sync channels by **`emp:{employeeId}`** (SG login username = **email**; see README example). Starting a job **copies** inbound into `workordersout` (new id). The tech works **that copy** offline and pushes it back. When `workordersout.status` becomes `complete` (or `cancelled`), the **body is frozen** and **ownership moves to the backend** — the backend may spawn follow-up tasks and processes. The technician cannot edit that document again. Forgotten details become a **new** `workordersout` (`role: amendment`) that **references** the frozen original (another sheet of paper). The backend consolidates documents that share a work-order number / `source.id`. Multiple outbound documents per work order are expected (eventual consistency). Dispatch may **reassign** inbound while the tech is offline; the Today list badges it **Reassigned**; the tech’s copy still syncs.
 
@@ -41,7 +41,7 @@ Vector similarity (on-device **mobile-CLIP** embeddings + CBL vector index) is a
 
 ### Current state
 
-This repository contains `LICENSE` (Apache-2.0), `.gitignore`, `README.md`, and docs under `docs/` (design, roadmap, three day-in-the-life stories, order/rate/tax schemas). There is no application code. Git **origin** is `Fujio-Turner/mobile_field_service` (not koten-ai).
+This repository is an Expo SDK **52** / RN **0.76.9** field app (`app/`, `src/ops/*`, `src/db/*`, `src/sync/*`) plus docs. Git **origin** is `Fujio-Turner/mobile_field_service` (not koten-ai). Demo login (`EXPO_PUBLIC_AUTH_STRATEGY=demo`) maps to seed tech `E-4412`. Development builds only — Expo Go cannot load CBL or MapLibre.
 
 A sibling repo (`utility_field_service`) demonstrates field-ops UX with a **mock** `WorkRepository` and a stub `CblWorkRepository`. It targets a UtilityCo/SAP day-in-the-life demo, not this product’s collection contract or copy-on-write rule.
 
@@ -109,7 +109,7 @@ A sibling repo (`utility_field_service`) demonstrates field-ops UX with a **mock
 | Layer | Choice |
 | --- | --- |
 | UI | React Native + Expo **SDK 52**, **development builds** (not Expo Go) |
-| RN | **0.76.6** (plugin requires **≥ 0.76.3**) |
+| RN | **0.76.9** (SDK 52 pin) |
 | Node | **≥ 20** |
 | iOS | **15.1+** |
 | Android | **API 24+** |
@@ -176,7 +176,7 @@ A database encrypted with this RN plugin is **not portable** to other CBL langua
 4. `await database.createCollection(name, 'field')` for the **fourteen** synced collections (including `tracking`). `await database.createCollection('tmp', 'local')` for scratch. Create is idempotent.
 5. Create value + FTS indexes (idempotent by name).
 6. Optional: copy a **pre-built** seed database on first run (demo).
-7. Start **one** replicator from an **explicit allow-list** of `field.*` collections. **Never** add `local.tmp`. Lint: any helper that “replicate all collections in a scope” must take a deny-list or allow-list that cannot include `tmp`.
+7. Start replication from an **explicit allow-list** of `field.*` collections via `ReplicatorConfiguration.addCollection`. **Never** add `local.tmp`. Schema is **build-time** (`EXPO_PUBLIC_REPL_SCHEMA`): `simple` = one continuous replicator; `oneshot` = one-shot `workordersin`+`orders`, then one-shot all field collections on a timer + foreground. Each collection config has `channels: string[]` defaulting to **empty**. Lint: any helper that “replicate all collections in a scope” must take a deny-list or allow-list that cannot include `tmp`.
 8. Navigate to Today.
 
 **Database name.** One DB per **`employeeId`** so two techs sharing a phone do not mix outbound work. Do **not** only strip punctuation:
@@ -236,24 +236,25 @@ flowchart LR
 | # | Route (Expo Router) | Role |
 | --- | --- | --- |
 | 1 | `app/login.tsx` | Auth. Default: username/email + password → SG session. Build can switch OIDC implicit or auth-code. Secrets in Keychain, never CBL. See [AUTH.md](./AUTH.md). |
-| 2 | `app/(tabs)/index.tsx` | **Today’s work** — home after login. |
-| 3 | `app/wo/in/[id].tsx` | Inbound detail, **read-only**. CTA: Start work / Open existing out. |
-| 4 | `app/wo/out/[id].tsx` | Outbound editor: fields, ops, tasks, photos, parts, submit. |
+| 2 | `app/(tabs)/index.tsx` | **Today’s work** — clock + countdown, jobs, orders. |
+| 3 | `app/wo/in/[id].tsx` | Inbound detail, **read-only**. CTA: Start work / Open existing out (bottom dock). |
+| 4 | `app/wo/out/[id].tsx` | Outbound editor: fields, ops/checklist toggles, tasks, photos, parts, submit. |
 | 5 | `app/(tabs)/map.tsx` + `app/asset/[id].tsx` | Asset map + KV asset detail. |
 | 6 | `app/(tabs)/inventory.tsx` + product search | Catalog + van stock. Sales/customer: add-to-order from catalog. |
 | 6b | `app/order/in/[id].tsx` + `app/order/[id].tsx` | Inbound order (read-only) / working order editor. Hidden if `workModes` is assets-only. |
 | 6c | `app/customer/new.tsx` | Field `CreateCustomer`. |
 | 7 | `app/(tabs)/chat.tsx` + `app/chat/[threadId].tsx` | Job threads and direct messages (`field.messages`). |
-| 8 | `app/(tabs)/profile.tsx` | User profile, sync status, logout, app version. |
+| 8 | `app/(tabs)/profile.tsx` | User profile, sync status, logout, app version, **Large screen optimize** / **Left hand**. |
 | 9 | `app/search/similar.tsx` | EE similarity. Hidden unless `VECTOR_SEARCH_ENABLED && nativeVectorApi`. |
 | 10 | `app/wo/out/[id].tsx` (amendment) | Frozen original is read-only; **Add follow-up** opens a new outbound id. |
 
 ### Today list UX
 
-- Title: device-local calendar day. `$day` = `YYYY-MM-DD` in the **device timezone**. `scheduled.day` on documents is that same convention applied to `scheduled.startDt` (dispatch should stamp it; seed and `StartWork` copy it through).
-- Rows: WO number, customer/site, scheduled start, priority, inbound vs already-started vs **Reassigned** vs **Amendment** badge.
-- Inbound query: today’s `workordersin` with `status NOT IN ['cancelled','superseded']`, `ORDER BY scheduled.startDt DESC`, `LIMIT 20 OFFSET y`. Scrolling increments `OFFSET` by 20.
-- **Active outbound (page 0, unpaged):** all `workordersout` with `status IN ['assigned','in_progress','blocked']` for this user — **no** `scheduled.day` predicate. Covers overnight jobs **and** same-day work whose inbound was cancelled, superseded, or auto-purged. Typical cardinality 0–20; not paginated.
+- Header: live clock (HH:MM:SS) plus a seconds countdown to the next start, in-progress end, late-by elapsed, or local midnight (`src/ops/todayClock.ts`). Ticks only while Today is focused.
+- `$day` = `YYYY-MM-DD` in the **device timezone**. `scheduled.day` on documents is that same convention applied to `scheduled.startDt` (dispatch should stamp it; seed and `StartWork` copy it through).
+- Rows: WO number, customer/site, scheduled start, priority stripe, inbound vs already-started vs **Reassigned** vs **Amendment** badge.
+- Inbound query: today’s `workordersin` with `status != 'cancelled' AND status != 'superseded'` (CBL Mobile **does not** parse `IN [...]`), `ORDER BY scheduled.startDt DESC`, numeric `LIMIT 20 OFFSET y` baked into the SQL string (not `$limit`). Scrolling increments `OFFSET` by 20.
+- **Active outbound (page 0, unpaged):** all `workordersout` with `status = 'assigned' OR status = 'in_progress' OR status = 'blocked'` for this user — **no** `scheduled.day` predicate. Covers overnight jobs **and** same-day work whose inbound was cancelled, superseded, or auto-purged. Typical cardinality 0–20; not paginated.
 - **Collapse:** one row per `source.id` (inbound `META().id`). Prefer `openCollection = workordersout` when an active outbound exists. Sort the merged page 0 by `scheduled.startDt DESC`. Pages 1+ are inbound-only; skip inbound ids already shown as outbound on page 0.
 - Empty: “No work for today” + last-sync timestamp.
 - Error: query failure with retry.
@@ -262,7 +263,7 @@ flowchart LR
 
 **Reassigned:** inbound (if still present) has `assignedTo.employeeId !==` session employee, **and** this user has a local outbound for that `source.id`. Show badge **Reassigned** (include the new assignee name when inbound is still on device). Keep the row — do not hide their paper. Their copy still completes and pushes. If inbound was auto-purged from `emp:{id}`, badge **Assignment changed**.
 
-`WatchTodayWork` is a live query on the **inbound** today SQL++ only. On each inbound callback **and** on pull-to-refresh, re-run the active-outbound query and collapse. Infinite-scroll pages 2+ are one-shot inbound `execute()` (live queries + OFFSET are a poor fit). Pull-to-refresh also calls `replicator.start(false)` if stopped.
+`WatchTodayWork` is a **CBL live query** (`Query.addChangeListener`) on **two** SQL++ statements (inbound today page 0 and active outbound). Each listener updates only its own hits; a ~50 ms coalesce then collapses. `WatchTodayOrders` is the same pattern on `TODAY_ORDERS_SQL` for the orders card. `FindOutboundForSources` skips source ids already covered by active outbound. Infinite-scroll pages 2+ are one-shot inbound `execute()`. Pull-to-refresh re-runs `ListTodayWork` + orders. Demo / Expo Go fall back to a one-shot list (no native live listener).
 
 ### Work order in (read-only)
 
@@ -274,7 +275,7 @@ Show customer, site, geo, window, priority, assigned tech, operations, planned m
 
 ### Work order out (editor)
 
-Sections: header/status, site, operations, checklist, tasks, materials consume, photos, job chat. **v1 push sequence:** edit while `assigned` / `in_progress` / `blocked` → **Complete or Cancel** → **Submit** (required to push). Submit is not a mid-job checkpoint. After `complete` / `cancelled`, the **body is frozen** (`owner: backend`). No field edits, no photos, no notes on **that** document. Forgotten information → **Add follow-up** (`CreateAmendment`) — a new `workordersout` with `amends.id`. Cannot navigate to an “edit inbound” path. Save is debounced; status transitions are explicit operations. Every user save appends `history[]`.
+Sections: header/status, site, operations, checklist, tasks, materials consume, photos, job chat. **Start work / Complete / Submit** sit in a bottom dock. Operations and checklist are **buttons**: outline (transparent + accent border) when not done, filled accent + on-accent text when done. Tap toggles `pending` ↔ `done` (`toggleOpDone`) — it does **not** cycle `in_progress` / `skipped`. Schema still allows those statuses. **v1 push sequence:** edit while `assigned` / `in_progress` / `blocked` → **Complete or Cancel** → **Submit** (required to push). Submit is not a mid-job checkpoint. After `complete` / `cancelled`, the **body is frozen** (`owner: backend`). No field edits, no photos, no notes on **that** document. Forgotten information → **Add follow-up** (`CreateAmendment`) — a new `workordersout` with `amends.id`. Cannot navigate to an “edit inbound” path. Save is debounced; status transitions are explicit operations. Every user save appends `history[]`. Text fields use `FieldInput` (`showSoftInputOnFocus`). Optional **Large screen optimize** (Profile) parks primary buttons in the easy thumb zone; default is full-width.
 
 If inbound `source.id` KV get differs from `source.snapshot`, show a read-only **Dispatch updated** banner (no auto-merge).
 
@@ -296,7 +297,7 @@ Short job notes stay on the outbound document (`notesPreview` / `notes` collecti
 
 ### Profile + sync
 
-Username, crew, district, app version (`audit` writer uses the same string). Replicator activity: stopped / offline / connecting / idle / busy, plus completed/total, last error **code** (not payload). Manual “Sync now”. Logout.
+Username, employee id, strategy, database name, app version (`audit` writer uses the same string). Replicator activity: stopped / offline / connecting / idle / busy, plus completed/total, last error **code** (not payload). **Large screen optimize** (off by default): sizes and parks primary buttons in the easy right-thumb zone for this viewport. When that is on, a **Left hand** checkbox mirrors the zone. Logout.
 
 ---
 
@@ -489,7 +490,7 @@ Set `reassigned = true` when this user has a local outbound for `source.id` and 
 
 #### `WatchTodayWork`
 
-Live query on the **inbound today SQL++ only** (same `FROM`/`WHERE` as `ListTodayWork` inbound, `OFFSET 0`, no UNION). CBL cannot live-query the inbound+outbound UNION as a single `FROM`. On each inbound `addChangeListener` callback, **re-run** the active-outbound query and collapse (this is also how **Reassigned** badges appear when dispatch writes inbound while the list is open). Same re-run on pull-to-refresh. Token `remove()` on blur.
+Live queries on **inbound today page 0** and **active outbound**. CBL cannot live-query the inbound+outbound UNION as a single `FROM`. Each listener updates only its own hit list; a short coalesce (~50 ms) then collapses. `FindOutboundForSources` is skipped for sources already in the active-outbound set. This is also how **Reassigned** badges appear and how **Start work** (outbound insert) refreshes Today without an inbound change. Pull-to-refresh re-runs `ListTodayWork`. Tokens `remove()` on unmount.
 
 #### `GetWorkOrderIn`
 
@@ -1559,7 +1560,9 @@ Last 7 days = seven KV gets of constructed ids. Full field list: **[schema/SCHEM
 
 ## Queries
 
-SQL++ collection name is `field.<collection>` (or `local.tmp`). Parameters via `Parameters.setValue`. Always `query.explain()` in debug for the today list and bbox query; expect the named value index in the plan.
+SQL++ collection name is `field.<collection>` (or `local.tmp`). Parameters via `Parameters.setValue`.
+
+**CBL SQL++ for Mobile** does not accept `IN ['a','b']` / `NOT IN [...]` or parameterized `LIMIT $limit` / `OFFSET $offset`. Use `status != 'x' AND status != 'y'`, `status = 'a' OR status = 'b'`, and interpolate integer LIMIT/OFFSET into the SQL string (`src/ops/todaySql.ts`). `query.explain()` is **opt-in** (`EXPO_PUBLIC_QUERY_EXPLAIN=1`), not every `runQuery` in `__DEV__`.
 
 ### Today list (inbound — today’s dispatch)
 
@@ -1570,20 +1573,21 @@ SELECT
   priority,
   status,
   summary,
-  customerId,
+  assignedTo.employeeId AS assignedEmployeeId,
   site.name AS siteName,
-  scheduled.startDt,
-  scheduled.endDt
+  scheduled.startDt AS startDt,
+  scheduled.endDt AS endDt
 FROM field.workordersin
 WHERE assignedTo.employeeId = $employeeId
   AND scheduled.day = $day
-  AND status NOT IN ['cancelled', 'superseded']
+  AND status != 'cancelled'
+  AND status != 'superseded'
 ORDER BY scheduled.startDt DESC
-LIMIT $limit
-OFFSET $offset
+LIMIT 20
+OFFSET 0
 ```
 
-Index: `idx_woin_today`. Defaults: `$limit = 20`. `$day` is the **device-local** `YYYY-MM-DD`. `scheduled.day` is the device-local calendar date of `scheduled.startDt` (v1). Do not derive `$day` with SQL++ `MILLIS_TO_STR(scheduled.startDt)` — those functions expect **milliseconds**.
+Index: `idx_woin_today`. Page size 20 is interpolated (not `$limit`). `$day` is the **device-local** `YYYY-MM-DD`. `scheduled.day` is the device-local calendar date of `scheduled.startDt` (v1). Do not derive `$day` with SQL++ `MILLIS_TO_STR(scheduled.startDt)` — those functions expect **milliseconds**.
 
 ### Active outbound (page 0, unpaged)
 
@@ -1605,7 +1609,7 @@ SELECT
   scheduled.endDt
 FROM field.workordersout
 WHERE assignedTo.employeeId = $employeeId
-  AND status IN ['assigned', 'in_progress', 'blocked']
+  AND (status = 'assigned' OR status = 'in_progress' OR status = 'blocked')
 ```
 
 This is **UNION ALL** with inbound-today in JS (CBL has no live UNION). Collapse to **one row per `source.id`**, preferring the outbound row (`openCollection = 'workordersout'`, `openId = META().id`). Remaining inbound rows get `openId`/`openCollection` from `FindOutboundForSources`. Sort by `scheduled.startDt DESC`. Same-day jobs whose inbound is cancelled, superseded, or auto-purged **remain visible** via this query.
@@ -1613,13 +1617,13 @@ This is **UNION ALL** with inbound-today in JS (CBL has no live UNION). Collapse
 ### Existing outbound for page of inbound ids
 
 ```sql
-SELECT META().id AS id, source.id AS sourceId, status, syncState, role
+SELECT META().id AS id, source.id AS sourceId, status, role, audit.cr.dt AS auditCrDt
 FROM field.workordersout
 WHERE assignedTo.employeeId = $employeeId
-  AND source.id IN $sourceIds
+  AND (source.id = $s0 OR source.id = $s1 /* … max 20 */)
 ```
 
-If `IN $sourceIds` parameterization is awkward in CBL RN, emit a bounded `OR` list (max 20 ids = one page) or `ANY s IN $sourceIds SATISFIES source.id = s END`. Index: `idx_woout_source`.
+CBL Mobile has no `IN $sourceIds`. Emit a bounded `OR` list (max 20 ids = one page). Index: `idx_woout_source`. Skip ids already present in the active-outbound page.
 
 ### Idempotent copy lookup
 
@@ -1652,7 +1656,7 @@ WHERE geo.lat BETWEEN $minLat AND $maxLat
 LIMIT 500
 ```
 
-Sort by haversine in JS. Index: `idx_ast_geo`.
+Numeric `LIMIT 500` (not `$limit`). Sort by haversine in JS. Index: `idx_ast_geo`.
 
 ### Van stock (display projection)
 
@@ -1878,9 +1882,9 @@ flowchart LR
 | `field.notes` | PUSH_AND_PULL | `emp:{employeeId}` | `readyToPush === true` |
 | `field.messages` | PUSH_AND_PULL | `emp:{employeeId}`, `wo:{woinId}` | `readyToPush === true` |
 | `field.tracking` | PUSH_AND_PULL | `emp:{employeeId}` | **true** (always; device-owned crumbs) |
-| `local.tmp` | **none** | — | **Not in `CollectionConfiguration[]`** |
+| `local.tmp` | **none** | — | **Not in `addCollection`** |
 
-`ReplicatorType` is **replicator-wide** (`PUSH_AND_PULL`), not per `CollectionConfiguration`. v1 uses **push filters only** (no pull filters — RN pull filters have a documented freeze around ~100 docs). One continuous replicator. Production URL `wss://`.
+`ReplicatorType` is **replicator-wide** (`PUSH_AND_PULL`), not per collection. v1 uses **push filters** plus optional per-collection **channel `string[]`** (default empty). No JS pull-filter functions (RN pull filters have a documented freeze around ~100 docs). **Schema (build-time `EXPO_PUBLIC_REPL_SCHEMA`, not Profile):** `simple` (default) = one continuous replicator of all `field.*` except `tmp`; `oneshot` = one-shot `workordersin`+`orders`, then one-shot all field collections every N seconds (default 300) and on foreground. Production URL `wss://`.
 
 RN push filters must be **pure** and persist the function body (`"show source"`). They are evaluated natively; a TS closure over app state will no-op or fail. One function per collection.
 
@@ -1938,33 +1942,40 @@ function alwaysPush(_document: any, _flags: any): boolean {
   return true;
 }
 
-const configs = [
-  new CollectionConfiguration(col.workordersin).setPushFilter(woinPushFilter),
-  new CollectionConfiguration(col.workordersout).setPushFilter(wooutPushFilter),
-  new CollectionConfiguration(col.assets).setPushFilter(neverPush),
-  new CollectionConfiguration(col.products).setPushFilter(neverPush),
-  new CollectionConfiguration(col.inventory).setPushFilter(inventoryPushFilter),
-  new CollectionConfiguration(col.users).setPushFilter(neverPush),
-  new CollectionConfiguration(col.customers).setPushFilter(customersPushFilter),
-  new CollectionConfiguration(col.orders).setPushFilter(ordersPushFilter),
-  new CollectionConfiguration(col.rates).setPushFilter(neverPush),
-  new CollectionConfiguration(col.taxes).setPushFilter(neverPush),
-  new CollectionConfiguration(col.tasks).setPushFilter(tasksPushFilter),
-  new CollectionConfiguration(col.notes).setPushFilter(notesPushFilter),
-  new CollectionConfiguration(col.messages).setPushFilter(messagesPushFilter),
-  new CollectionConfiguration(col.tracking).setPushFilter(alwaysPush),
-];
-const replConfig = new ReplicatorConfiguration(configs, new URLEndpoint(sgUrl));
+const replConfig = new ReplicatorConfiguration(new URLEndpoint(sgUrl));
+const push = {
+  workordersin: woinPushFilter,
+  workordersout: wooutPushFilter,
+  assets: neverPush,
+  products: neverPush,
+  inventory: inventoryPushFilter,
+  users: neverPush,
+  customers: customersPushFilter,
+  orders: ordersPushFilter,
+  rates: neverPush,
+  taxes: neverPush,
+  tasks: tasksPushFilter,
+  notes: notesPushFilter,
+  messages: messagesPushFilter,
+  tracking: alwaysPush,
+} as const;
+for (const [name, filter] of Object.entries(push)) {
+  const channels: string[] = []; // default: no client channel filter
+  const cc = new CollectionConfig(channels.length ? channels : null, null);
+  cc.setPushFilter(filter);
+  if (channels.length) cc.setChannels(channels);
+  replConfig.addCollection(col[name], cc);
+}
 replConfig.setAuthenticator(new SessionAuthenticator(sessionId));
-replConfig.continuous = true;
-replConfig.replicatorType = ReplicatorType.PUSH_AND_PULL;
+replConfig.setContinuous(true);
+replConfig.setReplicatorType(ReplicatorType.PUSH_AND_PULL);
 
 const replicator = await Replicator.create(replConfig);
 await replicator.addDocumentChangeListener(onReplicatedDoc); // SetSyncState only
 await replicator.start(false);
 ```
 
-**Do not** add `local.tmp`. Replicator construction is an **explicit allow-list** of the **fourteen** `field` collections.
+**Do not** add `local.tmp`. Replicator construction is an **explicit allow-list** of the **fourteen** `field` collections. `channels` on each config is a `string[]` that defaults to empty.
 
 `onReplicatedDoc` **must** call `SetSyncState`, not `UpdateWorkOrderOutFields`:
 
@@ -1989,7 +2000,7 @@ Assigning a work order **adds** `emp:{employeeId}` on inbound. Reassigning **mov
 
 Hard rule: **no full enterprise asset dump on every phone**.
 
-v1 replicator may omit `setChannels` and rely on the SG sync function to grant the same names.
+v1 replicator **defaults to no client channel filter** (`channels: []` on each `CollectionConfig` — do not call `setChannels`). The SG sync function grants `emp:` / `district:` / `public`. A non-empty per-collection `string[]` is optional (lab/debug, or `EXPO_PUBLIC_SG_CHANNELS`) and only **narrows** pull; SG still ignores channels the user cannot access. Edit from Profile → **Settings / debug**.
 
 ### Lab Sync Gateway fixture (docs-only, Phase 8 prerequisite)
 
@@ -2022,6 +2033,8 @@ Delta sync: EE server-side; enable on SG when available.
 ### Sync status UI
 
 Map `ReplicatorActivityLevel` 0–4 to `stopped | offline | connecting | idle | busy`. Show `progress.completed/total` while busy. Persist `lastPullSuccessAt` / `lastPushSuccessAt` in **memory + SecureStore**. A `local.tmp` doc `tmp:sync-meta` is acceptable (not replicated). Pending-push count: feature-detect pending-ids; else COUNT `syncState = 'ready_to_push'`.
+
+**Settings / debug** (Profile): software versions (app, Expo SDK, RN, Hermes, `cbl-reactnative`, native linked/missing, OS), CBL database **name + directory + path**, replicator URL, status, last pull/push, document counts per `field.*` and `local.tmp`, start/stop/restart, per-collection channel lists. Never show the session cookie or DB encryption key.
 
 ---
 
@@ -2104,8 +2117,8 @@ v1 **only** controls growth with: max **20** photos/job, JPEG 200–800 KB, peri
 See [ROADMAP.md](./ROADMAP.md) for phases and PR order. Summary:
 
 1. Docs (this PR).
-2. Expo SDK 52 / RN 0.76.6 shell + login UI (no CBL).
-3. Encrypted DB open (`3.3.3 EE`), `field` + `local.tmp`, audit helper, optional seed.
+2. Expo SDK 52 / RN 0.76.9 shell + login UI.
+3. Encrypted DB open (fork + CBL 4.x EE target), `field` + `local.tmp`, audit helper, seed.
 4. Today list (filters + active outbound UNION) + KV detail.
 5. Copy-on-write + Today routing (`openId` / `openCollection`).
 6. Outbound editor + status + Submit; then photos/`tmp`; then tasks/notes.
@@ -2176,8 +2189,8 @@ Reopening `complete` → `in_progress` on the same id fights the backend that no
 
 | Risk | Severity | Mitigation |
 | --- | --- | --- |
-| CBL RN plugin API drift (1.1 CollectionConfiguration, ListenerToken) | Medium | Pin `@couchbase/couchbase-lite-react-native` **1.1.x** / native **3.3.3** |
-| Engineer uses CBL **4.x** APIs (version vectors, LWW default) | High | Docs pin 3.3.3; 4.x is a future plugin bump |
+| CBL RN plugin API drift (CollectionConfiguration, ListenerToken) | Medium | Pin Fujio-Turner/cbl-reactnative `feat/vector-search-support`; fetch git submodules in `postinstall` |
+| Engineer uses official plugin 1.1 as SoT | High | Fork is SoT; official 1.1 has no vector API |
 | Vector search never lands on RN | Medium | Optional schema only; PR-13 native model; no fake ANN UI |
 | EE license not provisioned | High | Block release; document license in README when code lands |
 | Photo storage fills the phone | Medium | Cap 20 photos/job + JPEG budget in v1; 14-day pushed age-out later |
@@ -2186,7 +2199,7 @@ Reopening `complete` → `in_progress` on the same id fights the backend that no
 | Two devices → two `woout` ids | Medium | One active device/employee; reconcile oldest `audit.cr.dt` among **primary** copies |
 | Reassignment + frozen complete fight backend | High | Never mutate inbound; freeze outbound on complete; amendments are new ids |
 | Tech edits completed doc after backend spawned work | High | `owner: backend`; 409 on body; `CreateAmendment` |
-| Today list `IN` parameter portability | Low | Page size 20; fallback OR list |
+| Today list `IN` / `$limit` rejected by CBL Mobile parser | High | Equality/`OR` + numeric LIMIT/OFFSET in `todaySql.ts`; same for bbox `LIMIT 500` |
 | Inventory qty vs tx vs WO line after crash | Medium | Never save stock; display = snapshot + SUM(tx newer than snapshot.up.dt); repair `appliedToWo` only |
 | Inventory qty conflicts on shared vans | Medium | 1:1 van in v1 |
 | iOS background replicator killed | Medium | Restart replicator on foreground |
@@ -2215,18 +2228,18 @@ Closed for v1: `scheduled.day` is device-local; CLIP **512**; tech may cancel ou
 1. **Synced scope `field`.** Fourteen collections via `createCollection(name, 'field')` including **`messages`**, **`orders`**, **`rates`**, **`taxes`**, **`tracking`**. **`tmp` is `local.tmp`**.
 2. **Copy-on-write:** never mutate `workordersin`; `StartWork` copies to `workordersout` with a new `woout:<ulid>` and clones task templates into instances.
 3. **Idempotent start:** existing **primary** `(assignedTo.employeeId, source.id)` wins; do not copy twice. Amendments are extra ids. v1 **one active device per employee**; pull duplicates keep oldest `audit.cr.dt` among primaries.
-4. **Document IDs:** `<prefix>:<ULID>` with prefixes `woin`, `woout`, `ast`, `prd`, `inv`, `invtx`, `usr`, `cus`, `tsk`, `nte`, `msg`, `ord`, `rate`, `tax`, `tmp`. **Exception:** tracking ids are `track:{YYYY-MM-DD}:{employeeId}` (device-local day; not email).
+4. **Document IDs:** `<prefix>:<ULID>` with prefixes `woin`, `woout`, `ast`, `prd`, `inv`, `invtx`, `usr`, `cus`, `tsk`, `nte`, `msg`, `ord`, `rate`, `tax`, `tmp`. ULID random bytes from **`expo-crypto` `getRandomBytes`** (Hermes has no `global.crypto`). **Exception:** tracking ids are `track:{YYYY-MM-DD}:{employeeId}` (device-local day; not email).
 5. **Timestamps:** unix **seconds** in `audit.*.dt` and all `*Dt` fields. Do not pass them to SQL++ millis date functions.
 6. **Auth:** [AUTH.md](./AUTH.md). Default **basic**; SG **username = email** (README example). OIDC: ID token → `POST /_session` Bearer → **session** (TTL). Do not put the JWT on the replicator by default. Keychain only. Honor expiry; pre-refresh; 401/404 → re-auth. One person per device.
-7. **Today list:** inbound `status NOT IN ('cancelled','superseded')`, `scheduled.day = device-local date of startDt`, `ORDER BY scheduled.startDt DESC LIMIT 20 OFFSET n`, keyed by **`assignedTo.employeeId`**. Page 0 **UNION ALL** active `workordersout` in `assigned|in_progress|blocked` (**no** `day` filter). Collapse one row per `source.id`, preferring outbound. Active outbound unpaged. Rows carry `openId` + `openCollection`; **tap is one KV get**. Live query on inbound page 0 only; re-run active-outbound on those callbacks. **Reassigned** badge when inbound assignee ≠ session but a local outbound exists.
+7. **Today list:** inbound `status != 'cancelled' AND status != 'superseded'`, `scheduled.day = device-local date of startDt`, `ORDER BY scheduled.startDt DESC` with numeric `LIMIT 20 OFFSET n`, keyed by **`assignedTo.employeeId`**. Page 0 merge of active `workordersout` (`assigned` OR `in_progress` OR `blocked`, **no** `day` filter). Collapse one row per `source.id`, preferring outbound. Active outbound unpaged. Rows carry `openId` + `openCollection`; **tap is one KV get**. Live query on inbound **and** outbound page 0; coalesce. **Reassigned** badge when inbound assignee ≠ session but a local outbound exists. Clock + seconds countdown on the Today header.
 8. **Photos:** CBL blobs on **working** `workordersout` or `orders` only, **top-level** keys `photo:<id>` / `photo:<id>:thumb`; `photos[]` is metadata; cap **20**; stage in `local.tmp`.
-9. **Tasks:** primary `tasks` collection (instances + templates); optional embedded `checklist[]`. Operation statuses `pending|in_progress|done|skipped`. Task statuses `open|done|skipped`.
+9. **Tasks:** primary `tasks` collection (instances + templates); optional embedded `checklist[]`. Operation statuses `pending|in_progress|done|skipped` on the document. Field UI toggles **done ↔ pending** (outline vs filled button). Task statuses `open|done|skipped`.
 10. **Notes:** `notes` collection while the outbound is **editable**. Frozen jobs: no note writes — `CreateAmendment` or `SendMessage`.
 11. **`tmp` never synced** (scope `local` + omitted from replicator allow-list) + 24 h expiration.
 12. **Vector search:** optional `embedding.clip512` (**512-d locked**); **do not write** empty arrays; do not generate embeddings until **PR-13**; UI requires `VECTOR_SEARCH_ENABLED && nativeVectorApi`.
 13. **Map:** MapLibre + OpenFreeMap when online; **pins from CBL work offline**; basemap is not fully offline in v1.
 14. **Encryption:** EE AES-256; **string** key (base64 of 32 random bytes) in OS keychain; `setDirectory(FileSystem.getDefaultPath())`. RN encrypted DBs are not portable to other SDKs.
-15. **Platforms:** iOS 15.1+ and Android API 24+ only; Expo SDK **52**, RN **0.76.6**, Node ≥ 20; development builds; New Architecture on. RN binding **[Fujio-Turner/cbl-reactnative](https://github.com/Fujio-Turner/cbl-reactnative)** (vector index). Native **CBL 4.x EE** is the target on that fork. Official `@couchbase/couchbase-lite-react-native` 1.1 is **not** SoT. Lab/testing **does not require** an EE license.
+15. **Platforms:** iOS 15.1+ and Android API 24+ only; Expo SDK **52**, RN **0.76.9**, Node ≥ 20; development builds; New Architecture on. RN binding **[Fujio-Turner/cbl-reactnative](https://github.com/Fujio-Turner/cbl-reactnative)** (vector index). Native **CBL 4.x EE** is the target on that fork. Official `@couchbase/couchbase-lite-react-native` 1.1 is **not** SoT. Lab/testing **does not require** an EE license. Optional **Large screen optimize** (Profile) for thumb reach; default off = full-width buttons.
 16. **Two collections for work orders**, not a `direction` field; not in-place mutation.
 17. **`scheduled.day`:** device-local calendar date of `scheduled.startDt` (closed former OQ 5).
 18. **CLIP dimension 512** (`embedding.clip512`); changing later is a migration (closed former OQ 6).
@@ -2255,8 +2268,8 @@ Closed for v1: `scheduled.day` is device-local; CLIP **512**; tech may cancel ou
 ## References
 
 - [Couchbase Lite React Native (official)](https://docs.couchbase.com/couchbase-lite/current/hybrid/react.html)
-- [cbl-reactnative.dev](https://cbl-reactnative.dev/) — plugin **1.1** wraps native CBL **3.3.3** EE; databases, documents, blobs, SQL++, live queries, FTS, remote sync, scopes
-- [npm `@couchbase/couchbase-lite-react-native`](https://www.npmjs.com/package/@couchbase/couchbase-lite-react-native) **1.1.x**
+- [cbl-reactnative.dev](https://cbl-reactnative.dev/) — official plugin docs (databases, documents, blobs, SQL++, live queries, FTS, remote sync, scopes). **This repo uses the Fujio-Turner fork**, not 1.1 as SoT.
+- [Fujio-Turner/cbl-reactnative](https://github.com/Fujio-Turner/cbl-reactnative) `feat/vector-search-support`
 - [expo-cbl-travel](https://github.com/couchbase-examples/expo-cbl-travel)
 - [CBL vector search (native EE, not RN)](https://docs.couchbase.com/couchbase-lite/current/java/working-with-vector-search.html)
 - [OpenFreeMap](https://openfreemap.org/quick_start/)

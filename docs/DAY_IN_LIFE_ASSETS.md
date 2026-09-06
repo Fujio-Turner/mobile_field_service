@@ -6,8 +6,8 @@
 | Mode | `assets` |
 | Repo | [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service) |
 | Author | Fujio-Turner / mobile_field_service |
-| Date | 2026-09-04 |
-| Status | Draft |
+| Date | 2026-09-05 |
+| Status | Implemented on the demo seed (Jon Hale `E-4412`) |
 | Index | [DAY_IN_LIFE.md](./DAY_IN_LIFE.md) |
 | Architecture | [DESIGN.md](./DESIGN.md) |
 
@@ -37,8 +37,8 @@ Not the center of this day: `orders`, `rates`, `taxes` (those are customer/sales
 | When | Route | Collection(s) | Operation(s) |
 | --- | --- | --- | --- |
 | Login | `app/login.tsx` | — | `LoginRemote` |
-| Today | `app/(tabs)/index.tsx` | `workordersin`, `workordersout` | `ListTodayWork` |
-| Job | `app/wo/in/[id]` / `out/[id]` | KV | `GetWorkOrderIn` / `StartWork` |
+| Today | `app/(tabs)/index.tsx` | `workordersin`, `workordersout`, `orders` | `ListTodayWork`, `ListTodayOrders`, clock |
+| Job | `app/wo/in/[id]` / `out/[id]` | KV | `GetWorkOrderIn` / `StartWork`; ops/checklist `DoneToggle` |
 | Assets | `app/(tabs)/map.tsx` | `assets` | `QueryAssetsInBBox`, `LinkAssetToWork` |
 | Parts | `app/(tabs)/inventory.tsx` | `inventory` txs | `ConsumeInventoryOnWork` |
 | Chat | `app/(tabs)/chat.tsx` | `messages` | `SendMessage` |
@@ -68,21 +68,21 @@ sequenceDiagram
 
 ### 06:40 — Login and Today
 
-Today is **work orders**, not orders. Rows include `kind` chips: Inspect / Repair / Move.
+Demo login (`EXPO_PUBLIC_AUTH_STRATEGY=demo`) maps to Jon. Today is **work orders** (plus an Orders section). The header is a **live clock** and a seconds countdown (next start / late-by / end of day). Rows show site, summary, priority stripe, time.
 
-Seed board:
+v1 seed board (device-local `scheduled.day`):
 
 | Number | Kind | Asset | Badge |
 | --- | --- | --- | --- |
-| WO-10480 | inspect | Pump P-12 | — |
+| WO-10470 | inspect | Pump P-12 | — |
 | WO-10482 | repair | Pump P-12 | — |
 | WO-10490 | move | Motor M-7 yard → Riverside | — |
-| WO-10471 | repair | yesterday, still `in_progress` | Started |
-| WO-10460 | repair | inbound now Priya | **Reassigned** |
 
-### 07:00 — Inspect (WO-10480)
+Tap a row → inbound KV. **Start work** is the filled button in the **bottom dock** (not a row cycle). Hermes has no `crypto`; the new `woout:` id uses expo-crypto.
 
-Tap → inbound KV (read-only kit, `assetIds: [ast:P-12]`). **Start work** copies to `woout:`. On the map, pin P-12 from local `assets` (company asset, `ownership: company`). Checklist: vibration, seals, nameplate. Photos as blobs on **outbound**. `CompleteWork` freezes that copy; `SubmitWork` queues push. Asset master is **not** edited — findings live on the WO. Backend may spawn a repair WO from the completed inspect.
+### 07:00 — Inspect (WO-10470)
+
+Tap → inbound KV (read-only kit). **Start work** copies to `woout:`. Operations (**Site check**, **Close out**) and checklist (**PPE on**) are **outline buttons**; tap fills them (`status: done` / `done: true`). On the map, pins come from local `assets`. Photos as blobs on **outbound**. `CompleteWork` (dock) freezes that copy; `SubmitWork` queues push. Asset master is **not** edited — findings live on the WO.
 
 ### 07:45 — Repair (WO-10482)
 

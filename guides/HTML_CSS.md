@@ -44,6 +44,8 @@ Light theme first. Dark: follow `useColorScheme` later; do not invert ad hoc in 
 - **Safe areas:** Expo Router + `SafeAreaView` / `react-native-safe-area-context`. Never draw under the notch or home indicator.
 - **Lists:** `FlatList` / `FlashList`. Today is infinite scroll (`LIMIT`/`OFFSET`) — do not load the whole day into a `ScrollView` of Views.
 - **Editors:** keyboard-aware scroll (`KeyboardAvoidingView` / `KeyboardStickyView`). Primary CTA pinned above the keyboard when possible.
+- **Debug:** Profile → Settings / debug. Long form; keep tokens; do not dump secrets.
+- **Headers:** nested stacks show **Back** (left; right if Left hand). Back pops the screen you came from; empty stack → Today. Touch target ≥ 44 pt.
 - **Badges:** Started, Reassigned, Amendment, Frozen — text + color token, not color-only.
 
 ---

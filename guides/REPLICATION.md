@@ -14,9 +14,9 @@ Binding: **[Fujio-Turner/cbl-reactnative](https://github.com/Fujio-Turner/cbl-re
 ## TL;DR
 
 1. **One** `CblReactNativeEngine` per process (travel sample singleton).
-2. **One** continuous `PUSH_AND_PULL` replicator.
-3. Collections passed as `CollectionConfiguration[]` into `new ReplicatorConfiguration(configs, endpoint)` then `await Replicator.create(config)` — not deprecated `addCollection`.
-4. **Explicit allow-list** of `field.*`. **Never** `local.tmp`.
+2. **Schema is build-time** (`EXPO_PUBLIC_REPL_SCHEMA`, not Profile): **`simple`** (default) = one continuous `PUSH_AND_PULL` replicator for all `field.*` except `tmp`. **`oneshot`** = one-shot `workordersin`+`orders` first, then one-shot all `field.*` every `EXPO_PUBLIC_REPL_ONESHOT_SEC` (default 300) and on foreground.
+3. `new ReplicatorConfiguration(endpoint)` then **`addCollection(col, CollectionConfig)`** per allow-listed `field.*` collection (`CollectionConfig` from the Fujio-Turner fork). **Never** `local.tmp`.
+4. Each collection config takes a **`channels: string[]`**. **Default empty** — do not call `setChannels`; pull every channel the SG session can access. A non-empty list is a pull filter for lab/debug.
 5. Authenticate with **`SessionAuthenticator`** after `POST /{db}/_session`. Honor `expires`. Do not put a fat OIDC JWT on every request.
 6. Push filters are **pure** functions with `"show source"`.
 7. **401 / 404 / 10401** → replicator **STOPPED** (no retry). Stop, refresh session, recreate replicator, `start(false)` (do not reset checkpoint).
@@ -31,8 +31,8 @@ Travel sample:
 - `new CblReactNativeEngine()` once
 - `FileSystem.getDefaultPath()` + `DatabaseConfiguration.setDirectory`
 - `createCollection` per linked SG collection
-- `collections.map(col => new CollectionConfiguration(col))`
-- `ReplicatorConfiguration(collectionConfigs, URLEndpoint)`
+- `new CollectionConfig(channels | null, null)` + `setPushFilter`
+- `new ReplicatorConfiguration(endpoint)` + `addCollection(col, config)`
 - `setContinuous(true)`, `Replicator.create`, `start`
 
 **We change:**
@@ -49,15 +49,18 @@ Travel sample:
 ```ts
 const endpoint = new URLEndpoint(sgUrl); // wss://host:4984/mfs
 const session = new SessionAuthenticator(sessionId, cookieName ?? 'SyncGatewaySession');
+const config = new ReplicatorConfiguration(endpoint);
 
-const configs = fieldCollections.map((col) => {
-  const cc = new CollectionConfiguration(col);
+for (const col of fieldCollections) {
+  // channels default [] → pass null so SG grants decide the pull set
+  const channels = channelsFor(col.name); // string[]
+  const cc = new CollectionConfig(channels.length ? channels : null, null);
   cc.setPushFilter(pushFilterFor(col.name)); // "show source" pure fn
-  return cc;
-});
+  if (channels.length) cc.setChannels(channels);
+  config.addCollection(col, cc);
+}
 // do not include local.tmp
 
-const config = new ReplicatorConfiguration(configs, endpoint);
 config.setAuthenticator(session);
 config.setContinuous(true);
 config.setAcceptOnlySelfSignedCerts(false); // production
@@ -147,6 +150,19 @@ function trackingPushFilter(_document: any, _flags: any): boolean {
 
 Channels: `emp:{employeeId}` (SG username is **email**). See DESIGN matrix.
 
+### Pull channel lists (optional)
+
+Each `CollectionConfig` has `channels: string[]`.
+
+| Value | Pull behaviour |
+| --- | --- |
+| `[]` / omitted (**default**) | All channels the session user can access |
+| `['emp:E-4412']` | Only docs in that channel (SG still ignores channels the user cannot read) |
+
+Do **not** put `tmp` in the map. Persist lab overrides in Keychain `mfs.sync.collectionChannels`. Optional env `EXPO_PUBLIC_SG_CHANNELS` (comma-separated) applies to every field collection only when nothing is stored.
+
+Edit and restart from **Profile → Settings / debug**.
+
 ---
 
 ## 3. Session, not Basic-on-the-wire (default)
@@ -171,10 +187,34 @@ Pre-refresh ~5 minutes before `expires` ([AUTH.md](../docs/AUTH.md)).
 | 3 IDLE | Last success time |
 | 4 BUSY | `progress.completed/total` |
 
-**Permanent (no retry):** 401, 404.  
-**Transient (retry):** 408, 429, 500–504, 1001 DNS.
+**Permanent (replicator STOPPED):** 401, 404, 10401.  
+**Transient (retry):** 408, 429, 500–504, 1001 DNS.  
+**Document-level (do not log the tech out):** 409 conflict, 404 on a single doc, 413 payload, 403 forbidden.
+
+| HTTP / CBL | Class | Listener | Action |
+| --- | --- | --- | --- |
+| 400, 405, 422 | client | status + doc | log `mfs.repl.http_client` / `doc_client` |
+| 401, 10401 | auth | status | STOPPED → refresh session |
+| 403 | forbidden | status + doc | log; do not wipe the session |
+| 404 | not_found | **status** = missing db (fatal); **doc** = missing/purged doc | |
+| 408 | timeout | status | OFFLINE, CBL retries |
+| 409 | conflict | **doc** (usual) | log `mfs.repl.conflict` + collection policy; CBL default resolver |
+| 413 | payload | doc | log; compress photos, do not retry that blob as-is |
+| 429 | rate_limit | status | OFFLINE, CBL retries |
+| 500–504 | transient | status | OFFLINE |
+| 1006 / 11006 / 5011 | tls | status | fatal TLS |
 
 TLS: `ws` vs `wss` mismatch → 11006/1006. Unknown/self-signed on `wss` → 5011. Fix URL/certs; do not log the cookie.
+
+### Conflict resolvers (per collection)
+
+`src/sync/conflicts.ts` is a **switch/case per `field.*` collection**. Today every case returns CBL **default** (`null` from the `"show source"` hook). Each case documents what a custom resolver *could* do (e.g. tracking map union, `workordersout` by `audit.up.dt`). Wired via `CollectionConfig.setConflictResolver` when the native API exists.
+
+### Completed / pending
+
+- **Pending:** `pendingDocumentIdsInCollection` when present, else COUNT `ready_to_push`.
+- **Completed this run:** document listener counters `docsPushOk` / `docsPullOk` (and failed / conflict).
+- **Progress:** CBL `progress.completed/total` while BUSY.
 
 ---
 
@@ -191,10 +231,26 @@ TLS: `ws` vs `wss` mismatch → 11006/1006. Unknown/self-signed on `wss` → 501
 
 ## 6. Lifecycle
 
+### Simple (default)
+
 - **Foreground:** if replicator null (iOS killed) or STOPPED without a fatal config error, recreate + `start(false)`.
 - **Background:** stop or let the OS freeze sockets; always restart on active.
+
+### Oneshot
+
+- **Login / first foreground:** one-shot `PUSH_AND_PULL` for `workordersin` + `orders` only (`setContinuous(false)`). Get today’s board.
+- **After that shot IDLE/STOPPED without auth/TLS error:** mark bootstrap done. Do **not** keep a socket open.
+- **Then:** one-shot **all** `field.*` except `tmp` (so outbound, chat, tracking, catalogs actually move) on:
+  - app **foreground**
+  - every `EXPO_PUBLIC_REPL_ONESHOT_SEC` seconds (default **300**) while the process is running
+- Overlapping shots are skipped. Foreground within 5 s of the last shot is skipped (Provider + AppState both fire on mount).
+- Interval shots wait until bootstrap finished.
+
+Both schemas:
+
 - **Logout:** `stop()`, close DB, delete auth keys.
 - **Do not** `start(true)` (reset checkpoint) unless an operator action says “full resync”.
+- Not configurable on Profile. Debug **shows** the compiled schema.
 
 ---
 
@@ -218,7 +274,10 @@ Capella: same `wss` replicator; travel sample’s App Endpoint + collection **li
 - [x] Directory + encryption key from Keychain
 - [x] `tmp` not in replicator configs
 - [x] `"show source"` on every push filter
+- [x] `channels: string[]` per collection; default empty (no `setChannels`)
 - [x] SessionAuthenticator + stored `expires`
 - [x] 401 path tested
 - [x] `start(false)`
 - [x] No password in `app.json` (unlike the travel sample extra field)
+- [x] Profile **Settings / debug**: versions, DB path/name, replicator URL/status/last success, collection counts, start/stop/restart
+- [x] Build-time `EXPO_PUBLIC_REPL_SCHEMA=simple|oneshot` (oneshot interval `EXPO_PUBLIC_REPL_ONESHOT_SEC`)

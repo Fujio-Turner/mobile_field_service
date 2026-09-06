@@ -8,9 +8,11 @@ import { seedIfNeeded } from './seed';
 
 export type QueryLike = {
   execute: () => Promise<unknown>;
-  addChangeListener?: (cb: (change: { error?: string; results?: unknown }) => void) => Promise<unknown>;
+  addChangeListener?: (cb: (change: unknown) => void) => Promise<unknown>;
   removeChangeListener?: (token: unknown) => Promise<void>;
   setParameters?: (p: unknown) => void;
+  addParameter?: (p: unknown) => void;
+  parameters?: unknown;
   explain?: () => Promise<string>;
 };
 
@@ -19,18 +21,32 @@ export type CblDatabase = {
   createCollection: (n: string, s: string) => Promise<unknown>;
   collection: (n: string, s: string) => Promise<unknown>;
   createQuery: (sql: string) => QueryLike;
+  getPath?: () => Promise<string>;
 };
 
 export type OpenedDatabase = {
   name: string;
+  directory: string;
+  path: string | null;
   close: () => Promise<void>;
 };
 
-let opened: { db: CblDatabase; name: string } | null = null;
+export type OpenedDatabaseMeta = {
+  name: string;
+  directory: string;
+  path: string | null;
+};
+
+let opened: { db: CblDatabase; name: string; directory: string; path: string | null } | null = null;
 const collectionCache = new Map<string, unknown>();
 
 export function getOpenedDatabase(): CblDatabase | null {
   return opened?.db ?? null;
+}
+
+export function openedDatabaseMeta(): OpenedDatabaseMeta | null {
+  if (!opened) return null;
+  return { name: opened.name, directory: opened.directory, path: opened.path };
 }
 
 export function resetCollectionCache(): void {
@@ -62,7 +78,12 @@ export async function openFieldDatabase(employeeId: string): Promise<OpenedDatab
   const hex = await sha256Hex(employeeId);
   const name = dbNameForUser(employeeId, hex);
   if (opened && opened.name === name) {
-    return { name, close: () => closeFieldDatabase() };
+    return {
+      name: opened.name,
+      directory: opened.directory,
+      path: opened.path,
+      close: () => closeFieldDatabase(),
+    };
   }
   if (opened) {
     await opened.db.close();
@@ -85,8 +106,15 @@ export async function openFieldDatabase(employeeId: string): Promise<OpenedDatab
   await db.createCollection(TMP_COLLECTION, LOCAL_SCOPE);
   await applyIndexes(db);
   await seedIfNeeded(db);
-  opened = { db, name };
-  return { name, close: () => closeFieldDatabase() };
+  let path: string | null = null;
+  try {
+    if (typeof db.getPath === 'function') path = await db.getPath();
+  } catch {
+    path = null;
+  }
+  if (!path) path = `${directoryPath.replace(/\/$/, '')}/${name}.cblite2`;
+  opened = { db, name, directory: directoryPath, path };
+  return { name, directory: directoryPath, path, close: () => closeFieldDatabase() };
 }
 
 export async function closeFieldDatabase(): Promise<void> {
