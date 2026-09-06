@@ -8,6 +8,7 @@ import { syncSnapshot, type SyncSnapshot } from '@/src/ops/syncSnapshot';
 import { getTrackingDay, getTrackingLastNDays } from '@/src/ops/tracking';
 import { refreshPendingCount } from '@/src/sync/replicator';
 import { useAuth } from '@/src/session/AuthContext';
+import { workModesForEmployee } from '@/src/session/workModes';
 import { NativeBanner } from '@/src/ui/NativeBanner';
 import { useHandedness, useThumbActionStyle } from '@/src/ui/HandednessContext';
 import { theme } from '@/src/theme';
@@ -45,6 +46,7 @@ export default function ProfileScreen() {
       <Text style={styles.name}>{session?.username ?? '—'}</Text>
       <Text style={styles.muted}>{session?.email ?? '—'}</Text>
       <Text style={styles.muted}>Employee {session?.employeeId ?? '—'}</Text>
+      <Text style={styles.muted}>Modes {workModesForEmployee(session?.employeeId).join(', ')}</Text>
       <Text style={styles.muted}>Strategy: {session?.strategy ?? '—'}</Text>
       <Text style={styles.muted}>Database: {dbName ?? status}</Text>
       <Text style={styles.muted}>Version {appVersion()}</Text>

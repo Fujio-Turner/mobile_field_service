@@ -89,9 +89,14 @@ Prefix `mfs.`. Keep a closed set; add in the same PR as the code.
 | `mfs.repl.auth_fail` | 401 / 404 / 10401 |
 | `mfs.repl.doc` | Document listener: collection + id + isPush + errCode (no body) |
 | `mfs.wo.start` / `mfs.wo.complete` / `mfs.wo.amend` | Work-order ops |
+| `mfs.wo.inbound_apply` / `mfs.wo.inbound_drop` | Inbound kit merge / hide untouched cancelled inbound |
 | `mfs.order.create` / `mfs.order.submit` | Orders |
 | `mfs.blob.commit` | Photo commit: byteLength only |
 | `mfs.track.point` | RecordTrackPoint: `docId` + `ts` + result only — **never** the `tracking` map |
+| `mfs.dev.simulate_inbound` | Lab-only dispatch kit simulate (Settings / debug) |
+| `mfs.repl.skip` | Replicator not started (demo, native missing) |
+| `mfs.db.open` | DB opened; `encryption` true/false only — **never** the key |
+| `mfs.db.open_fail` / `mfs.db.wipe` | Open failed (often encrypt mismatch); local file deleted then re-open |
 
 ---
 

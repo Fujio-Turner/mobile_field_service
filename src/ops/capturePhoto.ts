@@ -1,9 +1,9 @@
 import type { StartSession } from './copyInbound';
 import { PHOTO_JPEG_QUALITY, PHOTO_LONG_EDGE } from './photoKeys';
-import { commitPhoto, stagePhoto } from './photos';
+import { commitPhotoOn, stagePhotoOn } from './photos';
 
-export async function captureAndCommitPhoto(
-  wooutId: string,
+export async function captureAndCommitOn(
+  target: { collection: 'workordersout' | 'orders'; id: string },
   session: StartSession,
 ): Promise<void> {
   const ImagePicker = require('expo-image-picker') as {
@@ -37,9 +37,17 @@ export async function captureAndCommitPhoto(
   } catch {
     // manipulator missing — keep camera uri (Expo Go)
   }
-  const tmpId = await stagePhoto(wooutId, uri, session);
-  await commitPhoto(wooutId, tmpId, session, {
+  const tmpId = await stagePhotoOn(target, uri, session);
+  await commitPhotoOn(target, tmpId, session, {
     kind: 'during',
     byteLength: shot.assets[0].fileSize,
   });
+}
+
+export async function captureAndCommitPhoto(wooutId: string, session: StartSession): Promise<void> {
+  await captureAndCommitOn({ collection: 'workordersout', id: wooutId }, session);
+}
+
+export async function captureAndCommitOrderPhoto(ordId: string, session: StartSession): Promise<void> {
+  await captureAndCommitOn({ collection: 'orders', id: ordId }, session);
 }

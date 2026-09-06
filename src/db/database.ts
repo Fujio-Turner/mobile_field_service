@@ -1,4 +1,6 @@
+import { isDbEncryptionEnabled } from '../dev/dbEncryption';
 import { dbNameForUser } from '../ids';
+import { log } from '../log/logger';
 import { getOrCreateDbKey, sha256Hex } from '../session/dbKey';
 import { applyIndexes } from './applyIndexes';
 import { FIELD_COLLECTIONS, FIELD_SCOPE, LOCAL_SCOPE, TMP_COLLECTION } from './collections';
@@ -91,13 +93,35 @@ export async function openFieldDatabase(employeeId: string): Promise<OpenedDatab
     resetCollectionCache();
   }
 
-  const key = await getOrCreateDbKey(employeeId);
   const fileSystem = new FileSystem();
   const directoryPath = await fileSystem.getDefaultPath();
+  const encrypt = await isDbEncryptionEnabled();
+  try {
+    return await openAt(name, directoryPath, encrypt, employeeId, Database, DatabaseConfiguration);
+  } catch (err) {
+    log.warn('mfs.db.open_fail', { op: 'OpenFieldDatabase', encryption: encrypt, err });
+    await closeFieldDatabase();
+    await deleteLocalDatabase(name, directoryPath);
+    return openAt(name, directoryPath, encrypt, employeeId, Database, DatabaseConfiguration);
+  }
+}
+
+async function openAt(
+  name: string,
+  directoryPath: string,
+  encrypt: boolean,
+  employeeId: string,
+  Database: new (name: string, config: unknown) => CblDatabase & { open: () => Promise<void> },
+  DatabaseConfiguration: new () => {
+    setDirectory: (p: string) => void;
+    setEncryptionKey: (k: string) => void;
+  },
+): Promise<OpenedDatabase> {
   const config = new DatabaseConfiguration();
   config.setDirectory(directoryPath);
-  config.setEncryptionKey(key);
-
+  if (encrypt) {
+    config.setEncryptionKey(await getOrCreateDbKey(employeeId));
+  }
   const db = new Database(name, config);
   await db.open();
   for (const col of FIELD_COLLECTIONS) {
@@ -114,7 +138,45 @@ export async function openFieldDatabase(employeeId: string): Promise<OpenedDatab
   }
   if (!path) path = `${directoryPath.replace(/\/$/, '')}/${name}.cblite2`;
   opened = { db, name, directory: directoryPath, path };
+  log.info('mfs.db.open', { op: 'OpenFieldDatabase', encryption: encrypt });
   return { name, directory: directoryPath, path, close: () => closeFieldDatabase() };
+}
+
+async function deleteLocalDatabase(name: string, directory: string): Promise<void> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { Database } = require('cbl-reactnative') as {
+      Database: { deleteDatabase?: (n: string, dir: string) => Promise<void> };
+    };
+    if (typeof Database.deleteDatabase === 'function') {
+      await Database.deleteDatabase(name, directory);
+      log.info('mfs.db.wipe', { op: 'DeleteDatabase' });
+    }
+  } catch (err) {
+    log.warn('mfs.db.wipe_fail', { op: 'DeleteDatabase', err });
+  }
+}
+
+/** Close, optionally wipe the file, open again. Lab encryption toggle. */
+export async function reopenFieldDatabase(
+  employeeId: string,
+  opts: { wipe?: boolean } = {},
+): Promise<OpenedDatabase> {
+  const hex = await sha256Hex(employeeId);
+  const name = dbNameForUser(employeeId, hex);
+  let directory = opened?.directory ?? null;
+  await closeFieldDatabase();
+  if (opts.wipe) {
+    if (!directory) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { FileSystem } = require('cbl-reactnative') as {
+        FileSystem: new () => { getDefaultPath: () => Promise<string> };
+      };
+      directory = await new FileSystem().getDefaultPath();
+    }
+    await deleteLocalDatabase(name, directory);
+  }
+  return openFieldDatabase(employeeId);
 }
 
 export async function closeFieldDatabase(): Promise<void> {

@@ -5,6 +5,7 @@ How this app syncs with Sync Gateway / Capella App Services.
 **Official API:** [cbl-reactnative.dev — Remote sync](https://cbl-reactnative.dev/DataSync/remote-sync-gateway)  
 **Worked Expo sample:** [couchbase-examples/expo-cbl-travel](https://github.com/couchbase-examples/expo-cbl-travel) (`services/database.service.ts`)  
 **Auth / session TTL:** [docs/AUTH.md](../docs/AUTH.md)  
+**Env / debug channel keys:** [SETTINGS.md](SETTINGS.md)  
 **Allow-list / push filters:** [docs/DESIGN.md](../docs/DESIGN.md)
 
 Binding: **[Fujio-Turner/cbl-reactnative](https://github.com/Fujio-Turner/cbl-reactnative)** (`import { … } from 'cbl-reactnative'`). The travel sample imports `@couchbase/couchbase-lite-react-native` — same API shape; we do **not** use official 1.1 as SoT (no vector).

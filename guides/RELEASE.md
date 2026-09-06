@@ -9,6 +9,7 @@ Use this every time you cut a store / TestFlight / Play internal build. Replace 
 | [LOGGING.md](LOGGING.md) | No secrets/PII; LogSinks not deprecated API |
 | [HTML_CSS.md](HTML_CSS.md) | Theme tokens; phone-first |
 | [REPLICATION.md](REPLICATION.md) | Session TTL; `tmp` not in replicator; 401 path |
+| [SETTINGS.md](SETTINGS.md) | Env defaults still match `.env.example` |
 
 ---
 
@@ -26,7 +27,7 @@ Example: `0.1.0+12`. Read at runtime from `expo-application` (`nativeApplication
 
 ### Sources of truth (bump all of these)
 
-Until the app exists, this is the contract. After PR-01, these files are real.
+Bump these files on every ship. The app is real (`app.json` `expo.version` is what Profile shows).
 
 | File | Field | Example |
 | --- | --- | --- |

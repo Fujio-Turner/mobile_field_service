@@ -2,6 +2,7 @@ import { nowSec, stampAuditCreate, stampHistory } from '../audit';
 import { newDocId } from '../ids';
 import { appVersion } from '../version';
 import { listChildrenMemory, loadChild, queryChildRowsIfNative, saveChild } from './childStore';
+import { resolveChatRefs } from './chatRefs';
 import type { StartSession } from './copyInbound';
 
 export class ChatError extends Error {
@@ -19,6 +20,10 @@ export type MessageItem = {
   fromEmployeeId: string;
   workOrderInId?: string;
   workOrderOutId?: string;
+  workOrderNumber?: string;
+  orderId?: string;
+  orderNumber?: string;
+  toEmployeeIds?: string[];
   readyToPush: boolean;
   createdAt: number;
 };
@@ -47,14 +52,14 @@ export function otherDmEmployeeId(threadId: string, me: string): string | undefi
 }
 
 const MSGS_THREAD_SQL = `
-SELECT META().id AS id, threadId, kind, body, workOrderInId, workOrderOutId, readyToPush, audit.cr.dt AS createdAt, \`from\`.employeeId AS fromEmployeeId
+SELECT META().id AS id, threadId, kind, body, workOrderInId, workOrderOutId, workOrderNumber, orderId, orderNumber, readyToPush, audit.cr.dt AS createdAt, \`from\`.employeeId AS fromEmployeeId
 FROM field.messages
 WHERE type = 'message' AND threadId = $threadId
 ORDER BY audit.cr.dt ASC
 `;
 
 const MSGS_ALL_SQL = `
-SELECT META().id AS id, threadId, kind, body, workOrderInId, workOrderOutId, readyToPush, audit.cr.dt AS createdAt, \`from\`.employeeId AS fromEmployeeId
+SELECT META().id AS id, threadId, kind, body, workOrderInId, workOrderOutId, workOrderNumber, orderId, orderNumber, readyToPush, audit.cr.dt AS createdAt, \`from\`.employeeId AS fromEmployeeId
 FROM field.messages
 WHERE type = 'message'
 `;
@@ -89,6 +94,10 @@ export function parseMessage(id: string, raw: Record<string, unknown>): MessageI
     fromEmployeeId: String(from.employeeId ?? ''),
     workOrderInId: raw.workOrderInId != null ? String(raw.workOrderInId) : undefined,
     workOrderOutId: raw.workOrderOutId != null ? String(raw.workOrderOutId) : undefined,
+    workOrderNumber: raw.workOrderNumber != null ? String(raw.workOrderNumber) : undefined,
+    orderId: raw.orderId != null ? String(raw.orderId) : undefined,
+    orderNumber: raw.orderNumber != null ? String(raw.orderNumber) : undefined,
+    toEmployeeIds: Array.isArray(raw.toEmployeeIds) ? raw.toEmployeeIds.map(String) : undefined,
     readyToPush: raw.readyToPush !== false,
     createdAt: Number(audit?.cr?.dt ?? 0),
   };
@@ -105,6 +114,9 @@ export async function listMessages(threadId: string): Promise<MessageItem[]> {
         body: row.body,
         workOrderInId: row.workOrderInId,
         workOrderOutId: row.workOrderOutId,
+        workOrderNumber: row.workOrderNumber,
+        orderId: row.orderId,
+        orderNumber: row.orderNumber,
         readyToPush: row.readyToPush,
         from: { employeeId: row.fromEmployeeId },
         audit: { cr: { dt: row.createdAt } },
@@ -127,6 +139,9 @@ async function loadAllMessages(): Promise<MessageItem[]> {
         body: row.body,
         workOrderInId: row.workOrderInId,
         workOrderOutId: row.workOrderOutId,
+        workOrderNumber: row.workOrderNumber,
+        orderId: row.orderId,
+        orderNumber: row.orderNumber,
         readyToPush: row.readyToPush,
         from: { employeeId: row.fromEmployeeId },
         audit: { cr: { dt: row.createdAt } },
@@ -190,15 +205,21 @@ export async function sendMessage(
 ): Promise<string> {
   const body = input.body.trim();
   if (!body) throw new ChatError('empty');
+  const refs = await resolveChatRefs(body, session.employeeId);
   let threadId = input.threadId;
   let toEmployeeIds: string[] | undefined;
-  let workOrderInId = input.workOrderInId;
+  let workOrderInId = input.workOrderInId ?? refs.workOrderInId;
+  let workOrderOutId = input.workOrderOutId ?? refs.workOrderOutId;
   if (input.kind === 'direct') {
-    const to = input.toEmployeeId?.trim() || (threadId ? otherDmEmployeeId(threadId, session.employeeId) : undefined);
+    const mentioned = refs.toEmployeeIds[0];
+    const to =
+      input.toEmployeeId?.trim() ||
+      (threadId ? otherDmEmployeeId(threadId, session.employeeId) : undefined) ||
+      mentioned;
     if (!to || to === session.employeeId) throw new ChatError('unknown_employee');
     if (!(await employeeExists(to))) throw new ChatError('unknown_employee');
     threadId = threadId ?? dmThreadId(session.employeeId, to);
-    toEmployeeIds = [to];
+    toEmployeeIds = [...new Set([to, ...refs.toEmployeeIds])];
   } else {
     workOrderInId = workOrderInId ?? (threadId ? woinIdFromThread(threadId) : undefined);
     if (!threadId) {
@@ -206,7 +227,7 @@ export async function sendMessage(
       threadId = woThreadId(workOrderInId);
     }
     const dispatch = await dispatchEmployeeIds();
-    toEmployeeIds = dispatch.filter((emp) => emp !== session.employeeId);
+    toEmployeeIds = [...new Set([...dispatch.filter((emp) => emp !== session.employeeId), ...refs.toEmployeeIds])];
   }
   const ver = appVersion();
   const dt = nowSec();
@@ -223,7 +244,10 @@ export async function sendMessage(
     },
     body,
     workOrderInId,
-    workOrderOutId: input.workOrderOutId,
+    workOrderOutId,
+    workOrderNumber: refs.workOrderNumber,
+    orderId: refs.orderId,
+    orderNumber: refs.orderNumber,
     toEmployeeIds,
     readyToPush: true,
   };

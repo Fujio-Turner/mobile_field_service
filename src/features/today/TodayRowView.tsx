@@ -41,7 +41,10 @@ export const TodayRowView = memo(function TodayRowView({
     >
       <View style={[styles.rail, { backgroundColor: railColor(row.priority) }]} />
       <View style={styles.main}>
-        <Text style={styles.number}>{row.number}</Text>
+        <Text style={styles.number}>
+          {row.number}
+          {row.kind ? ` · ${row.kind}` : ''}
+        </Text>
         <Text style={styles.site} numberOfLines={1}>
           {row.siteName}
         </Text>

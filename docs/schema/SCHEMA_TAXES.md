@@ -89,3 +89,68 @@ Multiple `taxIds` on a line: apply in `stack` ascending, then `code`. Store the 
 **PULL only.** Push filter `return false`. Channel: `district:{id}` and/or `public`.
 
 Hard rule: saved orders display `lines[].lineTax` / `totals.taxTotal`, not a live join to `taxes.rateBps`.
+
+---
+
+## JSON Schema
+
+[JSON Schema 2020-12](https://json-schema.org/draft/2020-12/schema). Document body; id is `tax:<ULID>`.
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Fujio-Turner/mobile_field_service/docs/schema/taxes.json",
+  "title": "field.taxes",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["type", "audit", "code", "name", "rateBps", "active"],
+  "properties": {
+    "type": { "const": "tax" },
+    "audit": { "$ref": "#/$defs/audit" },
+    "code": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "rateBps": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Integer basis points. 630 = 6.30%."
+    },
+    "active": { "type": "boolean" },
+    "jurisdiction": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "country": { "type": "string" },
+        "region": { "type": "string" },
+        "city": { "type": "string" }
+      }
+    },
+    "compound": { "type": "boolean" },
+    "inclusive": { "type": "boolean" },
+    "effectiveFromDt": { "$ref": "#/$defs/unixSeconds" },
+    "effectiveToDt": { "$ref": "#/$defs/unixSeconds" },
+    "stack": { "type": "integer" }
+  },
+  "$defs": {
+    "unixSeconds": { "type": "integer", "minimum": 0 },
+    "auditStamp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dt", "ver", "by"],
+      "properties": {
+        "dt": { "$ref": "#/$defs/unixSeconds" },
+        "ver": { "type": "string" },
+        "by": { "type": "string" }
+      }
+    },
+    "audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cr", "up"],
+      "properties": {
+        "cr": { "$ref": "#/$defs/auditStamp" },
+        "up": { "$ref": "#/$defs/auditStamp" }
+      }
+    }
+  }
+}
+```

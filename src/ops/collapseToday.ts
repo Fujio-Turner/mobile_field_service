@@ -5,6 +5,7 @@ function inboundRow(hit: InboundHit, open: { openId: string; openCollection: Tod
     key: hit.id,
     sourceId: hit.id,
     number: hit.number,
+    kind: hit.kind,
     priority: hit.priority,
     status: hit.status,
     summary: hit.summary,
@@ -22,6 +23,7 @@ function outboundRow(hit: OutboundHit, badge: TodayRow['badge']): TodayRow {
     key: hit.id,
     sourceId: hit.sourceId || hit.id,
     number: hit.number,
+    kind: hit.kind,
     priority: hit.priority,
     status: hit.status,
     summary: hit.summary,
@@ -54,6 +56,7 @@ export function collapseTodayPage(input: {
 
   if (input.includeActiveOutbound) {
     for (const out of input.activeOutbound) {
+      if (out.dropped) continue;
       const sourceId = out.sourceId || out.id;
       const inboundHit = inboundById.get(sourceId);
       let badge: TodayRow['badge'] = 'started';

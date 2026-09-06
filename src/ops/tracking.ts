@@ -1,13 +1,19 @@
-import { nowSec, stampAuditCreate, stampAuditUpdate } from '../audit';
+import { nowSec, stampAuditCreate, stampAuditUpdate, type Audit } from '../audit';
+import { collectionOf, getOpenedDatabase, nativeDbAvailable } from '../db/database';
+import { memorySave } from '../db/memoryStore';
+import { saveJsonDoc } from '../db/saveJson';
 import { haversineM } from '../geo/haversine';
 import { deviceLocalDay, trackingDocId } from '../ids';
 import { log } from '../log/logger';
 import { recordMetric } from '../metrics';
 import { appVersion } from '../version';
-import { loadChild, saveChild } from './childStore';
+import { loadChild } from './childStore';
 import type { StartSession } from './copyInbound';
 
 export const TRACK_POINT_CAP = 4000;
+
+/** Keep each per-day crumb doc for 30 calendar days after its `day`. */
+export const TRACKING_TTL_DAYS = 30;
 
 export type TrackPointResult = 'recorded' | 'skipped' | 'capped';
 
@@ -17,10 +23,26 @@ export function trackPointTotals(): typeof totals {
   return { ...totals };
 }
 
+type TrackSkipCache = {
+  id: string;
+  last?: [number, number, number];
+  capped: boolean;
+};
+
+let skipCache: TrackSkipCache | null = null;
+
 export function resetTrackPointTotals(): void {
   totals.recorded = 0;
   totals.skipped = 0;
   totals.capped = 0;
+  skipCache = null;
+}
+
+function trackingPointCount(doc: Record<string, unknown>): number {
+  const n = Number(doc.pointCount);
+  if (Number.isFinite(n) && n >= 0) return n;
+  const map = doc.tracking as Record<string, TrackPoint> | undefined;
+  return map ? Object.keys(map).length : 0;
 }
 
 /** Log payload for a crumb write — never include the tracking map. */
@@ -54,8 +76,33 @@ export type TrackingDoc = {
   last?: [number, number, number];
   capped: boolean;
   tracking: Record<string, TrackPoint>;
+  pointCount?: number;
+  /** Unix seconds. Local midnight of `day` + 30 calendar days. */
+  expiresAt: number;
   audit: unknown;
 };
+
+/**
+ * Expire at local midnight of `day` plus 30 calendar days
+ * (Jan 15 → Feb 14 00:00 local — 30 days on the calendar including `day`).
+ */
+export function trackingExpiryDate(day: string): Date {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!m) throw new Error('tracking day must be YYYY-MM-DD');
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + TRACKING_TTL_DAYS);
+}
+
+export function trackingExpiresAtSec(day: string): number {
+  return Math.floor(trackingExpiryDate(day).getTime() / 1000);
+}
+
+export function trackingIsExpired(doc: Record<string, unknown>, now = nowSec()): boolean {
+  const stamped = Number(doc.expiresAt ?? 0);
+  if (stamped > 0) return stamped <= now;
+  const day = String(doc.day ?? '');
+  if (/^\d{4}-\d{2}-\d{2}$/.test(day)) return trackingExpiresAtSec(day) <= now;
+  return false;
+}
 
 export function buildEmptyTracking(input: {
   day: string;
@@ -75,9 +122,29 @@ export function buildEmptyTracking(input: {
       thresholdM: input.thresholdM,
       capped: false,
       tracking: {},
+      pointCount: 0,
+      expiresAt: trackingExpiresAtSec(input.day),
     },
     { by: input.session.username, ver: input.ver, dt: input.dt },
   );
+}
+
+async function saveTrackingDoc(id: string, body: Record<string, unknown>, day: string): Promise<void> {
+  const next = { ...body, expiresAt: trackingExpiresAtSec(day) };
+  delete (next as { history?: unknown }).history;
+  if (nativeDbAvailable() && getOpenedDatabase()) {
+    const col = (await collectionOf('tracking')) as {
+      save: (doc: unknown) => Promise<void>;
+      setDocumentExpiration?: (docId: string, date: Date) => Promise<void>;
+    } | null;
+    if (!col) throw new Error('missing');
+    await saveJsonDoc(col, id, next);
+    if (typeof col.setDocumentExpiration === 'function') {
+      await col.setDocumentExpiration(id, trackingExpiryDate(day));
+    }
+    return;
+  }
+  memorySave('tracking', id, next);
 }
 
 /**
@@ -103,15 +170,19 @@ export function applyTrackPoint(
     }
   }
   const existing = (doc.tracking as Record<string, TrackPoint> | undefined) ?? {};
-  if (Object.keys(existing).length >= TRACK_POINT_CAP) {
+  const key = String(fix.ts);
+  const isNew = existing[key] == null;
+  const count = trackingPointCount(doc);
+  if (isNew && count >= TRACK_POINT_CAP) {
     return { next: { ...doc, capped: true }, wrote: false, reason: 'capped' };
   }
-  const map = { ...existing, [String(fix.ts)]: [fix.lat, fix.lon] as TrackPoint };
-  const pointCount = Object.keys(map).length;
+  existing[key] = [fix.lat, fix.lon];
+  const pointCount = isNew ? count + 1 : count;
   return {
     next: {
       ...doc,
-      tracking: map,
+      tracking: existing,
+      pointCount,
       last: [fix.lat, fix.lon, fix.ts] as [number, number, number],
       capped: pointCount >= TRACK_POINT_CAP,
     },
@@ -129,8 +200,29 @@ export async function recordTrackPoint(
   const ver = appVersion();
   const dt = nowSec();
   const ts = fix.ts ?? dt;
+  if (skipCache?.id === id) {
+    if (skipCache.capped) {
+      totals.capped += 1;
+      recordMetric('mfs_track_point_total', 1, { result: 'capped' });
+      return { id, wrote: false, reason: 'capped', result: 'capped' };
+    }
+    const last = skipCache.last;
+    if (last && ts !== last[2]) {
+      if (fix.accuracyM != null && fix.accuracyM > thresholdM) {
+        totals.skipped += 1;
+        recordMetric('mfs_track_point_total', 1, { result: 'skipped' });
+        return { id, wrote: false, reason: 'accuracy', result: 'skipped' };
+      }
+      const dist = haversineM({ lat: last[0], lon: last[1] }, { lat: fix.lat, lon: fix.lon });
+      if (dist < thresholdM) {
+        totals.skipped += 1;
+        recordMetric('mfs_track_point_total', 1, { result: 'skipped' });
+        return { id, wrote: false, reason: 'below_threshold', result: 'skipped' };
+      }
+    }
+  }
   let raw = await loadChild('tracking', id);
-  if (!raw) {
+  if (!raw || trackingIsExpired(raw, dt)) {
     raw = buildEmptyTracking({
       day,
       employeeId: session.employeeId,
@@ -147,23 +239,43 @@ export async function recordTrackPoint(
     if (reason === 'capped') totals.capped += 1;
     else totals.skipped += 1;
     recordMetric('mfs_track_point_total', 1, { result });
+    skipCache = {
+      id,
+      last: (next.last as [number, number, number] | undefined) ?? skipCache?.last,
+      capped: reason === 'capped' || next.capped === true,
+    };
     if (reason === 'capped') {
       log.warn('mfs.track.point', { op: 'RecordTrackPoint', docId: id, ts, result });
     }
     return { id, wrote, reason, result };
   }
   delete (next as { history?: unknown }).history;
-  const saved = stampAuditUpdate(next as never, { by: session.username, ver, dt });
+  const saved = stampAuditUpdate(next as { audit: Audit }, {
+    by: session.username,
+    ver,
+    dt,
+  }) as Record<string, unknown>;
   delete (saved as { history?: unknown }).history;
-  await saveChild('tracking', id, saved as Record<string, unknown>);
+  await saveTrackingDoc(id, saved, day);
+  skipCache = {
+    id,
+    last: saved.last as [number, number, number] | undefined,
+    capped: saved.capped === true,
+  };
   totals.recorded += 1;
   recordMetric('mfs_track_point_total', 1, { result: 'recorded' });
   log.info('mfs.track.point', { op: 'RecordTrackPoint', docId: id, ts });
   return { id, wrote: true, result: 'recorded' };
 }
 
+async function loadLiveTracking(id: string): Promise<Record<string, unknown> | null> {
+  const doc = await loadChild('tracking', id);
+  if (!doc || trackingIsExpired(doc)) return null;
+  return doc;
+}
+
 export async function getTrackingDay(employeeId: string, day: string): Promise<Record<string, unknown> | null> {
-  return loadChild('tracking', trackingDocId(day, employeeId));
+  return loadLiveTracking(trackingDocId(day, employeeId));
 }
 
 export async function getTrackingLastNDays(
@@ -174,7 +286,7 @@ export async function getTrackingLastNDays(
   const out: Array<{ id: string; day: string; doc: Record<string, unknown> | null }> = [];
   for (const day of days) {
     const id = trackingDocId(day, employeeId);
-    out.push({ id, day, doc: await loadChild('tracking', id) });
+    out.push({ id, day, doc: await loadLiveTracking(id) });
   }
   return out;
 }

@@ -21,6 +21,7 @@ export function memoryInboundHits(employeeId: string, day: string): InboundHit[]
       return {
         id: row.id,
         number: String(row.doc.number ?? ''),
+        kind: row.doc.kind != null && String(row.doc.kind) !== '' ? String(row.doc.kind) : undefined,
         priority: String(row.doc.priority ?? 'normal'),
         status: String(row.doc.status ?? ''),
         summary: String(row.doc.summary ?? ''),
@@ -37,7 +38,12 @@ export function memoryActiveOutbound(employeeId: string): OutboundHit[] {
   return memoryAll('workordersout')
     .filter((row) => {
       const assigned = row.doc.assignedTo as { employeeId?: string } | undefined;
-      return assigned?.employeeId === employeeId && active.has(String(row.doc.status ?? ''));
+      const source = row.doc.source as { dropped?: boolean } | undefined;
+      return (
+        assigned?.employeeId === employeeId &&
+        active.has(String(row.doc.status ?? '')) &&
+        source?.dropped !== true
+      );
     })
     .map((row) => {
       const source = row.doc.source as { id?: string } | undefined;
@@ -48,6 +54,7 @@ export function memoryActiveOutbound(employeeId: string): OutboundHit[] {
         id: row.id,
         sourceId: String(source?.id ?? ''),
         number: String(row.doc.number ?? ''),
+        kind: row.doc.kind != null && String(row.doc.kind) !== '' ? String(row.doc.kind) : undefined,
         priority: String(row.doc.priority ?? 'normal'),
         status: String(row.doc.status ?? ''),
         summary: String(row.doc.summary ?? ''),

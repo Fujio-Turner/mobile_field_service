@@ -294,7 +294,7 @@ function mergeMaterials(
 export async function consumeInventoryOnWork(
   session: StartSession,
   input: {
-    wooutId: string;
+    wooutId?: string;
     productId: string;
     locationId: string;
     qty: number;
@@ -304,9 +304,17 @@ export async function consumeInventoryOnWork(
 ): Promise<string> {
   const qty = Math.abs(input.qty);
   if (!(qty > 0)) throw new OutError('reason_required', 'qty must be positive');
-  const parent = await loadOutboundRaw(input.wooutId);
-  if (!parent) throw new OutError('missing');
-  if (isFrozen(parent)) throw new OutError('frozen');
+  if (!input.wooutId && !input.orderId) throw new OutError('missing', 'woout or order required');
+  const parent = input.wooutId ? await loadOutboundRaw(input.wooutId) : null;
+  const order = !input.wooutId && input.orderId ? await loadChild('orders', input.orderId) : null;
+  if (input.wooutId) {
+    if (!parent) throw new OutError('missing');
+    if (isFrozen(parent)) throw new OutError('frozen');
+  } else {
+    if (!order) throw new OutError('missing');
+    if (String(order.role) === 'inbound') throw new OutError('frozen', 'never mutate inbound');
+    if (isFrozen(order)) throw new OutError('frozen');
+  }
 
   const stocks = await listStockRows(input.locationId);
   const txs = await listTxRows({ locationId: input.locationId });
@@ -331,7 +339,7 @@ export async function consumeInventoryOnWork(
     workOrderOutId: input.wooutId,
     orderId: input.orderId,
     sku: product?.sku,
-    readyToPush: childReadyToPush(parent),
+    readyToPush: childReadyToPush(parent ?? order ?? {}),
     appliedToWo: false,
   };
   tx = stampAuditCreate(tx, { by: session.username, ver, dt });
@@ -344,22 +352,26 @@ export async function consumeInventoryOnWork(
   });
   await saveChild('inventory', txId, tx);
 
-  const materials = mergeMaterials(parent.materials, input.productId, qty, {
-    sku: product?.sku,
-    description: product?.name,
-    uom: product?.uom,
-  });
-  let next: Record<string, unknown> = { ...parent, materials };
-  next = stampAuditUpdate(next as never, { by: session.username, ver, dt });
-  next = stampHistory(next as never, {
-    op: 'ConsumeInventoryOnWork',
-    by: session.username,
-    ver,
-    dt,
-    changes: [{ path: 'materials', to: materials }],
-  });
-  await saveOutboundRaw(input.wooutId, next);
-  await saveChild('inventory', txId, { ...tx, appliedToWo: true });
+  if (parent && input.wooutId) {
+    const materials = mergeMaterials(parent.materials, input.productId, qty, {
+      sku: product?.sku,
+      description: product?.name,
+      uom: product?.uom,
+    });
+    let next: Record<string, unknown> = { ...parent, materials };
+    next = stampAuditUpdate(next as never, { by: session.username, ver, dt });
+    next = stampHistory(next as never, {
+      op: 'ConsumeInventoryOnWork',
+      by: session.username,
+      ver,
+      dt,
+      changes: [{ path: 'materials', to: materials }],
+    });
+    await saveOutboundRaw(input.wooutId, next);
+    await saveChild('inventory', txId, { ...tx, appliedToWo: true });
+  } else {
+    await saveChild('inventory', txId, { ...tx, appliedToWo: true });
+  }
   return txId;
 }
 
@@ -380,8 +392,12 @@ function floorMaterials(
 }
 
 /** Merge materials from txs that never flipped appliedToWo (crash between tx and woout). */
-export async function repairUnappliedInventoryTx(wooutId: string, session: StartSession): Promise<number> {
-  const parent = await loadOutboundRaw(wooutId);
+export async function repairUnappliedInventoryTx(
+  wooutId: string,
+  session: StartSession,
+  already?: Record<string, unknown> | null,
+): Promise<number> {
+  const parent = already !== undefined ? already : await loadOutboundRaw(wooutId);
   if (!parent || isFrozen(parent)) return 0;
   const txs = await listInventoryTxForWork(wooutId);
   const pending = txs.filter((t) => t.appliedToWo !== true);

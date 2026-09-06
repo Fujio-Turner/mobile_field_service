@@ -5,7 +5,7 @@
 | Title | Sync Gateway login, tokens, expiry |
 | Repo | [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service) |
 | Author | Fujio-Turner / mobile_field_service |
-| Date | 2026-09-05 |
+| Date | 2026-09-06 |
 | Status | Implemented (`basic` + `demo`; OIDC screens stubbed behind env) |
 | Design | [DESIGN.md](./DESIGN.md) |
 
@@ -19,6 +19,7 @@ References:
 - [OIDC authorization code flow + Sync Gateway](https://www.couchbase.com/blog/oidc-authorization-code-flow-client-authentication-couchbase-sync-gateway/)
 - [CBL RN remote sync — client auth + custom headers](https://cbl-reactnative.dev/DataSync/remote-sync-gateway)
 - App replication how-to: [guides/REPLICATION.md](../guides/REPLICATION.md)
+- Env / Keychain catalog: [guides/SETTINGS.md](../guides/SETTINGS.md)
 - [SG user authentication](https://docs.couchbase.com/sync-gateway/current/security/authentication-users.html)
 
 ---
@@ -32,7 +33,7 @@ References:
 | **`basic`** (default) | Email/username + password | `BasicAuthenticator` **or** app `POST /{db}/_session` then `SessionAuthenticator` |
 | **`oidc_implicit`** | “Sign in with {IdP}” | Device gets a signed ID token; **`POST /{db}/_session` with `Authorization: Bearer <id_token>`** → `SessionAuthenticator`. Do **not** put the JWT on every replicator request (tokens are large). |
 | **`oidc_code`** | “Sign in with {IdP}” (browser redirect) | Sync Gateway runs authorization-code; client ends with an SG session cookie |
-| **`demo`** | Any non-empty user; no network | Synthetic session in Keychain; replicator not started |
+| **`demo`** | Known personas (Jon / Maya Chen / Priya) or any other id as Jon; no network | Synthetic session in Keychain; replicator not started |
 
 v1 ships **`basic`**. OIDC screens and replicator header wiring are implemented behind the same `AuthPort` so a later build can flip the env without rewriting Today / CBL.
 
@@ -129,7 +130,7 @@ End state on the replicator is still `SessionAuthenticator` (not Bearer), unless
 
 ## What lives in the secure enclave
 
-iOS Keychain (Secure Enclave when the device supports it) / Android Keystore (StrongBox when present). Use `expo-secure-store` or `react-native-keychain`. **Never CBL, never AsyncStorage, never `tmp`.**
+iOS Keychain / Android Keystore via `expo-secure-store` (`src/session/enclave.ts`). **Never CBL, never AsyncStorage, never `tmp`.** DB encryption is a **lab toggle default off**; when on, the CBL password string lives here as `mfs.dbkey.*` (readable by the app so it can pass it to `setEncryptionKey` — not a non-exportable hardware Secure Enclave key).
 
 | Key | Contents |
 | --- | --- |
@@ -142,7 +143,7 @@ iOS Keychain (Secure Enclave when the device supports it) / Android Keystore (St
 | `mfs.auth.idToken` | OIDC JWT if Bearer-on-replicator |
 | `mfs.auth.refreshToken` | OIDC refresh token if the IdP issued one |
 | `mfs.auth.idTokenExpiresAt` | JWT `exp` |
-| `mfs.dbkey.<employeeId>` | DB encryption string (existing) |
+| `mfs.dbkey.<employeeId>` | DB encryption string (only if Settings / debug encryption is **on**) |
 
 Logout deletes **auth.*** keys (session, password, tokens). DB encryption key stays unless `LogoutAndWipe`.
 
@@ -275,11 +276,13 @@ OIDC: replace fields with one IdP button; same errors for cancel / network.
 
 ## Feature flags
 
+Auth env is listed here; **every** app setting (Profile, debug, Keychain, map, tracking, replication schema) is in [guides/SETTINGS.md](../guides/SETTINGS.md).
+
 ```
 EXPO_PUBLIC_AUTH_STRATEGY=basic|oidc_implicit|oidc_code|demo
 EXPO_PUBLIC_SG_URL=wss://…
 EXPO_PUBLIC_SG_DB=mfs
-EXPO_PUBLIC_OIDC_ISSUER=          # implicit / code
+EXPO_PUBLIC_OIDC_ISSUER=          # implicit / code (not read by src/ yet)
 EXPO_PUBLIC_OIDC_CLIENT_ID=
 EXPO_PUBLIC_OIDC_SCOPES=openid email profile
 EXPO_PUBLIC_AUTH_BEARER_ON_REPL=false   # true → custom header instead of SessionAuthenticator

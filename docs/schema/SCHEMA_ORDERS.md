@@ -24,7 +24,7 @@ Commercial document: customer, lines, **snapshotted** prices and tax, fulfillmen
 
 - **`StartOrder`:** copy inbound JSON → new `ord:<ulid>`, `role: working`, `source.id` = inbound id. Idempotent on `(employeeId, source.id, role=working)` excluding amendments.
 - **`CreateOrder`:** `origin: field`, `role: working`, no inbound source.
-- **No payment in v1.** Do not collect cards or wallets at create/submit. Billing is a later ROADMAP item.
+- **No credit card payment in v1.** Do not collect cards or wallets at create/submit. Billing is a later ROADMAP item.
 - **Assume product is available.** Do not reserve van/warehouse qty or fail `CreateOrder` on stock. Inventory consume on delivery is still a movement when they hand the part over.
 - **`SubmitOrder`** is allowed at `quoted` \| `accepted` \| `complete` \| `cancelled` (office can see a quote without delivery or payment). `CompleteOrder` still freezes the body (`owner: backend`).
 - Forgotten lines → **`CreateOrderAmendment`** (`role: amendment`, `amends.id`). Backend consolidates by `number` / `source.id`.
@@ -220,3 +220,166 @@ function ordersPushFilter(document: any, _flags: any): boolean {
 ```
 
 Channel: `emp:{assignedTo.employeeId}`.
+
+---
+
+## JSON Schema
+
+[JSON Schema 2020-12](https://json-schema.org/draft/2020-12/schema). Document body; id is `ord:<ULID>`. Money fields are integer cents.
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Fujio-Turner/mobile_field_service/docs/schema/orders.json",
+  "title": "field.orders",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "type", "audit", "role", "origin", "owner", "status", "syncState",
+    "number", "currency", "assignedTo", "lines", "totals"
+  ],
+  "properties": {
+    "type": { "const": "order" },
+    "audit": { "$ref": "#/$defs/audit" },
+    "history": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/historyEntry" }
+    },
+    "historyTruncated": { "type": "boolean" },
+    "role": { "type": "string", "enum": ["inbound", "working", "amendment"] },
+    "origin": { "type": "string", "enum": ["dispatch", "field"] },
+    "owner": { "type": "string", "enum": ["technician", "backend"] },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "quoted", "accepted", "in_fulfillment", "complete", "cancelled"]
+    },
+    "syncState": {
+      "type": "string",
+      "enum": ["local_draft", "ready_to_push", "pushed", "push_error"]
+    },
+    "number": { "type": "string", "minLength": 1 },
+    "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
+    "kind": { "type": "string", "enum": ["product", "service", "mixed"] },
+    "assignedTo": { "$ref": "#/$defs/assignedTo" },
+    "lines": { "type": "array", "items": { "$ref": "#/$defs/line" } },
+    "totals": { "$ref": "#/$defs/totals" },
+    "customerId": { "type": "string" },
+    "site": { "type": "object", "additionalProperties": true },
+    "scheduled": { "$ref": "#/$defs/scheduled" },
+    "notesPreview": { "type": "string" },
+    "fulfillment": { "type": "object", "additionalProperties": true },
+    "source": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "copiedAt": { "$ref": "#/$defs/unixSeconds" }
+      }
+    },
+    "amends": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": { "id": { "type": "string" } }
+    },
+    "taxIds": { "type": "array", "items": { "type": "string" } },
+    "photos": { "type": "array", "maxItems": 20, "items": { "type": "object", "additionalProperties": true } },
+    "needsWorkOrder": { "type": "boolean" },
+    "workOrderOutId": { "type": "string" }
+  },
+  "$defs": {
+    "unixSeconds": { "type": "integer", "minimum": 0 },
+    "cents": { "type": "integer", "description": "Integer cents" },
+    "auditStamp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dt", "ver", "by"],
+      "properties": {
+        "dt": { "$ref": "#/$defs/unixSeconds" },
+        "ver": { "type": "string" },
+        "by": { "type": "string" }
+      }
+    },
+    "audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cr", "up"],
+      "properties": {
+        "cr": { "$ref": "#/$defs/auditStamp" },
+        "up": { "$ref": "#/$defs/auditStamp" }
+      }
+    },
+    "historyChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": { "path": { "type": "string" }, "from": true, "to": true }
+    },
+    "historyEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dt", "by", "ver", "op"],
+      "properties": {
+        "dt": { "$ref": "#/$defs/unixSeconds" },
+        "lat": { "type": "number" },
+        "lon": { "type": "number" },
+        "accuracyM": { "type": "number" },
+        "by": { "type": "string" },
+        "ver": { "type": "string" },
+        "op": { "type": "string" },
+        "changes": { "type": "array", "items": { "$ref": "#/$defs/historyChange" } }
+      }
+    },
+    "assignedTo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["employeeId"],
+      "properties": {
+        "userId": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "email": { "type": "string" },
+        "username": { "type": "string" },
+        "displayName": { "type": "string" }
+      }
+    },
+    "scheduled": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "startDt": { "$ref": "#/$defs/unixSeconds" },
+        "endDt": { "$ref": "#/$defs/unixSeconds" },
+        "day": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+      }
+    },
+    "line": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "qty", "uom", "unitPrice", "lineSubtotal", "lineTax", "lineTotal"],
+      "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "rateId": { "type": "string" },
+        "description": { "type": "string" },
+        "qty": { "type": "number" },
+        "uom": { "type": "string" },
+        "unitPrice": { "$ref": "#/$defs/cents" },
+        "taxIds": { "type": "array", "items": { "type": "string" } },
+        "lineSubtotal": { "$ref": "#/$defs/cents" },
+        "lineTax": { "$ref": "#/$defs/cents" },
+        "lineTotal": { "$ref": "#/$defs/cents" }
+      }
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subtotal", "taxTotal", "total"],
+      "properties": {
+        "subtotal": { "$ref": "#/$defs/cents" },
+        "taxTotal": { "$ref": "#/$defs/cents" },
+        "total": { "$ref": "#/$defs/cents" }
+      }
+    }
+  }
+}
+```

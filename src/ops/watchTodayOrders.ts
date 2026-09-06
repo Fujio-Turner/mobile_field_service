@@ -52,10 +52,12 @@ export async function watchTodayOrders(
     onRows(parseTodayOrderRows(rows), {});
   });
 
-  try {
-    onRows(parseTodayOrderRows(normalizeResults(await query.execute())), {});
-  } catch (e) {
-    onRows([], { error: e instanceof Error ? e.message : 'Query failed' });
+  if (!live) {
+    try {
+      onRows(parseTodayOrderRows(normalizeResults(await query.execute())), {});
+    } catch (e) {
+      onRows([], { error: e instanceof Error ? e.message : 'Query failed' });
+    }
   }
 
   return live ?? { stop: async () => undefined };

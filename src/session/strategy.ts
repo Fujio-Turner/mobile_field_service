@@ -1,3 +1,4 @@
+import { demoIdentity } from './identity';
 import type { AuthStrategy } from './types';
 
 export function authStrategy(): AuthStrategy {
@@ -8,7 +9,7 @@ export function authStrategy(): AuthStrategy {
   return 'basic';
 }
 
-/** Demo session: no network. Maps to seed tech E-4412. Identifier required. */
+/** Demo session: no network. Known personas map; anything else is Jon. */
 export function buildDemoSession(identifier: string, nowSec: number): {
   ok: true;
   session: {
@@ -21,17 +22,17 @@ export function buildDemoSession(identifier: string, nowSec: number): {
     sessionExpiresAt: number;
   };
 } | { ok: false; error: string } {
-  const username = identifier.trim();
-  if (!username) {
+  const identity = demoIdentity(identifier);
+  if (!identity) {
     return { ok: false, error: 'Enter an email or username.' };
   }
   return {
     ok: true,
     session: {
       strategy: 'demo',
-      username: 'tech.jon',
-      email: 'jon.hale@example.com',
-      employeeId: 'E-4412',
+      username: identity.username,
+      email: identity.email,
+      employeeId: identity.employeeId,
       sessionId: 'demo-session',
       cookieName: 'SyncGatewaySession',
       sessionExpiresAt: nowSec + 7 * 24 * 3600,

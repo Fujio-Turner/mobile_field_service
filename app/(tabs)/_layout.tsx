@@ -1,6 +1,7 @@
 import { Redirect, Tabs } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { useAuth } from '@/src/session/AuthContext';
+import { showsMapTab, workModesForEmployee } from '@/src/session/workModes';
 import { theme } from '@/src/theme';
 import { useLeftHand } from '@/src/ui/HandednessContext';
 import { thumbBarDirection } from '@/src/ui/handedness';
@@ -8,6 +9,7 @@ import { thumbBarDirection } from '@/src/ui/handedness';
 export default function TabsLayout() {
   const { ready, session } = useAuth();
   const leftHand = useLeftHand();
+  const showMap = showsMapTab(workModesForEmployee(session?.employeeId));
   if (ready && !session) return <Redirect href="/login" />;
 
   return (
@@ -31,7 +33,7 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="index" options={{ title: 'Today' }} />
       <Tabs.Screen name="notes" options={{ title: 'Notes' }} />
-      <Tabs.Screen name="map" options={{ title: 'Map' }} />
+      <Tabs.Screen name="map" options={{ title: 'Map', href: showMap ? undefined : null }} />
       <Tabs.Screen name="inventory" options={{ title: 'Stock' }} />
       <Tabs.Screen name="chat" options={{ title: 'Chat' }} />
       <Tabs.Screen name="profile" options={{ title: 'Profile' }} />

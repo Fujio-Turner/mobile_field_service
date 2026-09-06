@@ -6,6 +6,7 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { memorySave } from '@/src/db/memoryStore';
 import { nativeDbAvailable } from '@/src/db/database';
 import { SEED_DISPATCH_USER_ID, SEED_USER_ID, seedDispatchUserDoc, seedUserDoc } from '@/src/db/seedData';
+import { ChatRefChips } from '@/src/features/chat/ChatRefChips';
 import {
   ChatError,
   listMessages,
@@ -76,6 +77,7 @@ export default function ChatThreadScreen() {
             <View style={styles.bubble}>
               <Text style={styles.meta}>{item.fromEmployeeId}</Text>
               <Text style={styles.body}>{item.body}</Text>
+              <ChatRefChips item={item} />
             </View>
           )}
           ListEmptyComponent={<Text style={styles.muted}>No messages yet</Text>}

@@ -3,7 +3,7 @@ import { parseOutboundRefs, sourceIdsNeedingOutboundLookup } from '../../src/ops
 import { TODAY_ORDERS_SQL } from '../../src/ops/orders';
 import { ASSETS_BBOX_SQL } from '../../src/ops/assets';
 import { inboundTodaySql } from '../../src/ops/todaySql';
-import { parseInboundHits } from '../../src/ops/listTodayWork';
+import { changedInboundIds, parseInboundHits } from '../../src/ops/listTodayWork';
 import type { InboundHit, OutboundHit } from '../../src/ops/todayTypes';
 
 const inn = (over: Partial<InboundHit> & Pick<InboundHit, 'id'>): InboundHit => ({
@@ -112,11 +112,25 @@ describe('collapseTodayPage', () => {
   });
 });
 
+describe('changedInboundIds', () => {
+  it('returns only new, removed, or field-changed ids', () => {
+    const a = inn({ id: 'woin:a', summary: 'one' });
+    const b = inn({ id: 'woin:b' });
+    expect(changedInboundIds([a, b], [a, b])).toEqual([]);
+    expect(changedInboundIds([a], [a, b])).toEqual(['woin:b']);
+    expect(changedInboundIds([a, b], [a])).toEqual(['woin:b']);
+    expect(changedInboundIds([a], [inn({ id: 'woin:a', summary: 'two' })])).toEqual(['woin:a']);
+  });
+});
+
 describe('parse helpers', () => {
   it('parses inbound hits', () => {
-    const hits = parseInboundHits([{ id: 'woin:a', number: 'WO-1', startDt: 3, assignedEmployeeId: 'E-4412' }]);
+    const hits = parseInboundHits([
+      { id: 'woin:a', number: 'WO-1', kind: 'inspect', startDt: 3, assignedEmployeeId: 'E-4412' },
+    ]);
     expect(hits[0].id).toBe('woin:a');
     expect(hits[0].startDt).toBe(3);
+    expect(hits[0].kind).toBe('inspect');
   });
 
   it('skips outbound lookup for sources already on the active list', () => {

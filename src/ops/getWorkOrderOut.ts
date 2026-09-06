@@ -1,8 +1,6 @@
-import { collectionOf, getOpenedDatabase, nativeDbAvailable } from '../db/database';
-import { memoryGet } from '../db/memoryStore';
 import { isFrozen } from './outStatus';
+import { loadOutboundRaw } from './outboundStore';
 import type { PhotoMeta } from './photoKeys';
-import { documentToObject } from './workOrderIn';
 
 export type WorkOrderOutOp = { id?: string; name?: string; status?: string; required?: boolean };
 export type WorkOrderOutCheck = { id?: string; label?: string; done?: boolean; required?: boolean };
@@ -11,6 +9,7 @@ export type WorkOrderOut = {
   id: string;
   type: 'workorderout';
   number: string;
+  kind?: string;
   priority: string;
   status: string;
   syncState: string;
@@ -30,6 +29,11 @@ export type WorkOrderOut = {
   editable: boolean;
   photos: PhotoMeta[];
   materials: Array<{ productId: string; sku?: string; description?: string; qtyUsed: number; uom?: string }>;
+  move?: {
+    from?: { name?: string; geo?: { lat: number; lon: number } };
+    to?: { name?: string; geo?: { lat: number; lon: number } };
+  };
+  orderId?: string;
 };
 
 export function parseWorkOrderOut(id: string, raw: Record<string, unknown> | null): WorkOrderOut | null {
@@ -43,6 +47,7 @@ export function parseWorkOrderOut(id: string, raw: Record<string, unknown> | nul
     id,
     type: 'workorderout',
     number: String(raw.number ?? ''),
+    kind: raw.kind != null ? String(raw.kind) : undefined,
     priority: String(raw.priority ?? 'normal'),
     status: String(raw.status ?? ''),
     syncState: String(raw.syncState ?? ''),
@@ -92,16 +97,16 @@ export function parseWorkOrderOut(id: string, raw: Record<string, unknown> | nul
         uom: r.uom != null ? String(r.uom) : undefined,
       };
     }),
+    orderId: raw.orderId != null ? String(raw.orderId) : undefined,
+    move: raw.move
+      ? {
+          from: (raw.move as { from?: { name?: string; geo?: { lat: number; lon: number } } }).from,
+          to: (raw.move as { to?: { name?: string; geo?: { lat: number; lon: number } } }).to,
+        }
+      : undefined,
   };
 }
 
 export async function getWorkOrderOut(id: string): Promise<WorkOrderOut | null> {
-  if (nativeDbAvailable() && getOpenedDatabase()) {
-    const col = (await collectionOf('workordersout')) as {
-      document: (docId: string) => Promise<unknown>;
-    } | null;
-    if (!col) return null;
-    return parseWorkOrderOut(id, documentToObject(await col.document(id)));
-  }
-  return parseWorkOrderOut(id, memoryGet('workordersout', id));
+  return parseWorkOrderOut(id, await loadOutboundRaw(id));
 }

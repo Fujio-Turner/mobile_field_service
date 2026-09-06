@@ -13,7 +13,8 @@ export { TMP_TTL_MS, tmpExpiryDate };
 
 export function buildPhotoStageTmp(input: {
   tmpId: string;
-  wooutId: string;
+  wooutId?: string;
+  orderId?: string;
   localUri: string;
   session: StartSession;
   dt: number;
@@ -24,6 +25,7 @@ export function buildPhotoStageTmp(input: {
       type: 'tmp',
       kind: 'photo_stage',
       workOrderOutId: input.wooutId,
+      orderId: input.orderId,
       localUri: input.localUri,
       expiresAt: Math.floor(tmpExpiryDate(input.dt * 1000).getTime() / 1000),
     },

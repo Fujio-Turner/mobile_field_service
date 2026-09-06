@@ -6,6 +6,7 @@ export function inboundTodaySql(limit = 20, offset = 0): string {
 SELECT
   META().id AS id,
   number,
+  kind,
   priority,
   status,
   summary,
@@ -31,6 +32,7 @@ SELECT
   META().id AS id,
   source.id AS sourceId,
   number,
+  kind,
   priority,
   status,
   role,
@@ -38,7 +40,8 @@ SELECT
   assignedTo.employeeId AS assignedEmployeeId,
   site.name AS siteName,
   scheduled.startDt AS startDt,
-  scheduled.endDt AS endDt
+  scheduled.endDt AS endDt,
+  source.dropped AS dropped
 FROM field.workordersout
 WHERE assignedTo.employeeId = $employeeId
   AND (status = 'assigned' OR status = 'in_progress' OR status = 'blocked')

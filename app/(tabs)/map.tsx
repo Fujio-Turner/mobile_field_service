@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { memorySave } from '@/src/db/memoryStore';
-import { seedAssets } from '@/src/db/seedData';
-import { nativeDbAvailable } from '@/src/db/database';
+import { ensureMemoryAssets } from '@/src/db/ensureMemoryDemo';
 import { clusterAssets, clusterCellM } from '@/src/geo/cluster';
 import { bboxAround, type BBox } from '@/src/geo/haversine';
 import { requestAndGetFix } from '@/src/geo/location';
@@ -23,13 +21,6 @@ const SITE = { lat: 41.7658, lon: -72.6734 };
 const DEFAULT_RADIUS_M = 2000;
 
 type Mode = 'area' | 'job' | 'me';
-
-function ensureMemoryAssets() {
-  if (nativeDbAvailable()) return;
-  for (const row of seedAssets('0.1.0+1', 1_700_000_000)) {
-    memorySave('assets', row.id, row.doc as unknown as Record<string, unknown>);
-  }
-}
 
 export default function MapScreen() {
   const router = useRouter();

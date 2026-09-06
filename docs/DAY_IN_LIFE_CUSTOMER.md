@@ -6,15 +6,15 @@
 | Mode | `customer` |
 | Repo | [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service) |
 | Author | Fujio-Turner / mobile_field_service |
-| Date | 2026-09-05 |
-| Status | Stories apply; demo seed is assets-mode Jon Hale (orders UI is on Today + `/order`) |
+| Date | 2026-09-06 |
+| Status | Demo login `maya.chen@example.com` (`E-7703`). Seed delivery WO-2201 + ORD-2201. Walk-up customer at `/customer/new`. |
 | Index | [DAY_IN_LIFE.md](./DAY_IN_LIFE.md) |
 | Orders schema | [schema/SCHEMA_ORDERS.md](./schema/SCHEMA_ORDERS.md) |
 | Rates / taxes | [schema/SCHEMA_RATES.md](./schema/SCHEMA_RATES.md), [schema/SCHEMA_TAXES.md](./schema/SCHEMA_TAXES.md) |
 
 Collections in play: `workordersin` / `workordersout`, `orders`, `products`, `customers`, `rates`, `taxes`, `inventory`, `messages`.
 
-This is the **overlap** day: labor is a work order; money is an order. Maya may finish a delivery WO, write a **new order** for more product/service (later date or while still on site), or a **neighbor / walk-up** wants work — brand-new customer + order. **No card processing.** Assume the product is on the truck; do not reserve stock at quote time. She may `CreateWorkOrderIn` for a same-day job ticket, then `StartWork`.
+This is the **overlap** day: labor is a work order; money is an order. Maya may finish a delivery WO, write a **new order** for more product/service (later date or while still on site), or a **neighbor / walk-up** wants work — brand-new customer + order. **No credit card payment** in this version — catalog prices are snapshotted. Assume the product is on the truck; do not reserve stock at quote time. She may `CreateWorkOrderIn` for a same-day job ticket, then `StartWork`.
 
 ---
 
@@ -40,7 +40,7 @@ Channel `emp:E-7703`. Dispatch sends **delivery / service** work orders that poi
 | Today | `app/(tabs)/index.tsx` | workorders + working orders | `ListTodayWork`, `ListTodayOrders` |
 | Delivery WO | `app/wo/out/[id]` | `workordersout` | `StartWork`, `CompleteWork` |
 | Catalog | `app/(tabs)/inventory.tsx` / products | `products`, `rates`, `taxes` | `SearchProducts`, `PriceLines` |
-| New / existing customer | `app/customer/[id]` or new | `customers` | `GetCustomer`, `CreateCustomer` |
+| New / existing customer | `app/customer/[id].tsx` (`new` or KV) | `customers` | `GetCustomer`, `CreateCustomer` |
 | New order | `app/order/[id].tsx` | `orders` | `CreateOrder`, `AddOrderLine`, `SubmitOrder` |
 
 ---

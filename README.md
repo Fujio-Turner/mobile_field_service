@@ -16,12 +16,12 @@ When the radio comes back, the phone syncs with Couchbase (Sync Gateway or Capel
 
 ![Sign in, Today list, open a job, work offline, complete and sync](images/app-flow.svg)
 
-1. **Sign in** with work email (or Sign in with your company IdP). Demo builds accept any identifier.
+1. **Sign in** with work email (or Sign in with your company IdP). Demo: Jon Hale / Maya Chen / Priya Shah (or any other non-empty id as Jon).
 2. **Today** shows a live clock and a seconds countdown (next start, in-progress end, late-by, or end of day), then jobs and orders for this calendar day, newest first. Scroll for more.
 3. **Tap a row** to open it by document id. **Start work** (bottom of the inbound screen) makes **your copy**. Hermes has no `crypto`; ids use **expo-crypto**.
-4. **Do the work** with no network: photos, parts, notes, employee chat, map of nearby assets. Mark operations and checklist with **outline vs filled** buttons (not a cycling row tap). Each save keeps a **history** of what changed (qty 10 → 5) with time and place. Driving around writes **tracking** crumbs for that employee and day.
+4. **Do the work** with no network: photos, parts, notes, employee chat, map of nearby assets. Mark operations and checklist with **outline vs filled** buttons (not a cycling row tap). Each save keeps a **history** of what changed (qty 10 → 5) with time and place. Driving around writes **tracking** crumbs for that employee and day (TTL **30 days**).
 5. **Complete.** That copy **freezes** and the office owns it. Forgot a photo? You add a **new sheet of paper** that points at the original — you do not reopen the frozen one.
-6. **Profile** has sync status, optional **Large screen optimize** (right-thumb zone; **Left hand** checkbox when that is on), and **Settings / debug** (versions, database path, replicator URL/status, collection counts, optional channel filters).
+6. **Profile** has sync status, optional **Large screen optimize** (right-thumb zone; **Left hand** when that is on), and **Settings / debug** (versions, database path, replicator, collection counts, channel filters, **job rules**). Developer catalog of every setting: [guides/SETTINGS.md](guides/SETTINGS.md).
 
 Walk through a real day:
 
@@ -32,6 +32,46 @@ Walk through a real day:
 | **Sell and deliver**, then the next stop | [Day in the life — sales](docs/DAY_IN_LIFE_SALES.md) |
 
 Index of all three: [docs/DAY_IN_LIFE.md](docs/DAY_IN_LIFE.md).
+
+---
+
+## Screens
+
+The tab bar is **Today · Notes · Map · Stock · Chat · Profile**. Notes and Stock are lists (general notes; van qty + catalog). The four shots below are the surfaces you live in during a shift. Demo login as Jon Hale (`workModes: assets`) hides the orders card; Maya / Priya still see orders on Today.
+
+### Today
+
+![Today: live clock, walk-up job, inspect/repair/move rows with Reassigned and Started badges](images/Home-Jobs-Workorders-Today.png)
+
+This is the home list. The teal header is a **live clock** plus a seconds countdown (next start, in-progress end, late-by, or end of day) and the job that countdown belongs to.
+
+**Walk-up job** creates a field inbound ticket (`CreateWorkOrderIn`) assigned to you — still a ticket, not labor. Labor starts after **Start work** on that inbound screen.
+
+**Jobs** are one row per work order: number · kind, site, summary, time, priority stripe. Badges: **Started** (you already have a copy), **Reassigned** (inbound went to someone else; your copy is still yours), **Amendment**. Tap is a KV get: inbound if you have not started, outbound copy if you have. Assets-mode Today does not show commercial orders; customer and sales logins do.
+
+### Map
+
+![Map: Hartford assets, Area/Near job/Near me chips, pump and valve pins, list of P-12 M-7 P-14](images/Maps-Assets-Jobs.png)
+
+**Assets map** is company kit, not the route. Pins always come from local `field.assets` (bbox query), so they still show in airplane mode. The basemap (OpenFreeMap Liberty) needs network.
+
+**Area / Near job / Near me** change the box. **All types** plus **pump** / **valve** filter the same local set. If you have a started job, the map names it (here WO-10470 at Riverside). Tap a pin or a row to open the asset; **Use on {job}** links it to your outbound copy. Completing a job does not write the asset master.
+
+### Chat
+
+![Chat: employee DM, tag WO-10482 or ORD-3301, @employeeId, Send DM](images/Chat.png)
+
+Employee chat only — not customers. Completing a job does **not** freeze threads; messages push on send (`readyToPush`).
+
+Type a **DM employeeId** (or `@` them in the body) and a message. Tag a job with **WO-10482** or an order with **ORD-3301**; the message stores those ids and shows a chip that opens the job or order. Job-screen chat is a separate thread (`thr:wo:{inbound id}`) that already points at that work order. Status changes (block, complete) stay on the work-order copy; chat is the conversation.
+
+### Profile
+
+![Profile: tech.jon, E-4412, assets mode, demo sync off, Settings/debug, Search, Sign out](images/Profile-Settings-Debugger.png)
+
+Who you are on this device: username, email, **employeeId**, **workModes**, auth strategy, encrypted DB name, app version. **Crumbs today** is a count of tracking points (no map dump).
+
+**Large screen optimize** (off by default) moves primary buttons into the thumb zone; **Left hand** appears when that is on. Demo builds show **Sync: replicator off**. **Settings / debug** is versions, DB path, replicator URL/status, collection counts, optional channel filters, **job rules**, and **DB encryption** (default off). Full list: [guides/SETTINGS.md](guides/SETTINGS.md). **Search** is FTS over notes, products, and assets. **Sign out** drops the session, not the database key.
 
 ---
 
@@ -65,7 +105,7 @@ We use the Fujio-Turner [cbl-reactnative](https://github.com/Fujio-Turner/cbl-re
 | **Engineer joining the repo** | Start with a day-in-the-life, then [docs/DESIGN.md](docs/DESIGN.md), then [guides/](guides/README.md). |
 | **Someone wiring Sync Gateway** | Email is the SG username. Session + TTL. Example below. |
 
-Chat is **employees only** (you ↔ dispatch), not customers. Orders **snapshot catalog prices**; we assume stock is there; **no credit cards** in this version. Proof of delivery is a **photo** for now (signature pad is later).
+Chat is **employees only** (you ↔ dispatch), not customers. Orders **snapshot catalog prices**; we assume stock is there; **no credit card payment** in this version. Proof of delivery is a **photo** for now (signature pad is later).
 
 ---
 
@@ -82,7 +122,9 @@ npx expo run:ios -d "iPhone 16 Pro"
 npx expo run:android
 ```
 
-`.env.example` sets `EXPO_PUBLIC_AUTH_STRATEGY=demo`. Sign in with any email or username; you land on **Today** with seed jobs (WO-10470 / 10482 / 10490) once the DB is open. Version on the login footer and Profile comes from `app.json`, not a hard-coded string.
+`.env.example` sets `EXPO_PUBLIC_AUTH_STRATEGY=demo`. Sign in as Jon (`jon.hale@example.com`), Maya (`maya.chen@example.com`), or Priya (`priya.shah@example.com`); any other non-empty id is Jon. You land on **Today** with seed jobs (WO-10470 / 10482 / 10490, plus WO-10460 leftover) once the DB is open. Version on the login footer and Profile comes from `app.json`, not a hard-coded string.
+
+Every env flag, Profile toggle, debug job rule, and Keychain key: [guides/SETTINGS.md](guides/SETTINGS.md).
 
 Replication schema is **build-time** (`EXPO_PUBLIC_REPL_SCHEMA=simple|oneshot`), not a Profile setting. `simple` (default) keeps one continuous replicator. `oneshot` pulls `workordersin` + `orders` first, then one-shots all field collections every `EXPO_PUBLIC_REPL_ONESHOT_SEC` seconds (default 300) and when the app comes to the foreground.
 
@@ -104,7 +146,8 @@ Binding: [Fujio-Turner/cbl-reactnative](https://github.com/Fujio-Turner/cbl-reac
 | See collections, queries, freeze rules | [DESIGN.md](docs/DESIGN.md) |
 | See document / collection fields | [docs/schema/](docs/schema/README.md) |
 | See login, Keychain, 401 handling | [AUTH.md](docs/AUTH.md) |
-| Inspect versions, DB path, replication | Profile → **Settings / debug** |
+| See every env / Profile / debug setting | [guides/SETTINGS.md](guides/SETTINGS.md) |
+| Inspect versions, DB path, replication on device | Profile → **Settings / debug** |
 | See what we build in what order | [ROADMAP.md](docs/ROADMAP.md) |
 | Log, style UI, cut a release, sync | [guides/](guides/README.md) |
 | Agent / coding rules | [AGENT.md](AGENT.md) |
@@ -126,7 +169,7 @@ Profile (field.users)
   employeeId:   E-4412
   email:        jon.hale@example.com
   username:     tech.jon          ← audit.by only
-  workModes:    ["assets"]        ← or customer / sales
+  workModes:    ["assets"]        ← Maya Chen customer / Priya Shah sales
 
 Channel:      emp:E-4412
 ```

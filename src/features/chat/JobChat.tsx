@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { FieldInput } from '@/src/ui/FieldInput';
 import type { StartSession } from '@/src/ops/copyInbound';
+import { ChatRefChips } from '@/src/features/chat/ChatRefChips';
 import {
   ChatError,
   listMessages,
@@ -62,13 +63,14 @@ export function JobChat({ woinId, wooutId, session }: Props) {
         <View key={m.id} style={styles.bubble}>
           <Text style={styles.meta}>{m.fromEmployeeId}</Text>
           <Text style={styles.body}>{m.body}</Text>
+          <ChatRefChips item={m} />
         </View>
       ))}
       {rows.length === 0 ? <Text style={styles.muted}>No messages yet</Text> : null}
       <FieldInput
         value={body}
         onChangeText={setBody}
-        placeholder="Message dispatch"
+        placeholder="Message — @name or WO-10482"
         style={styles.input}
         editable={!busy}
         returnKeyType="send"

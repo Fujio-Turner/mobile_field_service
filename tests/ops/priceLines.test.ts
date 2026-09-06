@@ -19,6 +19,7 @@ import {
   createOrderAmendment,
   getOrder,
   markOrderQuoted,
+  setOrderLineQty,
   startOrder,
   submitOrder,
 } from '../../src/ops/orders';
@@ -111,5 +112,18 @@ describe('orders copy-on-write', () => {
     const amendId = await createOrderAmendment(ordId, session);
     expect(amendId).not.toBe(ordId);
     expect(memoryGet('orders', amendId)?.role).toBe('amendment');
+  });
+
+  it('records qty from/to on the working copy only', async () => {
+    const { ordId } = await startOrder(SEED_INBOUND_ORDER_ID, session);
+    const working = await getOrder(ordId);
+    const line = (working?.lines as Array<{ id: string; qty: number }>)[0];
+    expect(line.qty).toBe(2);
+    await setOrderLineQty(ordId, session, line.id, 1);
+    const next = await getOrder(ordId);
+    expect((next?.lines as Array<{ qty: number }>)[0].qty).toBe(1);
+    const hist = (next?.history as Array<{ op: string }>) ?? [];
+    expect(hist[hist.length - 1]?.op).toBe('SetOrderLineQty');
+    expect(JSON.stringify(memoryGet('orders', SEED_INBOUND_ORDER_ID))).not.toMatch(/SetOrderLineQty/);
   });
 });

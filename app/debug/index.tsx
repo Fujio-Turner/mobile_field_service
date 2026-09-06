@@ -1,6 +1,6 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -11,6 +11,8 @@ import {
   View,
 } from 'react-native';
 import { OPERATOR_COLLECTIONS, isOperatorCollection } from '@/src/db/collections';
+import { reopenFieldDatabase } from '@/src/db/database';
+import { isDbEncryptionEnabled, setDbEncryptionEnabled } from '@/src/dev/dbEncryption';
 import { collectionCounts, type CollectionCountRow } from '@/src/ops/collectionCounts';
 import { formatEpoch, runtimeVersions } from '@/src/ops/runtimeVersions';
 import { syncSnapshot, type SyncSnapshot } from '@/src/ops/syncSnapshot';
@@ -31,6 +33,16 @@ import {
   stopReplicator,
 } from '@/src/sync/replicator';
 import { replSchema } from '@/src/sync/schema';
+import {
+  INBOUND_LABELS,
+  INBOUND_POLICIES,
+  REASSIGN_LABELS,
+  REASSIGN_POLICIES,
+  type InboundPolicy,
+  type ReassignPolicy,
+} from '@/src/dev/jobRules';
+import { useJobRules } from '@/src/dev/JobRulesContext';
+import { pickOpenJob, simulateDispatchKitChange } from '@/src/dev/simulateInbound';
 import { NativeBanner } from '@/src/ui/NativeBanner';
 import { FieldInput } from '@/src/ui/FieldInput';
 import { useThumbActionStyle } from '@/src/ui/HandednessContext';
@@ -38,6 +50,10 @@ import { theme } from '@/src/theme';
 
 export default function DebugScreen() {
   const { session, refreshAuth, onAuthLost } = useAuth();
+  const { rules, setReassign, setInbound } = useJobRules();
+  const router = useRouter();
+  const params = useLocalSearchParams<{ demo?: string }>();
+  const demoRan = useRef<string | null>(null);
   const thumb = useThumbActionStyle();
   const versions = runtimeVersions();
   const [sync, setSync] = useState<SyncSnapshot | null>(null);
@@ -46,12 +62,14 @@ export default function DebugScreen() {
   const [shared, setShared] = useState('');
   const [result, setResult] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [encrypt, setEncrypt] = useState(false);
 
   const refresh = useCallback(async () => {
     await hydrateSyncTimes();
     await refreshPendingCount();
     setSync(syncSnapshot());
     setCounts(await collectionCounts());
+    setEncrypt(await isDbEncryptionEnabled());
     const stored = await loadCollectionChannels();
     const next: Record<string, string> = {};
     for (const name of OPERATOR_COLLECTIONS) {
@@ -63,16 +81,52 @@ export default function DebugScreen() {
   useFocusEffect(
     useCallback(() => {
       void refresh();
+      if (session && params.demo && demoRan.current !== params.demo) {
+        demoRan.current = params.demo;
+        void (async () => {
+          await runDemo(params.demo!);
+        })();
+      }
       const id = setInterval(() => {
         void (async () => {
           await hydrateSyncTimes();
           await refreshPendingCount();
           setSync(syncSnapshot());
         })();
-      }, 2000);
+      }, 5000);
       return () => clearInterval(id);
-    }, [refresh]),
+    }, [refresh, session, params.demo]),
   );
+
+  async function runDemo(demo: string) {
+    if (!session) return;
+    setBusy(true);
+    try {
+      if (demo === 'remote') setInbound('remote_wins');
+      else if (demo === 'prompt') setInbound('prompt');
+      else if (demo === 'local' || demo === 'untouched') setInbound('local_wins');
+      if (demo === 'reassign') {
+        setReassign('forbid_edits');
+        const job = await pickOpenJob(session.employeeId, 'WO-10460');
+        if (!job) {
+          setResult('No reassigned leftover. Need WO-10460.');
+          return;
+        }
+        router.push(`/wo/out/${job.wooutId}`);
+        return;
+      }
+      const job = await pickOpenJob(session.employeeId, 'WO-10470');
+      if (!job) {
+        setResult('Start work on a Today job first.');
+        return;
+      }
+      await simulateDispatchKitChange(session, job.wooutId, { dirtyLocal: demo !== 'untouched' });
+      setResult(`Simulated dispatch kit on ${job.number}`);
+      router.push(`/wo/out/${job.wooutId}`);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const hooks = { refreshAuth, onAuthLost };
 
@@ -117,6 +171,66 @@ export default function DebugScreen() {
             {versions.os} {versions.osVersion}
           </Text>
 
+          <Text style={styles.h}>Job rules (dev)</Text>
+          <Text style={styles.muted}>
+            Reassignment: keep working your copy (default) or lock it. Inbound kit: if you have not edited the copy,
+            new inbound values are always applied (or the row is hidden if dispatch cancelled). If you already edited,
+            pick local wins, remote wins, or a per-field diff.
+          </Text>
+          <Text style={styles.label}>Reassigned inbound</Text>
+          {REASSIGN_POLICIES.map((p) => (
+            <Pressable
+              key={p}
+              accessibilityRole="button"
+              onPress={() => setReassign(p as ReassignPolicy)}
+              style={[styles.choice, rules.reassign === p && styles.choiceOn]}
+            >
+              <Text style={rules.reassign === p ? styles.choiceLabelOn : styles.choiceLabel}>{REASSIGN_LABELS[p]}</Text>
+            </Pressable>
+          ))}
+          <Text style={styles.label}>Inbound vs your copy (after you have edited)</Text>
+          {INBOUND_POLICIES.map((p) => (
+            <Pressable
+              key={p}
+              accessibilityRole="button"
+              onPress={() => setInbound(p as InboundPolicy)}
+              style={[styles.choice, rules.inbound === p && styles.choiceOn]}
+            >
+              <Text style={rules.inbound === p ? styles.choiceLabelOn : styles.choiceLabel}>{INBOUND_LABELS[p]}</Text>
+            </Pressable>
+          ))}
+          <Text style={styles.muted}>
+            Try on WO-10470 (started inspect): dirties your copy, then patches inbound summary + checklist.
+          </Text>
+          <Pressable
+            disabled={busy || !session}
+            onPress={() => void runDemo('local')}
+            style={({ pressed }) => [styles.secondary, thumb, pressed && styles.pressed, busy && styles.disabled]}
+          >
+            <Text style={styles.secondaryLabel}>Try local wins on a job</Text>
+          </Pressable>
+          <Pressable
+            disabled={busy || !session}
+            onPress={() => void runDemo('prompt')}
+            style={({ pressed }) => [styles.secondary, thumb, pressed && styles.pressed, busy && styles.disabled]}
+          >
+            <Text style={styles.secondaryLabel}>Try pick-from-diff on a job</Text>
+          </Pressable>
+          <Pressable
+            disabled={busy || !session}
+            onPress={() => void runDemo('remote')}
+            style={({ pressed }) => [styles.secondary, thumb, pressed && styles.pressed, busy && styles.disabled]}
+          >
+            <Text style={styles.secondaryLabel}>Try remote wins on a job</Text>
+          </Pressable>
+          <Pressable
+            disabled={busy || !session}
+            onPress={() => void runDemo('reassign')}
+            style={({ pressed }) => [styles.secondary, thumb, pressed && styles.pressed, busy && styles.disabled]}
+          >
+            <Text style={styles.secondaryLabel}>Try forbid-edits on reassigned job</Text>
+          </Pressable>
+
           <Text style={styles.h}>Database</Text>
           <Text style={styles.row} selectable>
             Name {sync?.dbName ?? '—'}
@@ -127,7 +241,34 @@ export default function DebugScreen() {
           <Text style={styles.path} selectable>
             Path {sync?.dbPath ?? '—'}
           </Text>
-          <Text style={styles.muted}>Encryption key stays in the keychain; it is not shown.</Text>
+          <Text style={styles.label}>Encryption (dev)</Text>
+          <Text style={styles.muted}>
+            Default off (unencrypted file). On uses CBL AES-256 with a Keychain key — the key is never shown.
+            Switching deletes the local database and reseeds.
+          </Text>
+          {(
+            [
+              { on: false, label: 'Off (default)' },
+              { on: true, label: 'On (Keychain key)' },
+            ] as const
+          ).map((opt) => (
+            <Pressable
+              key={opt.label}
+              accessibilityRole="button"
+              disabled={busy || !session || encrypt === opt.on}
+              onPress={() =>
+                void run(opt.on ? 'Encryption on' : 'Encryption off', async () => {
+                  await stopReplicator();
+                  await setDbEncryptionEnabled(opt.on);
+                  if (session) await reopenFieldDatabase(session.employeeId, { wipe: true });
+                  setEncrypt(opt.on);
+                })
+              }
+              style={[styles.choice, encrypt === opt.on && styles.choiceOn]}
+            >
+              <Text style={encrypt === opt.on ? styles.choiceLabelOn : styles.choiceLabel}>{opt.label}</Text>
+            </Pressable>
+          ))}
 
           <Text style={styles.h}>Replication</Text>
           <Text style={styles.row} selectable>
@@ -413,6 +554,19 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   ghostLabel: { color: theme.color.accent, fontSize: theme.type.md, fontWeight: '600' },
+  choice: {
+    minHeight: 44,
+    borderRadius: theme.radius,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    backgroundColor: theme.color.surface,
+    justifyContent: 'center',
+    paddingHorizontal: theme.space.md,
+    marginBottom: theme.space.sm,
+  },
+  choiceOn: { borderColor: theme.color.accent, backgroundColor: theme.color.accentSoft },
+  choiceLabel: { color: theme.color.text, fontSize: theme.type.md },
+  choiceLabelOn: { color: theme.color.accent, fontSize: theme.type.md, fontWeight: '600' },
   pressed: { opacity: 0.85 },
   disabled: { opacity: 0.5 },
 });

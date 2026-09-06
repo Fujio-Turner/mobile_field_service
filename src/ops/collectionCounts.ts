@@ -46,12 +46,14 @@ async function countNative(name: string, scope: string): Promise<number | null> 
 
 export async function collectionCounts(): Promise<CollectionCountRow[]> {
   const native = nativeDbAvailable() && getOpenedDatabase();
-  const rows: CollectionCountRow[] = [];
-  for (const name of FIELD_COLLECTIONS) {
-    const count = native ? await countNative(name, FIELD_SCOPE) : memoryAll(name).length;
-    rows.push({ scope: FIELD_SCOPE, name, count, replicated: true });
-  }
+  const field = await Promise.all(
+    FIELD_COLLECTIONS.map(async (name) => ({
+      scope: FIELD_SCOPE,
+      name,
+      count: native ? await countNative(name, FIELD_SCOPE) : memoryAll(name).length,
+      replicated: true,
+    })),
+  );
   const tmpCount = native ? await countNative(TMP_COLLECTION, LOCAL_SCOPE) : memoryAll(TMP_COLLECTION).length;
-  rows.push({ scope: LOCAL_SCOPE, name: TMP_COLLECTION, count: tmpCount, replicated: false });
-  return rows;
+  return [...field, { scope: LOCAL_SCOPE, name: TMP_COLLECTION, count: tmpCount, replicated: false }];
 }
