@@ -33,7 +33,7 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 - [x] This roadmap + PR plan
 - [x] Engineering guides: logging, UI, release, replication ([guides/](../guides/README.md))
 - [x] [AGENT.md](../AGENT.md); tests live in `tests/`; local slices in gitignored `work/`
-- [ ] README: EE license, Expo **development builds**, iOS/Android only, CBL **3.3.3 EE** (lands with first code PR)
+- [x] README: EE license, Expo **development builds**, iOS/Android only, CBL **3.3.3 EE** (lands with first code PR)
 
 **Exit:** an engineer can implement without inventing field names, prefixes, or SQL++.
 
@@ -41,16 +41,16 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 1 — App shell and session UI
 
-- [ ] Expo SDK **52**, RN **0.76.6**, Node ≥ 20, `newArchEnabled: true`
-- [ ] iOS **15.1+**, Android **API 24+**
-- [ ] Expo Router: Login, Today placeholder, Profile
-- [ ] Login UI (email or username + password) — [AUTH.md](./AUTH.md)
-- [ ] `EXPO_PUBLIC_AUTH_STRATEGY=basic|oidc_implicit|oidc_code|demo` (default **basic**)
-- [ ] Keychain/Keystore session + expiry; `RefreshAuth`; replicator 401/404 → re-auth
-- [ ] Phone-first tabs; large-phone / small-tablet safe areas
-- [ ] Camera / location **usage strings** in `app.json` (runtime prompts in later PRs)
-- [ ] Jest (or equivalent) test runner wired
-- [ ] “Development build required” if the native module is missing
+- [x] Expo SDK **52**, RN **0.76.9** (SDK 52 pin; DESIGN cited 0.76.6), Node ≥ 20, `newArchEnabled: true`
+- [x] iOS **15.1+**, Android **API 24+** (`expo-build-properties`)
+- [x] Expo Router: Login, Today placeholder, Profile
+- [x] Login UI (email or username + password) — [AUTH.md](./AUTH.md)
+- [x] `EXPO_PUBLIC_AUTH_STRATEGY=basic|oidc_implicit|oidc_code|demo` (default **basic**; `.env.example` uses **demo**)
+- [x] Keychain/Keystore session + expiry; `RefreshAuth`; replicator 401/404 → re-auth (session write/restore/logout in PR-01; mint + 401 path with replicator)
+- [x] Phone-first tabs; large-phone / small-tablet safe areas
+- [x] Camera / location **usage strings** in `app.json` (runtime prompts in later PRs)
+- [x] Jest (or equivalent) test runner wired
+- [ ] “Development build required” if the native module is missing (PR-02)
 
 **Exit:** installable iOS/Android binary; login navigates to an empty Today screen.
 
@@ -58,16 +58,17 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 2 — Encrypted database, collections, seed
 
-- [ ] `CblReactNativeEngine` singleton
-- [ ] Open `mfs_<safe>_<hash8>` with AES-256 **string** key from Keychain + `FileSystem.getDefaultPath()`
-- [ ] Create scope `field` (**fourteen** collections including `messages`, `orders`, `rates`, `taxes`, `tracking`) + `local.tmp`
-- [ ] Value + FTS indexes from DESIGN.md
-- [ ] `stampAuditCreate` / `stampAuditUpdate` / `stampHistory` (unix **seconds**, app version, path from/to, lat/lon when GPS)
-- [ ] ULID + prefixes (`woin`, `woout`, `ast`, `prd`, `inv`, `invtx`, `usr`, `cus`, `tsk`, `nte`, `msg`, `ord`, `rate`, `tax`, `tmp`) + tracking `track:{day}:{employeeId}`
-- [ ] Users seed with `employeeId` + `email` (channel `emp:E-4412`)
-- [ ] Optional pre-built / JSON seed: ~12 inbound jobs, assets near sites, van stock, products, one user, one customer
-- [ ] `tmp` in scope `local`; replicator allow-list cannot include it; expiration helper
+- [x] `CblReactNativeEngine` singleton
+- [x] Open `mfs_<safe>_<hash8>` with AES-256 **string** key from Keychain + `FileSystem.getDefaultPath()`
+- [x] Create scope `field` (**fourteen** collections including `messages`, `orders`, `rates`, `taxes`, `tracking`) + `local.tmp`
+- [x] Value + FTS indexes from DESIGN.md
+- [x] `stampAuditCreate` / `stampAuditUpdate` / `stampHistory` (unix **seconds**, app version, path from/to, lat/lon when GPS)
+- [x] ULID + prefixes (`woin`, `woout`, `ast`, `prd`, `inv`, `invtx`, `usr`, `cus`, `tsk`, `nte`, `msg`, `ord`, `rate`, `tax`, `tmp`) + tracking `track:{day}:{employeeId}`
+- [x] Users seed with `employeeId` + `email` (channel `emp:E-4412`)
+- [ ] Optional pre-built / JSON seed: ~12 inbound jobs, assets near sites, van stock, products, one user, one customer (three inbound jobs + user + customer in v1 seed)
+- [x] `tmp` in scope `local`; replicator allow-list cannot include it; expiration helper
 - [ ] `RebuildStock` read-model stub (no stock `save`; unused until inventory PR)
+- [x] Guard screen if the native module is missing (Expo Go)
 
 **Exit:** `cblite` / VSCode CBL inspector shows `field.workordersin` seed docs with audit stamps.
 
@@ -77,16 +78,16 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 3 — Today list + KV detail
 
-- [ ] `ListTodayWork`: inbound `assignedTo.employeeId = $employeeId`, `status NOT IN ('cancelled','superseded')`, `scheduled.day = $day`, `ORDER BY scheduled.startDt DESC LIMIT 20 OFFSET n`
-- [ ] **Reassigned** / **Assignment changed** badge when inbound assignee ≠ session but local outbound exists
-- [ ] Page 0 **UNION ALL** active outbound: `workordersout` `status IN ('assigned','in_progress','blocked')` — **no** `day` filter; unpaged; collapse one row per `source.id` preferring outbound
-- [ ] Infinite scroll (offset += 20) on inbound only
-- [ ] Live query on inbound page 0 only; re-run active-outbound on those callbacks and pull-to-refresh
-- [ ] Empty / error / stale-sync states
-- [ ] Batched `FindOutboundForSources` → `openId` + `openCollection` on each row
-- [ ] Row tap → **one** KV get on `openCollection`
-- [ ] Read-only inbound detail screen
-- [ ] `query.explain()` debug on today list (index `idx_woin_today`)
+- [x] `ListTodayWork`: inbound `assignedTo.employeeId = $employeeId`, `status NOT IN ('cancelled','superseded')`, `scheduled.day = $day`, `ORDER BY scheduled.startDt DESC LIMIT 20 OFFSET n`
+- [x] **Reassigned** / **Assignment changed** badge when inbound assignee ≠ session but local outbound exists
+- [x] Page 0 **UNION ALL** active outbound: `workordersout` `status IN ('assigned','in_progress','blocked')` — **no** `day` filter; unpaged; collapse one row per `source.id` preferring outbound
+- [x] Infinite scroll (offset += 20) on inbound only
+- [x] Live query on inbound page 0 only; re-run active-outbound on those callbacks and pull-to-refresh
+- [x] Empty / error / stale-sync states (stale-sync waits on replicator)
+- [x] Batched `FindOutboundForSources` → `openId` + `openCollection` on each row
+- [x] Row tap → **one** KV get on `openCollection` (S04)
+- [x] Read-only inbound detail screen (S04)
+- [x] `query.explain()` debug on today list (index `idx_woin_today`)
 
 **Exit:** scrolling 40+ seed jobs stays on the indexed plan; tap does not re-query the list.
 
@@ -96,17 +97,17 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 4 — Copy-on-write
 
-- [ ] `StartWork`: copy `workordersin` → `workordersout` (new `woout:<ulid>`, `role: primary`, `owner: technician`)
-- [ ] Reject start if inbound `assignedTo.employeeId` ≠ session
-- [ ] Clone inbound `taskIds` templates into `type:'task'` instances
-- [ ] Idempotent reopen via `idx_woout_source` (`employeeId`, `source.id`, `role=primary`)
-- [ ] Race: duplicate copy discarded; oldest `audit.cr.dt` wins
-- [ ] Provenance `source.*` with **full body snapshot** minus `embedding` / blobs
-- [ ] **No writes** to `workordersin`
-- [ ] Today screen routes started rows to `app/wo/out/[id]` using `openCollection`
-- [ ] Metric `mfs_copy_on_write_total`
-- [ ] `StartWork` rejects inbound `cancelled` / `superseded`
-- [ ] `CreateWorkOrderIn`: new `woin:` `origin: field`, assigned to self; never patch dispatch inbound
+- [x] `StartWork`: copy `workordersin` → `workordersout` (new `woout:<ulid>`, `role: primary`, `owner: technician`)
+- [x] Reject start if inbound `assignedTo.employeeId` ≠ session
+- [x] Clone inbound `taskIds` templates into `type:'task'` instances
+- [x] Idempotent reopen via `idx_woout_source` (`employeeId`, `source.id`, `role=primary`)
+- [x] Race: duplicate copy discarded; oldest `audit.cr.dt` wins
+- [x] Provenance `source.*` with **full body snapshot** minus `embedding` / blobs
+- [x] **No writes** to `workordersin` (dispatch)
+- [x] Today screen routes started rows to `app/wo/out/[id]` using `openCollection`
+- [x] Metric `mfs_copy_on_write_total`
+- [x] `StartWork` rejects inbound `cancelled` / `superseded`
+- [x] `CreateWorkOrderIn`: new `woin:` `origin: field`, assigned to self; never patch dispatch inbound
 
 **Exit:** double-tap Start opens one outbound id; dispatch inbound JSON unchanged; field-created inbound pushes; Today tap on a started job KV-gets the out doc.
 
@@ -114,17 +115,17 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 5 — Outbound editor, status, Submit (no camera yet)
 
-- [ ] Status machine: `assigned` → `in_progress` ⇄ `blocked` → `complete` / `cancelled`
-- [ ] Operation statuses `pending | in_progress | done | skipped`
-- [ ] Editable operations + embedded checklist
-- [ ] `CompleteWork` gates required operations `status === 'done'` and required checklist `done === true` (required **tasks** added in the tasks PR)
-- [ ] `CancelWork` with reason (tech); dispatch cancel is inbound-only
-- [ ] `SubmitWork` only after complete/cancel; sets `syncState=ready_to_push`
-- [ ] Complete/Cancel set `owner: backend` and **freeze the body** (no notes/photos on that id)
-- [ ] `CreateAmendment`: new `woout` with `role: amendment`, `amends.id`
-- [ ] `history[]` on user saves (path + from/to + dt + lat/lon); skip `SetSyncState`
-- [ ] Dispatch-updated banner (inbound KV vs snapshot; no auto-merge)
-- [ ] Reassigned banner on an in-progress copy whose inbound assignee changed
+- [x] Status machine: `assigned` → `in_progress` ⇄ `blocked` → `complete` / `cancelled`
+- [x] Operation statuses `pending | in_progress | done | skipped`
+- [x] Editable operations + embedded checklist
+- [x] `CompleteWork` gates required operations `status === 'done'` and required checklist `done === true` (required **tasks** added in the tasks PR)
+- [x] `CancelWork` with reason (tech); dispatch cancel is inbound-only
+- [x] `SubmitWork` only after complete/cancel; sets `syncState=ready_to_push`
+- [x] Complete/Cancel set `owner: backend` and **freeze the body** (no notes/photos on that id)
+- [x] `CreateAmendment`: new `woout` with `role: amendment`, `amends.id`
+- [x] `history[]` on user saves (path + from/to + dt + lat/lon); skip `SetSyncState`
+- [ ] Dispatch-updated banner (inbound KV vs snapshot; no auto-merge) — Reassigned / assignment-changed banner is in
+- [x] Reassigned banner on an in-progress copy whose inbound assignee changed
 
 **Exit:** a tech can start, edit ops, complete, freeze, submit, and open a follow-up paper fully offline (without photos).
 
@@ -132,12 +133,12 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 6 — Photos and `local.tmp`
 
-- [ ] Camera runtime permission
-- [ ] Camera → `StagePhoto` (`local.tmp`, 24 h expiration) → `CommitPhoto`
-- [ ] Top-level blobs `photo:<id>` + `photo:<id>:thumb` (not array paths)
-- [ ] Cap 20 photos/job; compress 200–800 KB; strip EXIF
-- [ ] Delete photo; periodic compact
-- [ ] **No** embedding enqueue
+- [x] Camera runtime permission
+- [x] Camera → `StagePhoto` (`local.tmp`, 24 h expiration) → `CommitPhoto`
+- [x] Top-level blobs `photo:<id>` + `photo:<id>:thumb` (not array paths)
+- [x] Cap 20 photos/job; compress 200–800 KB; strip EXIF
+- [x] Delete photo; periodic compact
+- [x] **No** embedding enqueue
 
 **Exit:** 10 photos on a job survive process death; `local.tmp` staging expires.
 
@@ -147,10 +148,10 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 7 — Tasks and notes
 
-- [ ] `tasks` instances + templates; `CompleteWork` gains required-task predicate
-- [ ] `notes` job/general; FTS on notes; **409 on frozen parent**
-- [ ] New notes/tasks copy parent `readyToPush` if parent already submitted (editable only)
-- [ ] Push-filter expressions for notes/tasks documented for the replicator PR
+- [x] `tasks` instances + templates; `CompleteWork` gains required-task predicate
+- [x] `notes` job/general; FTS on notes; **409 on frozen parent**
+- [x] New notes/tasks copy parent `readyToPush` if parent already submitted (editable only)
+- [x] Push-filter expressions for notes/tasks documented for the replicator PR
 
 **Exit:** CompleteWork refuses a job with an open required task; notes cannot land on a frozen WO.
 
@@ -158,11 +159,11 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 7b — Chat
 
-- [ ] `field.messages` collection, prefix `msg:`
-- [ ] Job thread `thr:wo:{woinId}` and DM `thr:dm:{empA}:{empB}`
-- [ ] `SendMessage` `readyToPush: true` (not gated on WO Submit)
-- [ ] Chat tab + job-scoped composer from outbound editor
-- [ ] Push filter + `emp:` / `wo:` channels documented for the replicator PR
+- [x] `field.messages` collection, prefix `msg:`
+- [x] Job thread `thr:wo:{woinId}` and DM `thr:dm:{empA}:{empB}`
+- [x] `SendMessage` `readyToPush: true` (not gated on WO Submit)
+- [x] Chat tab + job-scoped composer from outbound editor
+- [x] Push filter + `emp:` / `wo:` channels documented for the replicator PR
 
 **Exit:** airplane-mode send appears after radio returns; completing a WO does not freeze the thread.
 
@@ -170,12 +171,12 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 8 — Assets map
 
-- [ ] MapLibre RN + OpenFreeMap Liberty **when online**
-- [ ] Document: basemap needs network / last style cache; **pins from CBL work offline**
-- [ ] BBox query `idx_ast_geo`; cluster; tap → KV asset
-- [ ] Filters: type, near job, near GPS
-- [ ] “Use asset on this job” writes `assetIds` on `woout` (needs PR-05+)
-- [ ] Location permission
+- [x] MapLibre RN + OpenFreeMap Liberty **when online**
+- [x] Document: basemap needs network / last style cache; **pins from CBL work offline**
+- [x] BBox query `idx_ast_geo`; cluster; tap → KV asset
+- [x] Filters: type, near job, near GPS
+- [x] “Use asset on this job” writes `assetIds` on `woout` (needs PR-05+)
+- [x] Location permission
 - [ ] Follow-up (not this phase): region MBTiles pack
 
 **Exit:** map shows seed pumps/sites; pin opens KV detail; airplane mode still shows pins.
@@ -184,12 +185,12 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 8b — Location crumbs (`tracking`)
 
-- [ ] Collection `field.tracking`, id `track:{YYYY-MM-DD}:{employeeId}` (device-local day; not email)
-- [ ] `RecordTrackPoint` when haversine ≥ `EXPO_PUBLIC_TRACK_MIN_MOVE_M` (default 100 m; `152` ≈ 500 ft)
-- [ ] Map `tracking` keyed by unix seconds → `[lat, lon]`; cap 4000/day; `last` `[lat, lon, ts]` for O(1) compare
-- [ ] `GetTrackingDay` / `GetTrackingLastNDays(n=7)` — seven KV gets, no query
-- [ ] Push filter always true; never log the map
-- [ ] Foreground / while-using only in v1 (background trail later)
+- [x] Collection `field.tracking`, id `track:{YYYY-MM-DD}:{employeeId}` (device-local day; not email)
+- [x] `RecordTrackPoint` when haversine ≥ `EXPO_PUBLIC_TRACK_MIN_MOVE_M` (default 100 m; `152` ≈ 500 ft)
+- [x] Map `tracking` keyed by unix seconds → `[lat, lon]`; cap 4000/day; `last` `[lat, lon, ts]` for O(1) compare
+- [x] `GetTrackingDay` / `GetTrackingLastNDays(n=7)` — seven KV gets, no query
+- [x] Push filter always true; never log the map
+- [x] Foreground / while-using only in v1 (background trail later)
 
 **Exit:** moving ~100 m+ writes a point; last 7 constructed ids KV-get; still docs do not dump crumbs.
 
@@ -197,13 +198,13 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 9 — Products and inventory
 
-- [ ] Catalog browse + FTS (`idx_prd_fts`)
-- [ ] Van stock list (`locationId` of current user)
-- [ ] `ConsumeInventoryOnWork`: write **only** `inventory_tx` + `woout.materials` (**never `save` stock rows**)
-- [ ] Display qty = pulled `qtyOnHand` + `SUM(qtyDelta WHERE inventory_tx.audit.cr.dt > snapshot.audit.up.dt)`
-- [ ] `RebuildStock` read model (no writer)
-- [ ] Insufficient stock error; `allowNegative` only `supervisor` / `technician_lead`
-- [ ] v1: one van per technician; **stock not pushed and not saved**; `inventory_tx` push when `readyToPush`
+- [x] Catalog browse + FTS (`idx_prd_fts`)
+- [x] Van stock list (`locationId` of current user)
+- [x] `ConsumeInventoryOnWork`: write **only** `inventory_tx` + `woout.materials` (**never `save` stock rows**)
+- [x] Display qty = pulled `qtyOnHand` + `SUM(qtyDelta WHERE inventory_tx.audit.cr.dt > snapshot.audit.up.dt)`
+- [x] `RebuildStock` read model (no writer)
+- [x] Insufficient stock error; `allowNegative` only `supervisor` / `technician_lead`
+- [x] v1: one van per technician; **stock not pushed and not saved**; `inventory_tx` push when `readyToPush`
 
 **Exit:** consuming a valve on the job writes `invtx:` and a materials line; van list shows snapshot + txs newer than `snapshot.audit.up.dt`; crash between tx and materials is repaired via `appliedToWo` only.
 
@@ -211,13 +212,13 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 9b — Orders, rates, taxes, field customers
 
-- [ ] Pull `rates` + `taxes`; never save those catalogs
-- [ ] `ListTodayOrders` / `StartOrder` (copy inbound → working; never mutate inbound)
-- [ ] `CreateOrder` `origin: field`; `PriceLines` integer cents
-- [ ] `CompleteOrder` freeze + `CreateOrderAmendment`
-- [ ] `CreateCustomer` `origin: field` (do not patch pulled customers)
-- [ ] Optional `orderId` on delivery WOs; `workOrderOutId` on orders taken on site
-- [ ] Seed: one inbound order, two rates, one tax, Hartford customer
+- [x] Pull `rates` + `taxes`; never save those catalogs
+- [x] `ListTodayOrders` / `StartOrder` (copy inbound → working; never mutate inbound)
+- [x] `CreateOrder` `origin: field`; `PriceLines` integer cents
+- [x] `CompleteOrder` freeze + `CreateOrderAmendment`
+- [x] `CreateCustomer` `origin: field` (do not patch pulled customers)
+- [x] Optional `orderId` on delivery WOs; `workOrderOutId` on orders taken on site
+- [x] Seed: one inbound order, two rates, one tax, Hartford customer
 
 **Exit:** sales-mode Today lists an inbound order; copy + complete does not change inbound JSON; walk-up creates `cus:` + `ord:`.
 
@@ -225,17 +226,17 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 10 — Sync
 
-- [ ] Lab SG/App Services **fixture documented** in DESIGN (collections `field.*` except `tmp`, session auth, channels `emp:{employeeId}`)
-- [ ] `SessionAuthenticator` after `POST /_session` (default); optional `BasicAuthenticator` or `Authorization: Bearer` header ([AUTH.md](./AUTH.md))
-- [ ] Replicator change listener: 401 / 404 / 10401 → `OnReplicatorAuthFailure`
-- [ ] `await Replicator.create`; collection allow-list; **`local.tmp` not included**
-- [ ] RN `"show source"` push filters (never-push for pull-only; woout/notes/tasks/tx as specified)
-- [ ] **No pull filters** in v1
-- [ ] `addDocumentChangeListener` → `syncState` `pushed` / `push_error`
-- [ ] Feature-detect pending-ids; else COUNT `ready_to_push`
-- [ ] Sync status on Profile; foreground restart
-- [ ] `ReconcileDuplicateOutbound` on pull
-- [ ] Channels sketch; SG sync function is **external**
+- [x] Lab SG/App Services **fixture documented** in DESIGN (collections `field.*` except `tmp`, session auth, channels `emp:{employeeId}`)
+- [x] `SessionAuthenticator` after `POST /_session` (default); optional `BasicAuthenticator` or `Authorization: Bearer` header ([AUTH.md](./AUTH.md))
+- [x] Replicator change listener: 401 / 404 / 10401 → `OnReplicatorAuthFailure`
+- [x] `await Replicator.create`; collection allow-list; **`local.tmp` not included**
+- [x] RN `"show source"` push filters (never-push for pull-only; woout/notes/tasks/tx as specified)
+- [x] **No pull filters** in v1
+- [x] `addDocumentChangeListener` → `syncState` `pushed` / `push_error`
+- [x] Feature-detect pending-ids; else COUNT `ready_to_push`
+- [x] Sync status on Profile; foreground restart
+- [x] `ReconcileDuplicateOutbound` on pull
+- [x] Channels sketch; SG sync function is **external**
 
 **Exit:** lab SG round-trip: pull inbound, push submitted outbound + blobs + txs.
 
@@ -243,11 +244,11 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 11 — Search, polish, observability
 
-- [ ] FTS notes / products / assets
-- [ ] Structured logs (no PII/doc dumps)
-- [ ] Metrics: query latency, copy-on-write, blob bytes, replicator
-- [ ] Database compact on idle after photo deletes
-- [ ] Customer history (local complete `workordersout`)
+- [x] FTS notes / products / assets
+- [x] Structured logs (no PII/doc dumps)
+- [x] Metrics: query latency, copy-on-write, blob bytes, replicator
+- [x] Database compact on idle after photo deletes
+- [x] Customer history (local complete `workordersout`)
 
 ---
 

@@ -85,6 +85,66 @@ SG user example (email): [README.md](../README.md).
 | `field.assets` products rates taxes users (dispatch) | **never** (filter false) |
 | `local.tmp` | **omitted** from `CollectionConfiguration[]` |
 
+### Notes and tasks (PR-08)
+
+Documented here for the replicator PR. RN push filters must be **pure** with `"show source"`.
+
+```ts
+function tasksPushFilter(document: any, _flags: any): boolean {
+  "show source";
+  return document["type"] === "task" && document["readyToPush"] === true;
+}
+
+function notesPushFilter(document: any, _flags: any): boolean {
+  "show source";
+  return document["readyToPush"] === true;
+}
+```
+
+- Templates (`type == 'task_template'`) never push.
+- Job notes/tasks start `readyToPush: false`. `SubmitWork` flips existing children. New children on an **editable** parent that is already submitted copy `readyToPush: true`.
+- General notes (no parent) set `readyToPush: true` on create.
+- Frozen parent → 409; do not push a follow-up onto the frozen copy.
+
+### Messages (PR-14)
+
+```ts
+function messagesPushFilter(document: any, _flags: any): boolean {
+  "show source";
+  return document["readyToPush"] === true;
+}
+```
+
+- `SendMessage` sets `readyToPush: true` on create (not gated on job Submit).
+- Completing a WO does **not** freeze the thread.
+- Channels: `emp:{from.employeeId}` plus each `toEmployeeIds` entry; job threads also `wo:{workOrderInId}` when SG grants that channel.
+
+### Orders (PR-15)
+
+```ts
+function ordersPushFilter(document: any, _flags: any): boolean {
+  "show source";
+  if (document["role"] === "inbound") return false;
+  const s = document["syncState"];
+  return s === "ready_to_push" || s === "pushed" || s === "push_error";
+}
+```
+
+- Never `save` inbound orders. `rates` / `taxes` push filter is `false`.
+- `SubmitOrder` allowed at quoted | accepted | complete | cancelled (no payment).
+
+### Tracking (PR-16)
+
+```ts
+function trackingPushFilter(_document: any, _flags: any): boolean {
+  "show source";
+  return true;
+}
+```
+
+- Device-owned crumbs; do not wait for Submit.
+- Never log the `tracking` map. Channel `emp:{employeeId}`. Id uses employeeId, not email.
+
 Channels: `emp:{employeeId}` (SG username is **email**). See DESIGN matrix.
 
 ---
@@ -154,11 +214,11 @@ Capella: same `wss` replicator; travel sample’s App Endpoint + collection **li
 
 ## 8. Checklist before merge
 
-- [ ] Engine singleton
-- [ ] Directory + encryption key from Keychain
-- [ ] `tmp` not in replicator configs
-- [ ] `"show source"` on every push filter
-- [ ] SessionAuthenticator + stored `expires`
-- [ ] 401 path tested
-- [ ] `start(false)`
-- [ ] No password in `app.json` (unlike the travel sample extra field)
+- [x] Engine singleton
+- [x] Directory + encryption key from Keychain
+- [x] `tmp` not in replicator configs
+- [x] `"show source"` on every push filter
+- [x] SessionAuthenticator + stored `expires`
+- [x] 401 path tested
+- [x] `start(false)`
+- [x] No password in `app.json` (unlike the travel sample extra field)

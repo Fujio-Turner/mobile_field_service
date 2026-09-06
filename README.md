@@ -4,8 +4,8 @@ A **phone app for people who work in the field** — inspect a pump, deliver par
 
 When the radio comes back, the phone syncs with Couchbase (Sync Gateway or Capella). The office sees **your copy** of the work, not a tug-of-war on the same document.
 
-**Status:** design and guides. Application code is not in the repo yet.  
-**Platforms:** iOS and Android (Expo development builds).  
+**Status:** Expo SDK 52 shell + demo login (PR-01). Couchbase Lite is not wired yet.  
+**Platforms:** iOS and Android. After CBL lands, **development builds** (not Expo Go).  
 **Repo:** [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service)
 
 ![Three modes: assets, customer, sales](images/overview.svg)
@@ -65,6 +65,33 @@ We use the Fujio-Turner [cbl-reactnative](https://github.com/Fujio-Turner/cbl-re
 | **Someone wiring Sync Gateway** | Email is the SG username. Session + TTL. Example below. |
 
 Chat is **employees only** (you ↔ dispatch), not customers. Orders **snapshot catalog prices**; we assume stock is there; **no credit cards** in this version. Proof of delivery is a **photo** for now (signature pad is later).
+
+---
+
+## Run the shell (PR-01)
+
+Node **≥ 20**. Copy env, install, start:
+
+```bash
+cp .env.example .env   # demo login, no Sync Gateway
+npm install
+npm test
+npx expo start
+```
+
+**Map.** Asset pins always come from local `field.assets` (bbox SQL++), including airplane mode. The basemap is OpenFreeMap Liberty via MapLibre and **needs network** (or MapLibre’s last style cache). Expo Go has no MapLibre native view — you get the pin list; a **development build** (`npx expo run:ios`) shows the map. Style URL: `EXPO_PUBLIC_MAP_STYLE_URL` (default `https://tiles.openfreemap.org/styles/liberty`). MBTiles is later.
+
+`.env.example` sets `EXPO_PUBLIC_AUTH_STRATEGY=demo`. Sign in with any email; you should land on **Today** (empty). Version on the login footer and Profile comes from `app.json`, not a hard-coded string.
+
+Couchbase Lite is wired but **not in Expo Go**. After login, Today shows a banner until you run a **development build**:
+
+```bash
+npx expo run:ios
+# or
+npx expo run:android
+```
+
+Binding: [Fujio-Turner/cbl-reactnative](https://github.com/Fujio-Turner/cbl-reactnative) (`feat/vector-search-support`). Shipping encryption + vector still needs a Couchbase Lite **Enterprise** license; lab/testing the module does not.
 
 ---
 
