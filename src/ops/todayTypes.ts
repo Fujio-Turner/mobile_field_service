@@ -6,6 +6,7 @@ export type TodayRow = {
   key: string;
   sourceId: string;
   number: string;
+  kind?: string;
   priority: string;
   status: string;
   summary: string;
@@ -21,6 +22,7 @@ export type TodayRow = {
 export type InboundHit = {
   id: string;
   number: string;
+  kind?: string;
   priority: string;
   status: string;
   summary: string;
@@ -34,6 +36,7 @@ export type OutboundHit = {
   id: string;
   sourceId: string;
   number: string;
+  kind?: string;
   priority: string;
   status: string;
   summary: string;
@@ -42,6 +45,7 @@ export type OutboundHit = {
   endDt?: number;
   role: string;
   assignedEmployeeId: string;
+  dropped?: boolean;
 };
 
 export type OutboundRef = {

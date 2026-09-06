@@ -7,6 +7,7 @@ import {
   replicatorAllowList,
 } from '../../src/db/collections';
 import { tmpExpiryDate, TMP_TTL_MS } from '../../src/db/tmp';
+import { TRACKING_TTL_DAYS, trackingExpiryDate } from '../../src/ops/tracking';
 import { FTS_INDEXES, VALUE_INDEXES } from '../../src/db/indexes';
 import { trackingDocId } from '../../src/ids';
 import { bytesToBase64, dbKeyItem } from '../../src/session/dbKeyCodec';
@@ -63,6 +64,16 @@ describe('collections', () => {
 describe('tmp expiry', () => {
   it('is 24 hours', () => {
     expect(tmpExpiryDate(0).getTime()).toBe(TMP_TTL_MS);
+  });
+});
+
+describe('tracking expiry', () => {
+  it('is 30 calendar days after the tracking day', () => {
+    expect(TRACKING_TTL_DAYS).toBe(30);
+    const exp = trackingExpiryDate('2026-09-05');
+    expect(exp.getFullYear()).toBe(2026);
+    expect(exp.getMonth()).toBe(9);
+    expect(exp.getDate()).toBe(5);
   });
 });
 

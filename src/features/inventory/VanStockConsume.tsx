@@ -4,7 +4,8 @@ import { consumeInventoryOnWork, type DisplayStock } from '@/src/ops/inventory';
 import { theme } from '@/src/theme';
 
 type Props = {
-  wooutId: string;
+  wooutId?: string;
+  orderId?: string;
   locationId: string;
   stock: DisplayStock[];
   editable: boolean;
@@ -13,7 +14,16 @@ type Props = {
   onMutate: (fn: () => Promise<void>) => void;
 };
 
-export function VanStockConsume({ wooutId, locationId, stock, editable, busy, session, onMutate }: Props) {
+export function VanStockConsume({
+  wooutId,
+  orderId,
+  locationId,
+  stock,
+  editable,
+  busy,
+  session,
+  onMutate,
+}: Props) {
   if (stock.length === 0) {
     return <Text style={styles.muted}>No van snapshots for {locationId}</Text>;
   }
@@ -34,6 +44,7 @@ export function VanStockConsume({ wooutId, locationId, stock, editable, busy, se
                 onMutate(async () => {
                   await consumeInventoryOnWork(session, {
                     wooutId,
+                    orderId,
                     productId: row.productId,
                     locationId,
                     qty: 1,

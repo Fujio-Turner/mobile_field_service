@@ -3,15 +3,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { FieldInput } from '@/src/ui/FieldInput';
-import { memorySave } from '@/src/db/memoryStore';
-import { nativeDbAvailable } from '@/src/db/database';
-import {
-  SEED_DISPATCH_EMPLOYEE_ID,
-  SEED_DISPATCH_USER_ID,
-  SEED_USER_ID,
-  seedDispatchUserDoc,
-  seedUserDoc,
-} from '@/src/db/seedData';
+import { ensureMemoryEmployees } from '@/src/db/ensureMemoryDemo';
+import { SEED_DISPATCH_EMPLOYEE_ID } from '@/src/db/seedData';
 import {
   ChatError,
   dmThreadId,
@@ -22,12 +15,6 @@ import {
 import { useAuth } from '@/src/session/AuthContext';
 import { NativeBanner } from '@/src/ui/NativeBanner';
 import { theme } from '@/src/theme';
-
-function ensureEmployees() {
-  if (nativeDbAvailable()) return;
-  memorySave('users', SEED_USER_ID, seedUserDoc('0.1.0+1', 1_700_000_000) as never);
-  memorySave('users', SEED_DISPATCH_USER_ID, seedDispatchUserDoc('0.1.0+1', 1_700_000_000) as never);
-}
 
 export default function ChatScreen() {
   const { session } = useAuth();
@@ -40,7 +27,7 @@ export default function ChatScreen() {
   const [busy, setBusy] = useState(false);
 
   const reload = useCallback(async () => {
-    ensureEmployees();
+    ensureMemoryEmployees();
     setThreads(await listThreadSummaries());
   }, []);
 
@@ -57,7 +44,7 @@ export default function ChatScreen() {
       await sendMessage(session, {
         body,
         kind: 'direct',
-        toEmployeeId: toEmp.trim(),
+        toEmployeeId: toEmp.trim() || undefined,
       });
       setBody('');
       await reload();
@@ -77,11 +64,14 @@ export default function ChatScreen() {
     <View style={styles.wrap}>
       <NativeBanner />
       <Text style={styles.title}>Employee chat</Text>
-      <Text style={styles.muted}>Employees only. Completing a job does not freeze threads. Messages push on send.</Text>
+      <Text style={styles.muted}>
+        Employees only. Tag a job with WO-10482 or an order with ORD-3301. @username or @employeeId addresses someone.
+        Completing a job does not freeze threads.
+      </Text>
       <FieldInput
         value={toEmp}
         onChangeText={setToEmp}
-        placeholder="DM employeeId"
+        placeholder="DM employeeId (or @ them in the message)"
         style={styles.input}
         editable={!busy}
         autoCapitalize="none"
@@ -90,7 +80,7 @@ export default function ChatScreen() {
       <FieldInput
         value={body}
         onChangeText={setBody}
-        placeholder="Message"
+        placeholder="Hey @E-DISP-01 WO-10482 needs more help tomorrow"
         style={styles.input}
         editable={!busy}
         returnKeyType="send"

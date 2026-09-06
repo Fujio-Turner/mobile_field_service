@@ -6,8 +6,8 @@
 | Mode | `assets` |
 | Repo | [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service) |
 | Author | Fujio-Turner / mobile_field_service |
-| Date | 2026-09-05 |
-| Status | Implemented on the demo seed (Jon Hale `E-4412`) |
+| Date | 2026-09-06 |
+| Status | Demo seed: Jon Hale `E-4412`, inspect/repair/move + WO-10460 reassigned leftover. Login `jon.hale@example.com`. |
 | Index | [DAY_IN_LIFE.md](./DAY_IN_LIFE.md) |
 | Architecture | [DESIGN.md](./DESIGN.md) |
 
@@ -37,11 +37,14 @@ Not the center of this day: `orders`, `rates`, `taxes` (those are customer/sales
 | When | Route | Collection(s) | Operation(s) |
 | --- | --- | --- | --- |
 | Login | `app/login.tsx` | — | `LoginRemote` |
-| Today | `app/(tabs)/index.tsx` | `workordersin`, `workordersout`, `orders` | `ListTodayWork`, `ListTodayOrders`, clock |
+| Today | `app/(tabs)/index.tsx` | `workordersin`, `workordersout` | `ListTodayWork`, clock. Walk-up `CreateWorkOrderIn`. |
 | Job | `app/wo/in/[id]` / `out/[id]` | KV | `GetWorkOrderIn` / `StartWork`; ops/checklist `DoneToggle` |
 | Assets | `app/(tabs)/map.tsx` | `assets` | `QueryAssetsInBBox`, `LinkAssetToWork` |
 | Parts | `app/(tabs)/inventory.tsx` | `inventory` txs | `ConsumeInventoryOnWork` |
 | Chat | `app/(tabs)/chat.tsx` | `messages` | `SendMessage` |
+| Notes | `app/(tabs)/notes.tsx` | `notes` | `CreateNote` (general) |
+| Profile | `app/(tabs)/profile.tsx` | — | Thumb zone, crumbs count, Settings / debug |
+| Search | `app/search/index.tsx` | notes / products / assets FTS | |
 
 ---
 
@@ -68,7 +71,7 @@ sequenceDiagram
 
 ### 06:40 — Login and Today
 
-Demo login (`EXPO_PUBLIC_AUTH_STRATEGY=demo`) maps to Jon. Today is **work orders** (plus an Orders section). The header is a **live clock** and a seconds countdown (next start / late-by / end of day). Rows show site, summary, priority stripe, time.
+Demo login (`EXPO_PUBLIC_AUTH_STRATEGY=demo`) with Jon’s email maps to Jon. Today is **work orders** (`workModes: assets` hides the orders card). The header is a **live clock** and a seconds countdown (next start / late-by / end of day). Rows show number · kind, site, summary, priority stripe, time.
 
 v1 seed board (device-local `scheduled.day`):
 
@@ -77,6 +80,7 @@ v1 seed board (device-local `scheduled.day`):
 | WO-10470 | inspect | Pump P-12 | — |
 | WO-10482 | repair | Pump P-12 | — |
 | WO-10490 | move | Motor M-7 yard → Riverside | — |
+| WO-10460 | repair | leftover | **Reassigned** |
 
 Tap a row → inbound KV. **Start work** is the filled button in the **bottom dock** (not a row cycle). Hermes has no `crypto`; the new `woout:` id uses expo-crypto.
 

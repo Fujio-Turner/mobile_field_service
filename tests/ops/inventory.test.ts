@@ -19,6 +19,7 @@ import {
   repairUnappliedInventoryTx,
   searchProducts,
 } from '../../src/ops/inventory';
+import { createOrder } from '../../src/ops/orders';
 import { OutError } from '../../src/ops/outError';
 import { startWork } from '../../src/ops/startWork';
 import { completeWork, startOrResumeWork } from '../../src/ops/transitionStatus';
@@ -109,6 +110,20 @@ describe('consume', () => {
     const display = await listStockAtLocation(SEED_VAN_ID);
     expect(display[0].displayQty).toBe(Number(before.qtyOnHand) - 1);
     expect(display[0].qtyOnHand).toBe(Number(before.qtyOnHand));
+  });
+
+  it('consumes onto an order without a work order copy', async () => {
+    const before = structuredClone(memoryGet('inventory', SEED_INV_ID)!);
+    const ordId = await createOrder(session, { customerName: 'Walk-up' });
+    const txId = await consumeInventoryOnWork(session, {
+      orderId: ordId,
+      productId: SEED_PRODUCT_ID,
+      locationId: SEED_VAN_ID,
+      qty: 1,
+    });
+    expect(memoryGet('inventory', SEED_INV_ID)).toEqual(before);
+    expect(memoryGet('inventory', txId)?.orderId).toBe(ordId);
+    expect(memoryGet('inventory', txId)?.workOrderOutId).toBeUndefined();
   });
 
   it('409s insufficient stock for a technician', async () => {

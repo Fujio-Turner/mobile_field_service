@@ -85,3 +85,62 @@ Labor example: `kind: service`, `code: LABOR-STD`, `amount: 12500` ($125.00), `u
 **PULL only.** Push filter `return false`. Channel: `district:{id}` and/or `public`.
 
 Hard rule: **no live join** from an order line to `rates.amount` for display of a saved order. Show `lines[].unitPrice`.
+
+---
+
+## JSON Schema
+
+[JSON Schema 2020-12](https://json-schema.org/draft/2020-12/schema). Document body; id is `rate:<ULID>`.
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Fujio-Turner/mobile_field_service/docs/schema/rates.json",
+  "title": "field.rates",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["type", "audit", "code", "name", "kind", "amount", "currency", "unit", "active"],
+  "properties": {
+    "type": { "const": "rate" },
+    "audit": { "$ref": "#/$defs/audit" },
+    "code": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "kind": { "type": "string", "enum": ["labor", "product", "service", "travel", "surcharge"] },
+    "amount": { "type": "integer", "description": "Integer cents per unit" },
+    "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
+    "unit": { "type": "string", "enum": ["hour", "ea", "mile", "flat", "day"] },
+    "active": { "type": "boolean" },
+    "productId": { "type": "string" },
+    "description": { "type": "string" },
+    "effectiveFromDt": { "$ref": "#/$defs/unixSeconds" },
+    "effectiveToDt": { "$ref": "#/$defs/unixSeconds" },
+    "taxInclusive": { "type": "boolean" },
+    "defaultTaxIds": { "type": "array", "items": { "type": "string" } },
+    "minQty": { "type": "number" },
+    "crewId": { "type": "string" },
+    "districtId": { "type": "string" }
+  },
+  "$defs": {
+    "unixSeconds": { "type": "integer", "minimum": 0 },
+    "auditStamp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dt", "ver", "by"],
+      "properties": {
+        "dt": { "$ref": "#/$defs/unixSeconds" },
+        "ver": { "type": "string" },
+        "by": { "type": "string" }
+      }
+    },
+    "audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cr", "up"],
+      "properties": {
+        "cr": { "$ref": "#/$defs/auditStamp" },
+        "up": { "$ref": "#/$defs/auditStamp" }
+      }
+    }
+  }
+}
+```

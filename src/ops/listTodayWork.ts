@@ -5,7 +5,7 @@ import { deviceLocalDay } from '../ids';
 import { collapseTodayPage, sourceIdsFromRows } from './collapseToday';
 import { findOutboundForSources, sourceIdsNeedingOutboundLookup } from './findOutboundForSources';
 import { memoryActiveOutbound, memoryInboundHits, memoryOutboundRefs } from './memoryToday';
-import { seedInboundAsHits } from './todaySeedFallback';
+import { seedActiveOutboundAsHits, seedInboundAsHits } from './todaySeedFallback';
 import { ACTIVE_OUTBOUND_SQL, inboundTodaySql } from './todaySql';
 import {
   TODAY_PAGE_SIZE,
@@ -18,6 +18,7 @@ export function parseInboundHits(rows: Record<string, unknown>[]): InboundHit[] 
   return rows.map((r) => ({
     id: String(r.id ?? ''),
     number: String(r.number ?? ''),
+    kind: r.kind != null && String(r.kind) !== '' ? String(r.kind) : undefined,
     priority: String(r.priority ?? 'normal'),
     status: String(r.status ?? ''),
     summary: String(r.summary ?? ''),
@@ -28,11 +29,31 @@ export function parseInboundHits(rows: Record<string, unknown>[]): InboundHit[] 
   }));
 }
 
+/** Cheap identity for “did this inbound row actually change?” — skip kit inspect when equal. */
+export function inboundHitFingerprint(hit: InboundHit): string {
+  return `${hit.id}\t${hit.status}\t${hit.assignedEmployeeId}\t${hit.summary}\t${hit.startDt}\t${hit.priority}\t${hit.kind ?? ''}`;
+}
+
+export function changedInboundIds(prev: InboundHit[], next: InboundHit[]): string[] {
+  const prevMap = new Map(prev.map((h) => [h.id, inboundHitFingerprint(h)]));
+  const changed: string[] = [];
+  const seen = new Set<string>();
+  for (const h of next) {
+    seen.add(h.id);
+    if (prevMap.get(h.id) !== inboundHitFingerprint(h)) changed.push(h.id);
+  }
+  for (const id of prevMap.keys()) {
+    if (!seen.has(id)) changed.push(id);
+  }
+  return changed;
+}
+
 export function parseOutboundHits(rows: Record<string, unknown>[]): OutboundHit[] {
   return rows.map((r) => ({
     id: String(r.id ?? ''),
     sourceId: String(r.sourceId ?? ''),
     number: String(r.number ?? ''),
+    kind: r.kind != null && String(r.kind) !== '' ? String(r.kind) : undefined,
     priority: String(r.priority ?? 'normal'),
     status: String(r.status ?? ''),
     summary: String(r.summary ?? ''),
@@ -41,6 +62,7 @@ export function parseOutboundHits(rows: Record<string, unknown>[]): OutboundHit[
     endDt: r.endDt == null ? undefined : Number(r.endDt),
     role: String(r.role ?? 'primary'),
     assignedEmployeeId: String(r.assignedEmployeeId ?? ''),
+    dropped: r.dropped === true,
   }));
 }
 
@@ -71,7 +93,13 @@ export async function listTodayWork(input: ListTodayInput): Promise<ListTodayRes
       ...memoryInboundHits(input.employeeId, day),
     ];
     const sliced = inbound.slice(offset, offset + limit);
-    const activeOutbound = includeActiveOutbound ? memoryActiveOutbound(input.employeeId) : [];
+    const memoryOut = includeActiveOutbound ? memoryActiveOutbound(input.employeeId) : [];
+    const seedOut = includeActiveOutbound
+      ? seedActiveOutboundAsHits(input.employeeId).filter(
+          (row) => !memoryOut.some((m) => m.sourceId === row.sourceId || m.id === row.id),
+        )
+      : [];
+    const activeOutbound = [...seedOut, ...memoryOut];
     const outboundBySource = memoryOutboundRefs(
       input.employeeId,
       sourceIdsNeedingOutboundLookup(

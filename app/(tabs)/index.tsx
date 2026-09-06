@@ -3,6 +3,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -13,23 +14,28 @@ import {
 import { useDatabase } from '@/src/db/DatabaseProvider';
 import { TodayRowView } from '@/src/features/today/TodayRowView';
 import { deviceLocalDay } from '@/src/ids';
-import { memorySave } from '@/src/db/memoryStore';
 import { nativeDbAvailable } from '@/src/db/database';
-import { seedInboundOrder, seedProductsRatesTaxes } from '@/src/db/seedData';
+import { ensureMemoryOrders } from '@/src/db/ensureMemoryDemo';
+import { createWorkOrderIn, CreateWorkOrderInError } from '@/src/ops/createWorkOrderIn';
 import { listTodayWork, sourceIdsFromRows, TODAY_PAGE_SIZE } from '@/src/ops/listTodayWork';
 import { listTodayOrders } from '@/src/ops/orders';
 import type { TodayRow } from '@/src/ops/todayTypes';
 import { watchTodayOrders, type TodayOrderRow } from '@/src/ops/watchTodayOrders';
 import { watchTodayWork, type WatchTodayHandle } from '@/src/ops/watchTodayWork';
 import type { LiveQueryHandle } from '@/src/db/liveQuery';
+import { applyInboundDecision } from '@/src/ops/inboundApply';
 import { useAuth } from '@/src/session/AuthContext';
+import { useJobRules } from '@/src/dev/JobRulesContext';
+import { showsTodayJobs, showsTodayOrders, workModesForEmployee } from '@/src/session/workModes';
 import { NativeBanner } from '@/src/ui/NativeBanner';
+import { FieldInput } from '@/src/ui/FieldInput';
 import { TodayClock } from '@/src/ui/TodayClock';
 import { theme } from '@/src/theme';
 
 export default function TodayScreen() {
   const router = useRouter();
   const { session } = useAuth();
+  const { rules } = useJobRules();
   const { status: dbStatus } = useDatabase();
   const day = deviceLocalDay();
   const [rows, setRows] = useState<TodayRow[]>([]);
@@ -39,12 +45,17 @@ export default function TodayScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [orders, setOrders] = useState<TodayOrderRow[]>([]);
+  const [walkUp, setWalkUp] = useState('');
+  const [creating, setCreating] = useState(false);
   const skipRef = useRef(new Set<string>());
   const inboundOffset = useRef(0);
   const watchRef = useRef<WatchTodayHandle | null>(null);
   const ordersWatchRef = useRef<LiveQueryHandle | null>(null);
 
   const employeeId = session?.employeeId;
+  const modes = workModesForEmployee(employeeId);
+  const showJobs = showsTodayJobs(modes);
+  const showOrders = showsTodayOrders(modes);
 
   const applyPage0 = useCallback((next: TodayRow[], isPreview: boolean, inboundCount: number) => {
     skipRef.current = sourceIdsFromRows(next);
@@ -57,13 +68,7 @@ export default function TodayScreen() {
   const loadOrders = useCallback(async () => {
     if (!employeeId) return;
     try {
-      if (!nativeDbAvailable()) {
-        const catalog = seedProductsRatesTaxes('0.1.0+1', 1_700_000_000);
-        for (const row of catalog.rates) memorySave('rates', row.id, row.doc as never);
-        for (const row of catalog.taxes) memorySave('taxes', row.id, row.doc as never);
-        const inbound = seedInboundOrder('0.1.0+1', 1_700_000_000, day);
-        memorySave('orders', inbound.id, inbound.doc as never);
-      }
+      ensureMemoryOrders(day);
       const todayOrders = await listTodayOrders(employeeId, day);
       setOrders(
         todayOrders.map((row) => ({
@@ -82,13 +87,22 @@ export default function TodayScreen() {
     if (!employeeId) return;
     setError(null);
     try {
-      const result = await listTodayWork({ employeeId, day, offset: 0 });
+      let result = await listTodayWork({ employeeId, day, offset: 0 });
+      if (session) {
+        let applied = false;
+        for (const row of result.rows) {
+          if (row.openCollection !== 'workordersout') continue;
+          const out = await applyInboundDecision(row.openId, session, rules);
+          if (out.action === 'apply' || out.action === 'drop') applied = true;
+        }
+        if (applied) result = await listTodayWork({ employeeId, day, offset: 0 });
+      }
       applyPage0(result.rows, result.preview, result.inboundCount);
-      await loadOrders();
+      if (!nativeDbAvailable()) await loadOrders();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Query failed');
     }
-  }, [employeeId, day, applyPage0, loadOrders]);
+  }, [employeeId, day, applyPage0, loadOrders, session, rules]);
 
   useEffect(() => {
     if (!employeeId) return;
@@ -129,9 +143,19 @@ export default function TodayScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadPage0();
-    setRefreshing(false);
-  }, [loadPage0]);
+    try {
+      if (nativeDbAvailable() && dbStatus === 'ready' && session && rows.length > 0) {
+        for (const row of rows) {
+          if (row.openCollection !== 'workordersout') continue;
+          await applyInboundDecision(row.openId, session, rules);
+        }
+      } else {
+        await loadPage0();
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  }, [dbStatus, loadPage0, rows, rules, session]);
 
   const openRow = useCallback(
     (row: TodayRow) => {
@@ -164,7 +188,7 @@ export default function TodayScreen() {
   return (
     <View style={styles.screen}>
       <FlatList
-        data={rows}
+        data={showJobs ? rows : []}
         keyExtractor={(item) => item.key}
         renderItem={({ item }) => (
           <TodayRowView row={item} onPress={openRow} />
@@ -188,36 +212,81 @@ export default function TodayScreen() {
                 <Text style={styles.retry}>Retry</Text>
               </Pressable>
             ) : null}
+            {showOrders ? (
+              <View style={styles.ordersCard}>
+                <Text style={styles.section}>Orders</Text>
+                {orders.length > 0 ? (
+                  orders.map((o) => (
+                    <Pressable key={o.id} onPress={() => router.push(`/order/${o.id}`)} style={styles.orderRow}>
+                      <Text style={styles.orderTitle}>{o.number}</Text>
+                      <Text style={styles.muted}>
+                        {o.role} · {o.status}
+                      </Text>
+                    </Pressable>
+                  ))
+                ) : (
+                  <Text style={styles.muted}>No orders on this day</Text>
+                )}
+                <Pressable onPress={() => router.push('/order/new')} style={styles.orderCta}>
+                  <Text style={styles.retry}>New field order</Text>
+                </Pressable>
+              </View>
+            ) : null}
             <View style={styles.ordersCard}>
-              <Text style={styles.section}>Orders</Text>
-              {orders.length > 0 ? (
-                orders.map((o) => (
-                  <Pressable key={o.id} onPress={() => router.push(`/order/${o.id}`)} style={styles.orderRow}>
-                    <Text style={styles.orderTitle}>{o.number}</Text>
-                    <Text style={styles.muted}>
-                      {o.role} · {o.status}
-                    </Text>
-                  </Pressable>
-                ))
-              ) : (
-                <Text style={styles.muted}>No orders on this day</Text>
-              )}
-              <Pressable onPress={() => router.push('/order/new')} style={styles.orderCta}>
-                <Text style={styles.retry}>New field order</Text>
+              <Text style={styles.section}>Walk-up job</Text>
+              <FieldInput
+                value={walkUp}
+                onChangeText={setWalkUp}
+                placeholder="Summary"
+                style={styles.input}
+                editable={!creating}
+                returnKeyType="done"
+              />
+              <Pressable
+                disabled={creating || !session}
+                onPress={() => {
+                  if (!session) return;
+                  setCreating(true);
+                  void (async () => {
+                    try {
+                      const { woinId } = await createWorkOrderIn({
+                        session: {
+                          employeeId: session.employeeId,
+                          email: session.email,
+                          username: session.username,
+                        },
+                        summary: walkUp,
+                        kind: 'service',
+                      });
+                      setWalkUp('');
+                      router.push(`/wo/in/${woinId}`);
+                    } catch (e) {
+                      Alert.alert(
+                        'Field job',
+                        e instanceof CreateWorkOrderInError ? 'Type a summary first.' : 'Could not create the job.',
+                      );
+                    } finally {
+                      setCreating(false);
+                    }
+                  })();
+                }}
+                style={styles.orderCta}
+              >
+                <Text style={styles.retry}>{creating ? 'Creating…' : 'Create field job'}</Text>
               </Pressable>
             </View>
-            {rows.length > 0 ? <Text style={styles.section}>Jobs</Text> : null}
+            {showJobs && rows.length > 0 ? <Text style={styles.section}>Jobs</Text> : null}
           </View>
         }
         ListEmptyComponent={
           dbStatus === 'opening' ? (
             <ActivityIndicator color={theme.color.accent} style={styles.spinner} />
-          ) : (
+          ) : showJobs ? (
             <View style={styles.emptyWrap}>
               <Text style={styles.empty}>No work for today</Text>
               <Text style={styles.muted}>Not synced yet</Text>
             </View>
-          )
+          ) : null
         }
         ListFooterComponent={
           loadingMore ? <ActivityIndicator color={theme.color.accent} style={styles.spinner} /> : null
@@ -267,4 +336,15 @@ const styles = StyleSheet.create({
   orderRow: { minHeight: 48, justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: theme.color.border },
   orderTitle: { fontSize: theme.type.md, color: theme.color.text, fontWeight: '600' },
   orderCta: { minHeight: 44, justifyContent: 'center', marginTop: theme.space.sm },
+  input: {
+    backgroundColor: theme.color.bg,
+    borderColor: theme.color.border,
+    borderWidth: 1,
+    borderRadius: theme.radius,
+    paddingHorizontal: theme.space.md,
+    paddingVertical: theme.space.md,
+    fontSize: theme.type.md,
+    color: theme.color.text,
+    minHeight: 48,
+  },
 });

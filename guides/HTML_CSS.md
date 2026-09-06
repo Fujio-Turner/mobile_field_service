@@ -11,7 +11,7 @@ If a small **web** companion appears later (status page, not the field app), use
 - **Theme tokens, not magic numbers.** Colors, type, space live in `src/theme.ts`. Screens import tokens; they do not hard-code `#fff` or `14`.
 - **Phone-first.** Design at 390×844. Large phone / ~7″ tablet must not clip; no desktop layout.
 - **No emoji as icons.** Use SVG (react-native-svg) or a small icon set. 24×24, 1.5 stroke, one color from the theme.
-- **Touch targets ≥ 44×44 pt.** Primary actions full-width on the phone.
+- **Touch targets ≥ 44×44 pt.** Primary actions full-width on the phone unless Profile **Large screen optimize** is on (then thumb-zone width; **Left hand** mirrors).
 - **One visual language** for assets / customer / sales modes. Mode changes **data**, not a new skin.
 - **No inline styles** except a one-off that cannot be a named style (rare). Prefer `StyleSheet.create`.
 - **Do not ship a WebView** for core flows (login, Today, editors). OIDC uses the **system browser** ([AUTH.md](../docs/AUTH.md)).

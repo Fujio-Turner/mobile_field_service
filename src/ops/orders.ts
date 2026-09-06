@@ -246,6 +246,68 @@ export async function addOrderLine(
   await saveOrder(ordId, next);
 }
 
+export async function setOrderLineQty(
+  ordId: string,
+  session: StartSession,
+  lineId: string,
+  qty: number,
+): Promise<void> {
+  const doc = await loadOrder(ordId);
+  if (!doc) throw new OutError('missing');
+  assertWritableOrder(doc);
+  if (!(qty > 0)) throw new OutError('reason_required', 'qty must be positive');
+  const lines = [...((doc.lines as PricedLine[]) ?? [])];
+  const idx = lines.findIndex((l) => l.id === lineId);
+  if (idx < 0) throw new OutError('missing', 'line not found');
+  const from = lines[idx].qty;
+  lines[idx] = { ...lines[idx], qty };
+  const rates = await loadRateMap();
+  const taxes = await loadTaxMap();
+  const priced = priceLines(
+    lines.map((l) => ({
+      id: l.id,
+      productId: l.productId,
+      rateId: l.rateId,
+      description: l.description,
+      qty: l.qty,
+      uom: l.uom,
+      taxIds: l.taxIds,
+    })),
+    rates,
+    taxes,
+  );
+  const ver = appVersion();
+  const dt = nowSec();
+  let next: Record<string, unknown> = { ...doc, lines: priced.lines, totals: priced.totals };
+  next = stampAuditUpdate(next as never, { by: session.username, ver, dt });
+  next = stampHistory(next as never, {
+    op: 'SetOrderLineQty',
+    by: session.username,
+    ver,
+    dt,
+    changes: [{ path: `lines.${lineId}.qty`, from, to: qty }],
+  });
+  await saveOrder(ordId, next);
+}
+
+export async function setOrderCustomer(ordId: string, session: StartSession, customerId: string): Promise<void> {
+  const doc = await loadOrder(ordId);
+  if (!doc) throw new OutError('missing');
+  assertWritableOrder(doc);
+  const ver = appVersion();
+  const dt = nowSec();
+  let next: Record<string, unknown> = { ...doc, customerId };
+  next = stampAuditUpdate(next as never, { by: session.username, ver, dt });
+  next = stampHistory(next as never, {
+    op: 'SetOrderCustomer',
+    by: session.username,
+    ver,
+    dt,
+    changes: [{ path: 'customerId', from: doc.customerId, to: customerId }],
+  });
+  await saveOrder(ordId, next);
+}
+
 export async function completeOrder(ordId: string, session: StartSession): Promise<void> {
   const doc = await loadOrder(ordId);
   if (!doc) throw new OutError('missing');

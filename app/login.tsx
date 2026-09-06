@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/src/session/AuthContext';
+import { DEMO_LOGIN_HINT } from '@/src/session/identity';
 import { authStrategy } from '@/src/session/strategy';
 import { theme } from '@/src/theme';
 import { FieldInput } from '@/src/ui/FieldInput';
@@ -39,7 +40,7 @@ export default function LoginScreen() {
             {needsReauth
               ? 'Sign in to sync. Local work stays on this device.'
               : demo
-                ? 'Demo mode — any email or username, no server.'
+                ? DEMO_LOGIN_HINT
                 : 'Work email and password. Session is stored in the device keychain.'}
           </Text>
 

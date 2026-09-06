@@ -39,6 +39,11 @@ export type WorkOrderIn = {
   }>;
   materials: Array<{ sku?: string; name?: string; qtyPlanned?: number; productId?: string }>;
   assetIds: string[];
+  orderId?: string;
+  move?: {
+    from?: { name?: string; geo?: { lat: number; lon: number } };
+    to?: { name?: string; geo?: { lat: number; lon: number } };
+  };
   checklist: Array<{ id?: string; label?: string; done?: boolean; required?: boolean }>;
 };
 
@@ -78,6 +83,17 @@ export function documentToObject(doc: unknown): Record<string, unknown> | null {
 function asList(v: unknown): Record<string, unknown>[] {
   if (!Array.isArray(v)) return [];
   return v.filter((x) => x && typeof x === 'object') as Record<string, unknown>[];
+}
+
+function parseMovePoint(raw: unknown): { name?: string; geo?: { lat: number; lon: number } } | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const rec = raw as Record<string, unknown>;
+  const geo = rec.geo as { lat?: unknown; lon?: unknown } | undefined;
+  return {
+    name: rec.name != null ? String(rec.name) : undefined,
+    geo:
+      geo?.lat != null && geo?.lon != null ? { lat: Number(geo.lat), lon: Number(geo.lon) } : undefined,
+  };
 }
 
 export function parseWorkOrderIn(id: string, raw: Record<string, unknown> | null): WorkOrderIn | null {
@@ -141,6 +157,13 @@ export function parseWorkOrderIn(id: string, raw: Record<string, unknown> | null
       qtyPlanned: m.qtyPlanned != null ? Number(m.qtyPlanned) : undefined,
     })),
     assetIds: Array.isArray(raw.assetIds) ? raw.assetIds.map((a) => String(a)) : [],
+    orderId: raw.orderId != null ? String(raw.orderId) : undefined,
+    move: raw.move
+      ? {
+          from: parseMovePoint((raw.move as { from?: unknown }).from),
+          to: parseMovePoint((raw.move as { to?: unknown }).to),
+        }
+      : undefined,
     checklist: asList(raw.checklist).map((c) => ({
       id: c.id != null ? String(c.id) : undefined,
       label: c.label != null ? String(c.label) : undefined,

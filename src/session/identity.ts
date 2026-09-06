@@ -4,47 +4,64 @@ import {
   SEED_DISPATCH_USERNAME,
   SEED_EMAIL,
   SEED_EMPLOYEE_ID,
+  SEED_MAYA_EMAIL,
+  SEED_MAYA_EMPLOYEE_ID,
+  SEED_MAYA_USERNAME,
+  SEED_PRIYA_EMAIL,
+  SEED_PRIYA_EMPLOYEE_ID,
+  SEED_PRIYA_USERNAME,
   SEED_USERNAME,
 } from '../db/seedData';
+import type { WorkMode } from './workModes';
 
 export type LoginIdentity = {
   employeeId: string;
   email: string;
   username: string;
+  displayName?: string;
+  workModes: WorkMode[];
 };
 
-const KNOWN: Record<string, LoginIdentity> = {
-  [SEED_EMAIL.toLowerCase()]: {
+const PERSONAS: LoginIdentity[] = [
+  {
     employeeId: SEED_EMPLOYEE_ID,
     email: SEED_EMAIL,
     username: SEED_USERNAME,
+    displayName: 'Jon Hale',
+    workModes: ['assets'],
   },
-  [SEED_USERNAME.toLowerCase()]: {
-    employeeId: SEED_EMPLOYEE_ID,
-    email: SEED_EMAIL,
-    username: SEED_USERNAME,
-  },
-  [SEED_EMPLOYEE_ID.toLowerCase()]: {
-    employeeId: SEED_EMPLOYEE_ID,
-    email: SEED_EMAIL,
-    username: SEED_USERNAME,
-  },
-  [SEED_DISPATCH_EMAIL.toLowerCase()]: {
+  {
     employeeId: SEED_DISPATCH_EMPLOYEE_ID,
     email: SEED_DISPATCH_EMAIL,
     username: SEED_DISPATCH_USERNAME,
+    displayName: 'Maya Dispatch',
+    workModes: ['assets'],
   },
-  [SEED_DISPATCH_USERNAME.toLowerCase()]: {
-    employeeId: SEED_DISPATCH_EMPLOYEE_ID,
-    email: SEED_DISPATCH_EMAIL,
-    username: SEED_DISPATCH_USERNAME,
+  {
+    employeeId: SEED_MAYA_EMPLOYEE_ID,
+    email: SEED_MAYA_EMAIL,
+    username: SEED_MAYA_USERNAME,
+    displayName: 'Maya Chen',
+    workModes: ['customer'],
   },
-  [SEED_DISPATCH_EMPLOYEE_ID.toLowerCase()]: {
-    employeeId: SEED_DISPATCH_EMPLOYEE_ID,
-    email: SEED_DISPATCH_EMAIL,
-    username: SEED_DISPATCH_USERNAME,
+  {
+    employeeId: SEED_PRIYA_EMPLOYEE_ID,
+    email: SEED_PRIYA_EMAIL,
+    username: SEED_PRIYA_USERNAME,
+    displayName: 'Priya Shah',
+    workModes: ['sales'],
   },
-};
+];
+
+const KNOWN: Record<string, LoginIdentity> = {};
+for (const p of PERSONAS) {
+  KNOWN[p.email.toLowerCase()] = p;
+  KNOWN[p.username.toLowerCase()] = p;
+  KNOWN[p.employeeId.toLowerCase()] = p;
+}
+
+export const DEMO_LOGIN_HINT =
+  'Demo — Jon Hale (assets), Maya Chen (customer), Priya Shah (sales). Unknown ids sign in as Jon.';
 
 /** Map login identifier → profile. Lab users are seeded; E-* ids pass through. */
 export function resolveLoginIdentity(identifier: string): LoginIdentity | null {
@@ -57,7 +74,14 @@ export function resolveLoginIdentity(identifier: string): LoginIdentity | null {
       employeeId: raw,
       email: raw.includes('@') ? raw : `${raw.toLowerCase()}@local`,
       username: raw,
+      workModes: ['assets'],
     };
   }
   return null;
+}
+
+export function demoIdentity(identifier: string): LoginIdentity | null {
+  const raw = identifier.trim();
+  if (!raw) return null;
+  return resolveLoginIdentity(raw) ?? PERSONAS[0];
 }

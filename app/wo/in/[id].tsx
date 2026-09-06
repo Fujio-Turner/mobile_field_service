@@ -142,6 +142,35 @@ export default function WorkOrderInScreen() {
           </>
         ) : null}
 
+        {doc.move?.from || doc.move?.to ? (
+          <>
+            <Text style={styles.section}>Move</Text>
+            {doc.move.from ? (
+              <Text style={styles.value}>
+                From {doc.move.from.name ?? 'origin'}
+                {doc.move.from.geo
+                  ? ` · ${doc.move.from.geo.lat.toFixed(4)}, ${doc.move.from.geo.lon.toFixed(4)}`
+                  : ''}
+              </Text>
+            ) : null}
+            {doc.move.to ? (
+              <Text style={styles.value}>
+                To {doc.move.to.name ?? 'destination'}
+                {doc.move.to.geo
+                  ? ` · ${doc.move.to.geo.lat.toFixed(4)}, ${doc.move.to.geo.lon.toFixed(4)}`
+                  : ''}
+              </Text>
+            ) : null}
+          </>
+        ) : null}
+
+        {doc.orderId ? (
+          <>
+            <Text style={styles.section}>Order</Text>
+            <Text style={styles.value}>{doc.orderId}</Text>
+          </>
+        ) : null}
+
         {doc.checklist.length > 0 ? (
           <>
             <Text style={styles.section}>Checklist</Text>

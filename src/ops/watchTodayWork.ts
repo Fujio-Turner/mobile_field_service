@@ -4,9 +4,9 @@ import { applyParams, normalizeResults } from '../db/query';
 import { deviceLocalDay } from '../ids';
 import { collapseTodayPage } from './collapseToday';
 import { findOutboundForSources, sourceIdsNeedingOutboundLookup } from './findOutboundForSources';
-import { listTodayWork, parseInboundHits, parseOutboundHits } from './listTodayWork';
+import { inboundHitFingerprint, listTodayWork, parseInboundHits, parseOutboundHits } from './listTodayWork';
 import { ACTIVE_OUTBOUND_SQL, inboundTodaySql } from './todaySql';
-import { TODAY_PAGE_SIZE, type InboundHit, type OutboundHit, type TodayRow } from './todayTypes';
+import { TODAY_PAGE_SIZE, type InboundHit, type OutboundHit, type OutboundRef, type TodayRow } from './todayTypes';
 
 export type WatchTodayHandle = {
   stop: () => Promise<void>;
@@ -44,6 +44,9 @@ export async function watchTodayWork(
 
   let lastInbound: InboundHit[] = [];
   let lastActive: OutboundHit[] = [];
+  let cachedLookupKey = '';
+  let cachedRefs: Map<string, OutboundRef> = new Map();
+  let lastEmitKey = '';
   let timer: ReturnType<typeof setTimeout> | null = null;
   let stopped = false;
   let running = false;
@@ -55,18 +58,28 @@ export async function watchTodayWork(
     try {
       do {
         dirty = false;
-        const outboundBySource = await findOutboundForSources(
-          input.employeeId,
-          sourceIdsNeedingOutboundLookup(
-            lastInbound.map((h) => h.id),
-            lastActive,
-          ),
+        const emitKey =
+          lastInbound.map(inboundHitFingerprint).join('\n') +
+          '\n#\n' +
+          lastActive
+            .map((h) => `${h.id}\t${h.status}\t${h.sourceId}\t${h.dropped ? 1 : 0}\t${h.summary}`)
+            .join('\n');
+        if (emitKey === lastEmitKey) continue;
+        lastEmitKey = emitKey;
+        const ids = sourceIdsNeedingOutboundLookup(
+          lastInbound.map((h) => h.id),
+          lastActive,
         );
+        const key = ids.join('\0');
+        if (key !== cachedLookupKey) {
+          cachedRefs = await findOutboundForSources(input.employeeId, ids);
+          cachedLookupKey = key;
+        }
         const rows = collapseTodayPage({
           employeeId: input.employeeId,
           inbound: lastInbound,
           activeOutbound: lastActive,
-          outboundBySource,
+          outboundBySource: cachedRefs,
           includeActiveOutbound: true,
         });
         if (!stopped) onRows(rows, { preview: false, inboundCount: lastInbound.length });
@@ -116,7 +129,8 @@ export async function watchTodayWork(
   try {
     lastInbound = parseInboundHits(normalizeResults(await inboundQuery.execute()));
     lastActive = parseOutboundHits(normalizeResults(await outboundQuery.execute()));
-    await emit();
+    // Coalesce with the live listener's first snapshot instead of collapsing twice.
+    schedule();
   } catch (e) {
     onRows([], { preview: false, error: e instanceof Error ? e.message : 'Query failed' });
   }

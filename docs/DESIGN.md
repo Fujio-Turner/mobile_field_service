@@ -5,11 +5,11 @@
 | Title | Offline-first field service mobile app |
 | Repo | [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service) |
 | Author | Fujio-Turner / mobile_field_service |
-| Date | 2026-09-05 |
-| Status | Implemented through S16 except vector (S15). Train `feat/pr-01-expo-shell` → `main`. |
+| Date | 2026-09-06 |
+| Status | Implemented S01–S16 except vector (S15). Three demo modes walk on iOS. |
 | Audience | Senior engineers implementing the Expo + Couchbase Lite RN app |
 
-This is a **Fujio-Turner** project, not koten-ai. The architecture, data model, operations catalog, and query contract live here. Use cases: [DAY_IN_LIFE.md](./DAY_IN_LIFE.md) (assets / customer / sales). Auth: [AUTH.md](./AUTH.md). Phased delivery: [ROADMAP.md](./ROADMAP.md). Collection schemas: [schema/](./schema/README.md).
+This is a **Fujio-Turner** project, not koten-ai. The architecture, data model, operations catalog, and query contract live here. Use cases: [DAY_IN_LIFE.md](./DAY_IN_LIFE.md) (assets / customer / sales). Auth: [AUTH.md](./AUTH.md). Settings catalog: [guides/SETTINGS.md](../guides/SETTINGS.md). Phased delivery: [ROADMAP.md](./ROADMAP.md). Collection schemas: [schema/](./schema/README.md) (JSON Schema 2020-12 on each file).
 
 **Sibling note.** `utility_field_service` is a UtilityCo / SAP demo scaffold (mock repository, ops dashboard, OpenFreeMap + MapLibre). This product is a **new** phone-first field app. Do not copy that collection set, SAP outbox, or mock-first data layer.
 
@@ -31,7 +31,7 @@ The app is **React Native + Expo (development builds)** with Couchbase Lite via 
 
 **Pulled dispatch inbound is never mutated on the device.** The phone **may create** new inbound work orders/jobs (`origin: field`, new `woin:`). Sync channels by **`emp:{employeeId}`** (SG login username = **email**; see README example). Starting a job **copies** inbound into `workordersout` (new id). The tech works **that copy** offline and pushes it back. When `workordersout.status` becomes `complete` (or `cancelled`), the **body is frozen** and **ownership moves to the backend** — the backend may spawn follow-up tasks and processes. The technician cannot edit that document again. Forgotten details become a **new** `workordersout` (`role: amendment`) that **references** the frozen original (another sheet of paper). The backend consolidates documents that share a work-order number / `source.id`. Multiple outbound documents per work order are expected (eventual consistency). Dispatch may **reassign** inbound while the tech is offline; the Today list badges it **Reassigned**; the tech’s copy still syncs.
 
-User/device mutations append `history[]` (path + from/to + lat/lon/dt). Breadcrumb GPS (moved ≥ N meters) goes to `field.tracking` keyed `track:{day}:{employeeId}` — last 7 days is seven KV gets.
+User/device mutations append `history[]` (path + from/to + lat/lon/dt). Breadcrumb GPS (moved ≥ N meters) goes to `field.tracking` keyed `track:{day}:{employeeId}` — last 7 days is seven KV gets; each day doc **TTL 30 days**.
 
 Vector similarity (on-device **mobile-CLIP** embeddings + CBL vector index) is a **Phase EE** capability. The React Native plugin **does not currently expose vector indexes or `APPROX_VECTOR_DISTANCE()`**. The schema allows optional `embedding.clip512` (512 floats); v1 **does not write** embeddings until PR-13 when a native model exists. The similarity UI is feature-flagged (`VECTOR_SEARCH_ENABLED && nativeVectorApi`).
 
@@ -41,7 +41,7 @@ Vector similarity (on-device **mobile-CLIP** embeddings + CBL vector index) is a
 
 ### Current state
 
-This repository is an Expo SDK **52** / RN **0.76.9** field app (`app/`, `src/ops/*`, `src/db/*`, `src/sync/*`) plus docs. Git **origin** is `Fujio-Turner/mobile_field_service` (not koten-ai). Demo login (`EXPO_PUBLIC_AUTH_STRATEGY=demo`) maps to seed tech `E-4412`. Development builds only — Expo Go cannot load CBL or MapLibre.
+This repository is an Expo SDK **52** / RN **0.76.9** field app (`app/`, `src/ops/*`, `src/db/*`, `src/sync/*`) plus docs. Git **origin** is `Fujio-Turner/mobile_field_service` (not koten-ai). Demo login (`EXPO_PUBLIC_AUTH_STRATEGY=demo`) maps Jon / Maya Chen / Priya (or any other non-empty id as Jon). Development builds only — Expo Go cannot load CBL or MapLibre.
 
 A sibling repo (`utility_field_service`) demonstrates field-ops UX with a **mock** `WorkRepository` and a stub `CblWorkRepository`. It targets a UtilityCo/SAP day-in-the-life demo, not this product’s collection contract or copy-on-write rule.
 
@@ -94,7 +94,7 @@ A sibling repo (`utility_field_service`) demonstrates field-ops UX with a **mock
 - SAP / UtilityCo integration, allow-listed OData outbox, or Zeus Hub wiring (that is the sibling demo).
 - Peer-to-peer CBL sync.
 - Storing passwords in Couchbase Lite.
-- **Credit-card / payment capture** on order create (later).
+- **Credit card payment** on order create (later; catalog prices only in v1).
 - **Inventory reservation / credit hold** on order create (assume product is available).
 - Customer-facing chat (employees only).
 - POD **signature** pad (photo proof now; signature is a later ROADMAP item).
@@ -156,7 +156,7 @@ flowchart TB
 ### Process bootstrap
 
 1. Register `CblReactNativeEngine` exactly once (`src/db/engine.ts`).
-2. After **online** login (or `RestoreSession` when a session cookie is still in Keychain), resolve the encryption **string** from Keychain. On first open for this username, generate 32 random bytes, **base64-encode** them, store that string as Keychain item `mfs.dbkey.<username>`. CBL RN `setEncryptionKey` takes a **string** (password/PBKDF form), not a raw `Uint8Array`.
+2. After **online** login (or `RestoreSession` when a session cookie is still in Keychain), open the per-employee DB. **Encryption is a lab toggle** (`mfs.dev.dbEncryption`, default **off**). When on: generate 32 random bytes, **base64-encode** them, store as Keychain `mfs.dbkey.<employeeId>`, pass to `setEncryptionKey` (string, not `Uint8Array`). When off: do not call `setEncryptionKey`. Switching the toggle **wipes and reseeds** the local file.
 3. Always set the database directory to the plugin default path before open:
 
 ```typescript
@@ -166,7 +166,7 @@ import {
 
 const config = new DatabaseConfiguration();
 config.setDirectory(await FileSystem.getDefaultPath());
-config.setEncryptionKey(keyString); // base64 string from Keychain
+if (encrypt) config.setEncryptionKey(keyString); // lab default: skip
 const db = new Database(dbNameForUser(employeeId), config);
 await db.open();
 ```
@@ -241,8 +241,8 @@ flowchart LR
 | 4 | `app/wo/out/[id].tsx` | Outbound editor: fields, ops/checklist toggles, tasks, photos, parts, submit. |
 | 5 | `app/(tabs)/map.tsx` + `app/asset/[id].tsx` | Asset map + KV asset detail. |
 | 6 | `app/(tabs)/inventory.tsx` + product search | Catalog + van stock. Sales/customer: add-to-order from catalog. |
-| 6b | `app/order/in/[id].tsx` + `app/order/[id].tsx` | Inbound order (read-only) / working order editor. Hidden if `workModes` is assets-only. |
-| 6c | `app/customer/new.tsx` | Field `CreateCustomer`. |
+| 6b | `app/order/[id].tsx` | Inbound (start copy) and working order editor (lines, qty, POD, freeze). Hidden on Today if `workModes` is assets-only. |
+| 6c | `app/customer/[id].tsx` | Customer KV (`id=new` creates `origin: field`). |
 | 7 | `app/(tabs)/chat.tsx` + `app/chat/[threadId].tsx` | Job threads and direct messages (`field.messages`). |
 | 8 | `app/(tabs)/profile.tsx` | User profile, sync status, logout, app version, **Large screen optimize** / **Left hand**. |
 | 9 | `app/search/similar.tsx` | EE similarity. Hidden unless `VECTOR_SEARCH_ENABLED && nativeVectorApi`. |
@@ -263,7 +263,7 @@ flowchart LR
 
 **Reassigned:** inbound (if still present) has `assignedTo.employeeId !==` session employee, **and** this user has a local outbound for that `source.id`. Show badge **Reassigned** (include the new assignee name when inbound is still on device). Keep the row — do not hide their paper. Their copy still completes and pushes. If inbound was auto-purged from `emp:{id}`, badge **Assignment changed**.
 
-`WatchTodayWork` is a **CBL live query** (`Query.addChangeListener`) on **two** SQL++ statements (inbound today page 0 and active outbound). Each listener updates only its own hits; a ~50 ms coalesce then collapses. `WatchTodayOrders` is the same pattern on `TODAY_ORDERS_SQL` for the orders card. `FindOutboundForSources` skips source ids already covered by active outbound. Infinite-scroll pages 2+ are one-shot inbound `execute()`. Pull-to-refresh re-runs `ListTodayWork` + orders. Demo / Expo Go fall back to a one-shot list (no native live listener).
+`WatchTodayWork` is a **CBL live query** (`Query.addChangeListener`) on **two** SQL++ statements (inbound today page 0 and active outbound). Each listener updates only its own hits; a ~50 ms coalesce then collapses (skip if the projected rows did not change). `WatchTodayOrders` is the same pattern on `TODAY_ORDERS_SQL` for the orders card. `FindOutboundForSources` skips source ids already covered by active outbound and reuses the last lookup when the id set is unchanged. Infinite-scroll pages 2+ are one-shot inbound `execute()`. Native pull-to-refresh applies inbound kit on **on-screen outbound copies**; live queries already own the lists. Demo / Expo Go fall back to a one-shot list (no native live listener).
 
 ### Work order in (read-only)
 
@@ -275,7 +275,7 @@ Show customer, site, geo, window, priority, assigned tech, operations, planned m
 
 ### Work order out (editor)
 
-Sections: header/status, site, operations, checklist, tasks, materials consume, photos, job chat. **Start work / Complete / Submit** sit in a bottom dock. Operations and checklist are **buttons**: outline (transparent + accent border) when not done, filled accent + on-accent text when done. Tap toggles `pending` ↔ `done` (`toggleOpDone`) — it does **not** cycle `in_progress` / `skipped`. Schema still allows those statuses. **v1 push sequence:** edit while `assigned` / `in_progress` / `blocked` → **Complete or Cancel** → **Submit** (required to push). Submit is not a mid-job checkpoint. After `complete` / `cancelled`, the **body is frozen** (`owner: backend`). No field edits, no photos, no notes on **that** document. Forgotten information → **Add follow-up** (`CreateAmendment`) — a new `workordersout` with `amends.id`. Cannot navigate to an “edit inbound” path. Save is debounced; status transitions are explicit operations. Every user save appends `history[]`. Text fields use `FieldInput` (`showSoftInputOnFocus`). Optional **Large screen optimize** (Profile) parks primary buttons in the easy thumb zone; default is full-width.
+Sections: header/status, **inbound kit banner** (local wins / remote wins / pick-from-diff — Profile → Settings / debug **job rules**), site, operations, checklist, tasks, materials consume, photos, job chat. **Start work / Complete / Submit** sit in a bottom dock. Operations and checklist are **buttons**: outline (transparent + accent border) when not done, filled accent + on-accent text when done. Tap toggles `pending` ↔ `done` (`toggleOpDone`) — it does **not** cycle `in_progress` / `skipped`. Schema still allows those statuses. **v1 push sequence:** edit while `assigned` / `in_progress` / `blocked` → **Complete or Cancel** → **Submit** (required to push). Submit is not a mid-job checkpoint. After `complete` / `cancelled`, the **body is frozen** (`owner: backend`). No field edits, no photos, no notes on **that** document. Forgotten information → **Add follow-up** (`CreateAmendment`) — a new `workordersout` with `amends.id`. Cannot navigate to an “edit inbound” path. Save is debounced; status transitions are explicit operations. Every user save appends `history[]`. Text fields use `FieldInput` (`showSoftInputOnFocus`). Optional **Large screen optimize** (Profile) parks primary buttons in the easy thumb zone; default is full-width.
 
 If inbound `source.id` KV get differs from `source.snapshot`, show a read-only **Dispatch updated** banner (no auto-merge).
 
@@ -355,7 +355,12 @@ sequenceDiagram
 | `amends.id` | Frozen `woout:…` this amendment adds to (amendments only) |
 | `owner` | `technician` while editable; **`backend`** after `complete` / `cancelled` |
 
-`source.id` is a **live pointer**. v1 UX: KV get inbound vs snapshot; if they differ, read-only **Dispatch updated** banner. **No auto-merge.** The editor never writes through that pointer.
+`source.id` is a **live pointer**. Dev job rules (Settings / debug) decide what happens when live inbound ≠ `source.snapshot`:
+
+- **Untouched copy** (history is only `StartWork`): always take new inbound kit values. If inbound is `cancelled` / `superseded` / missing, hide the copy from Today (`source.dropped`) instead of leaving a ghost row.
+- After the tech has edited: **local wins** (default, banner only), **remote wins** (inbound overwrites kit fields), or **prompt** (per-field Keep mine / Take inbound).
+- **Reassigned:** default keep editing with the banner; optional **forbid further edits**.
+- Photos, consume, `assignedTo` on the copy, and cloned `taskIds` instances are not overwritten. The editor never writes through the inbound pointer.
 
 Inbound photos: v1 inbound documents **do not** carry technician blobs. Copy does not call `getBlob` / `setBlob`.
 
@@ -726,8 +731,10 @@ Algorithm:
 3. `get` or create `{ type, employeeId, email, day, thresholdM, last: null, capped: false, tracking: {} }`. `stampAuditCreate` on create (**no** `history[]`).
 4. If `capped` or `Object.keys(tracking).length >= 4000`, set `capped: true` and return.
 5. If `last` exists and haversine(`last`, fix) < `thresholdM`, return. If `ts === last[2]`, overwrite that key.
-6. `tracking[String(ts)] = [lat, lon]`; `last = [lat, lon, ts]`; `stampAuditUpdate`; `save`.
+6. `tracking[String(ts)] = [lat, lon]`; `last = [lat, lon, ts]`; `stampAuditUpdate`; stamp `expiresAt` (unix seconds = local midnight of `day` + **30** calendar days); `save`; CBL `setDocumentExpiration` to that date.
 7. Metric `mfs_track_point_total`. Log `mfs.track.point` with `docId` + `ts` only — **never** the `tracking` map.
+
+**TTL 30 days.** Each per-day doc is location PII. Expire it **30 calendar days after its `day`** (`TRACKING_TTL_DAYS`). Phone: `expiresAt` on the body + `setDocumentExpiration` (same pattern as `local.tmp`, longer window). Reads (`GetTrackingDay` / `GetTrackingLastNDays`) skip expired bodies if the purge has not run yet. Sync Gateway / backend should honor `expiresAt` so the cluster copy does not outlive the phone. Last-7-days shotgun is unchanged (7 < 30).
 
 Do not sample on a timer if the user is still. v1 is **foreground / while-using**. Background always-on is a later ROADMAP item.
 
@@ -1552,7 +1559,7 @@ Jurisdictions, `rateBps` (basis points, integer). **Never `save` on device.** Or
 
 ### `tracking` — type `tracking` — push + pull
 
-Per-employee, per-day GPS crumbs. Id `track:{YYYY-MM-DD}:{employeeId}` (device-local day). Map `tracking` keyed by unix seconds → `[lat, lon]` (time is the key; do not repeat it in the array). Threshold default 100 m (`EXPO_PUBLIC_TRACK_MIN_MOVE_M`). Cap 4000 points/day. **No** `history[]` on these docs.
+Per-employee, per-day GPS crumbs. Id `track:{YYYY-MM-DD}:{employeeId}` (device-local day). Map `tracking` keyed by unix seconds → `[lat, lon]` (time is the key; do not repeat it in the array). Threshold default 100 m (`EXPO_PUBLIC_TRACK_MIN_MOVE_M`). Cap 4000 points/day. **No** `history[]` on these docs. **TTL 30 days** after `day` (`expiresAt` + `setDocumentExpiration`).
 
 Last 7 days = seven KV gets of constructed ids. Full field list: **[schema/SCHEMA_TRACKING.md](./schema/SCHEMA_TRACKING.md)**.
 
@@ -2044,7 +2051,7 @@ Map `ReplicatorActivityLevel` 0–4 to `stopped | offline | connecting | idle | 
 
 | Threat | Severity | Mitigation |
 | --- | --- | --- |
-| Lost/stolen phone, DB file copied | High | AES-256 DB encryption; key in Keychain/Keystore, not in the file |
+| Lost/stolen phone, DB file copied | High | Lab default: **unencrypted**. Turn **Encryption on** (Settings / debug) for AES-256 with Keychain key. |
 | Password in a synced document | High | Never store passwords in CBL; SG session in Keychain |
 | Tech mutates inbound, fights dispatcher | Medium | No writes to `workordersin`; copy-out |
 | `tmp` photos leak via SG | Medium | Scope `local`; omitted from allow-list; expiration 24 h |
@@ -2061,13 +2068,13 @@ Map `ReplicatorActivityLevel` 0–4 to `stopped | offline | connecting | idle | 
 
 - Login: [AUTH.md](./AUTH.md). Default **email + password** → `POST /_session` → `SessionAuthenticator`. OIDC: ID token → `POST /_session` Bearer → session (JWT not on the replicator). Demo: synthetic session, no CBL password.
 - Secrets in iOS Keychain / Android Keystore (Secure Enclave / StrongBox when present). Honor `sessionExpiresAt` / JWT `exp`. Pre-refresh at T−5 min. On replicator **401/404/10401**: STOPPED → refresh once → login.
-- Encryption **string**: 32 random bytes, **base64**, Keychain `mfs.dbkey.<employeeId>`, passed to `setEncryptionKey(string)`. Directory: `FileSystem.getDefaultPath()`.
+- Encryption **off by default** (lab). When on: 32 random bytes, **base64**, Keychain `mfs.dbkey.<employeeId>`, `setEncryptionKey(string)`. Directory: `FileSystem.getDefaultPath()`. Toggle wipes the local DB.
 - TLS: `wss://`; `acceptOnlySelfSignedServerCertificate = false` in production; true only for lab SG.
 
 ### Data handling
 
 - Photos are top-level blobs on `workordersout` (synced after Submit).
-- Tracking crumbs are location PII. Never log the `tracking` map. Channel `emp:{employeeId}` only; id uses employeeId, not email.
+- Tracking crumbs are location PII. Never log the `tracking` map. Channel `emp:{employeeId}` only; id uses employeeId, not email. **TTL 30 days** (`expiresAt` + `setDocumentExpiration`).
 - Audit `by` is username, not a legal name field.
 - Logout deletes **auth.*** enclave keys (session, password, tokens) and keeps the DB. Offline re-entry after Logout is **not** supported. `RestoreSession` is process death with a **non-expired** credential. `LogoutAndWipe` is explicit.
 
@@ -2125,7 +2132,7 @@ See [ROADMAP.md](./ROADMAP.md) for phases and PR order. Summary:
 7. Map (basemap-online honest), inventory movements, replicator (after children exist).
 8. EE vector behind flag (**PR-13**) — generate embeddings only then.
 
-**Feature flags:** `EXPO_PUBLIC_AUTH_STRATEGY=basic|oidc_implicit|oidc_code|demo`, `EXPO_PUBLIC_SG_URL`, `EXPO_PUBLIC_AUTH_BEARER_ON_REPL`, `VECTOR_SEARCH_ENABLED`, `VECTOR_BRUTE_FORCE_DEBUG`. See [AUTH.md](./AUTH.md).
+**Feature flags / settings:** [guides/SETTINGS.md](../guides/SETTINGS.md). Vector flags are **not** on this train (S15).
 
 **Rollback:** PRs are reviewable slices with a mostly linear spine (00–05); 07–10 have limited parallelism. Disable replicator URL to run local-only.
 
@@ -2251,7 +2258,7 @@ Closed for v1: `scheduled.day` is device-local; CLIP **512**; tech may cancel ou
 24. **v1 storage cap:** 20 photos/job + JPEG budget only. Age-out of pushed complete jobs after 14 days is a follow-up.
 25. **Channels:** `emp:{employeeId}` is the durable grant. Email is login alias. Reassignment moves inbound access; outbound copies still push.
 26. **Complete freezes + transfers ownership** to the backend. Forgotten facts → `CreateAmendment` (`role: amendment`, `amends.id`). Many documents per WO are OK (eventual consistency).
-27. **`history[]`:** user/device saves (except `SetSyncState`) append path + from/to + dt + lat/lon. Cap 100. Pull catalogs omit it. **`tracking`:** per-day crumbs `track:{day}:{employeeId}`, map keyed by unix seconds → `[lat, lon]`, write when moved ≥ `EXPO_PUBLIC_TRACK_MIN_MOVE_M` (default 100 m). Last 7 days = seven KV gets. No `lastAction` object.
+27. **`history[]`:** user/device saves (except `SetSyncState`) append path + from/to + dt + lat/lon. Cap 100. Pull catalogs omit it. **`tracking`:** per-day crumbs `track:{day}:{employeeId}`, map keyed by unix seconds → `[lat, lon]`, write when moved ≥ `EXPO_PUBLIC_TRACK_MIN_MOVE_M` (default 100 m). Last 7 days = seven KV gets. **TTL 30 days** after `day` (`expiresAt` + CBL `setDocumentExpiration`). No `lastAction` object.
 28. **Chat:** `field.messages`, **employees only**, push on create, job thread `thr:wo:{woinId}` / DM `thr:dm:{empA}:{empB}`.
 29. **Today Reassigned badge** when inbound `assignedTo.employeeId` ≠ session (or inbound purged) while a local outbound exists.
 30. **Project:** Fujio-Turner (`github.com/Fujio-Turner/mobile_field_service`), not koten-ai. Use-case SoT: [DAY_IN_LIFE.md](./DAY_IN_LIFE.md).
@@ -2260,7 +2267,7 @@ Closed for v1: `scheduled.day` is device-local; CLIP **512**; tech may cancel ou
 33. **`rates` and `taxes` are pull catalogs.** Money on orders is integer cents snapshotted by `PriceLines`. [schema/SCHEMA_RATES.md](./schema/SCHEMA_RATES.md), [schema/SCHEMA_TAXES.md](./schema/SCHEMA_TAXES.md).
 34. **Field-created customers** (`origin: field`) may push. Pulled customer master is never mutated.
 35. **Field-created inbound WOs/jobs:** `CreateWorkOrderIn` → new `woin:` `origin: field`. Never patch dispatch inbound. Labor still uses `StartWork` copy-out.
-36. **Orders:** snapshot prices only; **no card processing** in v1; **assume stock available** (no reservation). `SubmitOrder` allowed at quoted/accepted without delivery. POD **signature** is a future ROADMAP item (photo now).
+36. **Orders:** snapshot prices only; **no credit card payment** in v1; **assume stock available** (no reservation). `SubmitOrder` allowed at quoted/accepted without delivery. POD **signature** is a future ROADMAP item (photo now).
 37. **Repo:** https://github.com/Fujio-Turner/mobile_field_service
 
 ---

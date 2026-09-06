@@ -16,7 +16,7 @@ export function TrackingWatch() {
     const start = async () => {
       const handle = await watchForegroundFixes((fix) => {
         void recordTrackPoint(session, fix).catch(() => undefined);
-      }, Math.max(25, Math.floor(trackMinMoveM() / 2)));
+      }, trackMinMoveM());
       if (cancelled) {
         handle?.stop();
         return;
@@ -30,7 +30,7 @@ export function TrackingWatch() {
         stopWatch = undefined;
         return;
       }
-      void start();
+      if (!stopWatch) void start();
     };
 
     const sub = AppState.addEventListener('change', onApp);

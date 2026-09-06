@@ -10,7 +10,19 @@ export const SEED_USERNAME = 'tech.jon';
 export const SEED_DISPATCH_EMPLOYEE_ID = 'E-DISP-01';
 export const SEED_DISPATCH_EMAIL = 'maya.dispatch@example.com';
 export const SEED_DISPATCH_USERNAME = 'dispatch.maya';
+export const SEED_MAYA_USER_ID = 'usr:01K4Q6AAA00000000000000003';
+export const SEED_MAYA_EMPLOYEE_ID = 'E-7703';
+export const SEED_MAYA_EMAIL = 'maya.chen@example.com';
+export const SEED_MAYA_USERNAME = 'tech.maya';
+export const SEED_PRIYA_USER_ID = 'usr:01K4Q6AAA00000000000000004';
+export const SEED_PRIYA_EMPLOYEE_ID = 'E-8801';
+export const SEED_PRIYA_EMAIL = 'priya.shah@example.com';
+export const SEED_PRIYA_USERNAME = 'sales.priya';
 export const SEED_TASK_TEMPLATE_ID = 'tsk:01K4Q6TTT00000000000000001';
+export const SEED_REASSIGN_WOIN_ID = 'woin:01K4Q7H3R8N2M1K9P5T6V8W0X3';
+export const SEED_REASSIGN_WOOUT_ID = 'woout:01K4Q7H3R8N2M1K9P5T6V8W0X4';
+export const SEED_DELIVER_WOIN_ID = 'woin:01K4Q7H3R8N2M1K9P5T6V8W0X5';
+export const SEED_DELIVER_ORDER_ID = 'ord:01K4Q7INBOUND000000000002';
 
 export function seedTaskTemplates(ver: string, dt: number) {
   return [
@@ -29,13 +41,32 @@ export function seedTaskTemplates(ver: string, dt: number) {
   ];
 }
 
-const assignedTo = {
+const assignedJon = {
   userId: SEED_USER_ID,
   employeeId: SEED_EMPLOYEE_ID,
   email: SEED_EMAIL,
   username: SEED_USERNAME,
   displayName: 'Jon Hale',
 };
+
+const assignedMaya = {
+  userId: SEED_MAYA_USER_ID,
+  employeeId: SEED_MAYA_EMPLOYEE_ID,
+  email: SEED_MAYA_EMAIL,
+  username: SEED_MAYA_USERNAME,
+  displayName: 'Maya Chen',
+};
+
+const assignedPriya = {
+  userId: SEED_PRIYA_USER_ID,
+  employeeId: SEED_PRIYA_EMPLOYEE_ID,
+  email: SEED_PRIYA_EMAIL,
+  username: SEED_PRIYA_USERNAME,
+  displayName: 'Priya Shah',
+};
+
+export const SEED_YARD_GEO = { lat: 41.7692, lon: -72.681 };
+export const SEED_SITE_GEO = { lat: 41.7658, lon: -72.6734 };
 
 export function seedUserDoc(ver: string, dt: number) {
   return stampAuditCreate(
@@ -64,6 +95,40 @@ export function seedDispatchUserDoc(ver: string, dt: number) {
       displayName: 'Maya Dispatch',
       role: 'dispatch',
       workModes: ['assets'],
+      active: true,
+    },
+    { by: 'seed', ver, dt },
+  );
+}
+
+export function seedMayaUserDoc(ver: string, dt: number) {
+  return stampAuditCreate(
+    {
+      type: 'user',
+      employeeId: SEED_MAYA_EMPLOYEE_ID,
+      email: SEED_MAYA_EMAIL,
+      username: SEED_MAYA_USERNAME,
+      displayName: 'Maya Chen',
+      role: 'technician',
+      workModes: ['customer'],
+      vanId: 'van:12',
+      active: true,
+    },
+    { by: 'seed', ver, dt },
+  );
+}
+
+export function seedPriyaUserDoc(ver: string, dt: number) {
+  return stampAuditCreate(
+    {
+      type: 'user',
+      employeeId: SEED_PRIYA_EMPLOYEE_ID,
+      email: SEED_PRIYA_EMAIL,
+      username: SEED_PRIYA_USERNAME,
+      displayName: 'Priya Shah',
+      role: 'technician',
+      workModes: ['sales'],
+      vanId: 'van:12',
       active: true,
     },
     { by: 'seed', ver, dt },
@@ -226,15 +291,33 @@ export function seedInboundJobs(ver: string, dt: number, day = deviceLocalDay())
       postal: '06103',
       country: 'US',
     },
-    geo: { lat: 41.7658, lon: -72.6734, accuracyM: 15 },
+    geo: { ...SEED_SITE_GEO, accuracyM: 15 },
   };
-  const jobs = [
+  const ops = [
+    { id: 'op-1', name: 'Site check', required: true, status: 'pending' },
+    { id: 'op-2', name: 'Close out', required: false, status: 'pending' },
+  ];
+  const checklist = [{ id: 'cl-ppe', label: 'PPE on', required: true, done: false }];
+  const jobs: Array<{
+    id: string;
+    number: string;
+    kind: string;
+    priority: string;
+    summary: string;
+    assignedTo: typeof assignedJon;
+    assetIds?: string[];
+    orderId?: string;
+    materials?: Array<{ sku: string; name: string; productId: string; qtyPlanned: number }>;
+    move?: { from: { name: string; geo: { lat: number; lon: number } }; to: { name: string; geo: { lat: number; lon: number } } };
+  }> = [
     {
       id: 'woin:01K4Q7H3R8N2M1K9P5T6V8W0XY',
       number: 'WO-10482',
       kind: 'repair',
       priority: 'high',
       summary: 'Replace failed check valve; verify flow.',
+      assignedTo: assignedJon,
+      assetIds: [SEED_ASSET_IDS[0]],
     },
     {
       id: 'woin:01K4Q7H3R8N2M1K9P5T6V8W0X1',
@@ -242,6 +325,8 @@ export function seedInboundJobs(ver: string, dt: number, day = deviceLocalDay())
       kind: 'inspect',
       priority: 'normal',
       summary: 'Quarterly inspect pump P-12.',
+      assignedTo: assignedJon,
+      assetIds: [SEED_ASSET_IDS[0]],
     },
     {
       id: 'woin:01K4Q7H3R8N2M1K9P5T6V8W0X2',
@@ -249,6 +334,33 @@ export function seedInboundJobs(ver: string, dt: number, day = deviceLocalDay())
       kind: 'move',
       priority: 'low',
       summary: 'Move asset M-7 from yard to Riverside.',
+      assignedTo: assignedJon,
+      assetIds: [SEED_ASSET_IDS[2]],
+      move: {
+        from: { name: 'North yard', geo: SEED_YARD_GEO },
+        to: { name: 'Riverside Pump Station', geo: SEED_SITE_GEO },
+      },
+    },
+    {
+      id: SEED_REASSIGN_WOIN_ID,
+      number: 'WO-10460',
+      kind: 'repair',
+      priority: 'normal',
+      summary: 'Safety close-out after reassignment.',
+      assignedTo: assignedPriya,
+      assetIds: [SEED_ASSET_IDS[1]],
+    },
+    {
+      id: SEED_DELIVER_WOIN_ID,
+      number: 'WO-2201',
+      kind: 'deliver',
+      priority: 'normal',
+      summary: 'Deliver 4in valves for Hartford Water Works.',
+      assignedTo: assignedMaya,
+      orderId: SEED_DELIVER_ORDER_ID,
+      materials: [
+        { sku: 'VLV-CHK-4', name: 'Check valve 4in', productId: SEED_PRODUCT_ID, qtyPlanned: 2 },
+      ],
     },
   ];
   return jobs.map((j) => ({
@@ -261,7 +373,7 @@ export function seedInboundJobs(ver: string, dt: number, day = deviceLocalDay())
         kind: j.kind,
         priority: j.priority,
         status: 'assigned',
-        assignedTo,
+        assignedTo: j.assignedTo,
         customerId: SEED_CUSTOMER_ID,
         site,
         scheduled: {
@@ -270,21 +382,35 @@ export function seedInboundJobs(ver: string, dt: number, day = deviceLocalDay())
           day,
         },
         summary: j.summary,
-        operations: [
-          { id: 'op-1', name: 'Site check', required: true, status: 'pending' },
-          { id: 'op-2', name: 'Close out', required: false, status: 'pending' },
-        ],
-        checklist: [{ id: 'cl-ppe', label: 'PPE on', required: true, done: false }],
+        operations: ops,
+        checklist,
         taskIds: [SEED_TASK_TEMPLATE_ID],
+        assetIds: j.assetIds ?? [],
+        orderId: j.orderId,
+        materials: j.materials ?? [],
+        move: j.move,
       },
       { by: 'dispatch.maya', ver: 'server-dispatch', dt },
     ),
   }));
 }
 
-export function seedInboundOrder(ver: string, dt: number, day = deviceLocalDay()) {
+function seedOrderDoc(
+  input: {
+    id: string;
+    number: string;
+    assignedTo: typeof assignedJon;
+    qty: number;
+    day: string;
+  },
+  ver: string,
+  dt: number,
+) {
+  const qty = input.qty;
+  const lineSubtotal = 18500 * qty;
+  const lineTax = Math.round((lineSubtotal * 630) / 10000);
   return {
-    id: SEED_INBOUND_ORDER_ID,
+    id: input.id,
     doc: stampAuditCreate(
       {
         type: 'order',
@@ -293,34 +419,54 @@ export function seedInboundOrder(ver: string, dt: number, day = deviceLocalDay()
         owner: 'backend',
         status: 'accepted',
         syncState: 'local_draft',
-        number: 'ORD-3301',
+        number: input.number,
         kind: 'product',
         currency: 'USD',
         customerId: SEED_CUSTOMER_ID,
-        assignedTo,
-        scheduled: { startDt: dt + 3600, endDt: dt + 7200, day },
+        assignedTo: input.assignedTo,
+        scheduled: { startDt: dt + 3600, endDt: dt + 7200, day: input.day },
         site: {
           name: 'Riverside Pump Station',
-          geo: { lat: 41.7658, lon: -72.6734 },
+          geo: SEED_SITE_GEO,
         },
         lines: [
           {
-            id: 'ln_01K4Q7LINE000000000000001',
+            id: `ln_${input.number.replace(/[^A-Z0-9]/g, '')}`,
             productId: SEED_PRODUCT_ID,
             rateId: SEED_RATE_ID,
             description: 'Check valve 4in',
-            qty: 2,
+            qty,
             uom: 'ea',
             unitPrice: 18500,
             taxIds: [SEED_TAX_ID],
-            lineSubtotal: 37000,
-            lineTax: 2331,
-            lineTotal: 39331,
+            lineSubtotal,
+            lineTax,
+            lineTotal: lineSubtotal + lineTax,
           },
         ],
-        totals: { subtotal: 37000, taxTotal: 2331, total: 39331 },
+        totals: { subtotal: lineSubtotal, taxTotal: lineTax, total: lineSubtotal + lineTax },
       },
       { by: 'dispatch.maya', ver: 'server-dispatch', dt },
     ),
   };
+}
+
+export function seedInboundOrder(ver: string, dt: number, day = deviceLocalDay()) {
+  return seedOrderDoc(
+    { id: SEED_INBOUND_ORDER_ID, number: 'ORD-3301', assignedTo: assignedPriya, qty: 2, day },
+    ver,
+    dt,
+  );
+}
+
+export function seedDeliverOrder(ver: string, dt: number, day = deviceLocalDay()) {
+  return seedOrderDoc(
+    { id: SEED_DELIVER_ORDER_ID, number: 'ORD-2201', assignedTo: assignedMaya, qty: 2, day },
+    ver,
+    dt,
+  );
+}
+
+export function seedInboundOrders(ver: string, dt: number, day = deviceLocalDay()) {
+  return [seedInboundOrder(ver, dt, day), seedDeliverOrder(ver, dt, day)];
 }

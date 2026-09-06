@@ -57,6 +57,13 @@ describe('status machine', () => {
   });
 });
 
+describe('applyOutPatch', () => {
+  it('returns the same object when nothing changed', () => {
+    const doc = { type: 'workorderout', summary: 'same', audit: { cr: { dt: 1, ver: '1', by: 'a' }, up: { dt: 1, ver: '1', by: 'a' } } };
+    expect(applyOutPatch(doc, { summary: 'same' }, session, 30, '1')).toBe(doc);
+  });
+});
+
 describe('operation done toggle', () => {
   it('marks pending/in_progress as done, and done back to pending', () => {
     expect(toggleOpDone('pending')).toBe('done');

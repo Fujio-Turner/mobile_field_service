@@ -1,6 +1,8 @@
 # Schemas
 
-One file per collection (or pair). Shared envelope: [SCHEMA_COMMON.md](./SCHEMA_COMMON.md) (`audit` + `history[]` on user/device docs; **no** `lastAction`). Movement crumbs: [SCHEMA_TRACKING.md](./SCHEMA_TRACKING.md). Architecture: [DESIGN.md](../DESIGN.md).
+One file per collection (or pair). Shared envelope: [SCHEMA_COMMON.md](./SCHEMA_COMMON.md) (`audit` + `history[]` on user/device docs; **no** `lastAction`). Movement crumbs: [SCHEMA_TRACKING.md](./SCHEMA_TRACKING.md) (**TTL 30 days**). Architecture: [DESIGN.md](../DESIGN.md). Settings: [guides/SETTINGS.md](../../guides/SETTINGS.md).
+
+Each file includes a **[JSON Schema 2020-12](https://json-schema.org/draft/2020-12/schema)** (`"$schema": "https://json-schema.org/draft/2020-12/schema"`) for the document body. Copy a block into a [JSON Schema](https://json-schema.org) validator. `$defs` for `audit` / `history[]` / `assignedTo` / `geo` live in [SCHEMA_COMMON.md](./SCHEMA_COMMON.md); collection files repeat a copy so each schema is self-contained.
 
 | Collection | File | Prefix |
 | --- | --- | --- |

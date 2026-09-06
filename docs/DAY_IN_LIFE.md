@@ -5,8 +5,8 @@
 | Title | Use-case index (three field apps, one database) |
 | Repo | [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service) |
 | Author | Fujio-Turner / mobile_field_service |
-| Date | 2026-09-05 |
-| Status | Stories still apply; the Expo app implements assets-mode Today + jobs (S01–S16 except vector) |
+| Date | 2026-09-06 |
+| Status | Demo login walks all three modes (Jon assets, Maya customer, Priya sales) on iOS. Vector/CLIP still skipped. No credit card payment. |
 | Architecture | [DESIGN.md](./DESIGN.md) |
 | Roadmap | [ROADMAP.md](./ROADMAP.md) |
 
@@ -18,7 +18,7 @@ This app is **general**. One Couchbase Lite database, one Expo binary. A company
 | **Customer** | Field service at a customer site | `workorders*` + `orders` + `products` + `customers` + `rates` + `taxes` | Deliver or service a work order, then take a **new order** (maybe a **new customer**) on site |
 | **Sales** | Route sales | `orders` + `products` + `customers` + `rates` + `taxes` | Sell, deliver, next stop |
 
-Shared on every mode: `users`, `messages`, `inventory` (van), `tracking`, `tmp`, `emp:{employeeId}` channels, copy-on-write, freeze-on-complete, amendments, `history[]` (what changed + geo/time), movement crumbs in `tracking`.
+Shared on every mode: `users`, `messages`, `inventory` (van), `tracking` (TTL 30 days), `tmp`, `emp:{employeeId}` channels, copy-on-write, freeze-on-complete, amendments, `history[]` (what changed + geo/time), movement crumbs in `tracking`. Tab bar: **Today · Notes · Map · Stock · Chat · Profile** (Map hidden in sales).
 
 ---
 

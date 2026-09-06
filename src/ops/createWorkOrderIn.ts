@@ -2,7 +2,7 @@ import { nowSec, stampAuditCreate, stampHistory } from '../audit';
 import { collectionOf, getOpenedDatabase, nativeDbAvailable } from '../db/database';
 import { memorySave } from '../db/memoryStore';
 import { saveJsonDoc } from '../db/saveJson';
-import { newDocId } from '../ids';
+import { deviceLocalDay, newDocId } from '../ids';
 import { appVersion } from '../version';
 import type { StartSession } from './copyInbound';
 
@@ -34,8 +34,8 @@ export function buildFieldInbound(input: {
     number: input.woinId.replace('woin:', 'WO-'),
     summary: input.summary,
     kind: input.kind,
-    site: input.site ?? { name: '' },
-    scheduled: input.scheduled,
+    site: input.site ?? { name: 'Walk-up' },
+    scheduled: input.scheduled ?? { startDt: input.dt, day: deviceLocalDay() },
     customerId: input.customerId,
     assetIds: input.assetIds ?? [],
     orderId: input.orderId,

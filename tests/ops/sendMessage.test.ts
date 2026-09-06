@@ -48,6 +48,24 @@ describe('thread ids', () => {
   });
 });
 
+describe('sendMessage tags', () => {
+  it('attaches WO- number and @employee on a DM', async () => {
+    const job = seedInboundJobs('0.1.0+1', 1_700_000_000, '2026-09-05').find(
+      (j) => String((j.doc as { number?: string }).number) === 'WO-10482',
+    )!;
+    memorySave('workordersin', job.id, job.doc as never);
+    const msgId = await sendMessage(session, {
+      body: `Hey @${SEED_DISPATCH_EMPLOYEE_ID} WO-10482 needs more repair tomorrow`,
+      kind: 'direct',
+    });
+    const saved = memoryGet('messages', msgId)!;
+    expect(saved.workOrderInId).toBe(job.id);
+    expect(saved.workOrderNumber).toBe('WO-10482');
+    expect(saved.toEmployeeIds).toEqual([SEED_DISPATCH_EMPLOYEE_ID]);
+    expect(saved.kind).toBe('direct');
+  });
+});
+
 describe('sendMessage', () => {
   it('sets readyToPush immediately and stays writable after WO complete', async () => {
     const { id } = seedInboundJobs('0.1.0+1', 1_700_000_000, '2026-09-05')[0];

@@ -28,6 +28,16 @@ describe('parseWorkOrderIn', () => {
     expect(wo?.origin).toBe('dispatch');
   });
 
+  it('reads move kit and assetIds from seed', () => {
+    const jobs = seedInboundJobs('0.1.0+1', 1_700_000_000, '2026-09-05');
+    const move = jobs.find((j) => String((j.doc as { number?: string }).number) === 'WO-10490');
+    const wo = parseWorkOrderIn(move!.id, move!.doc as unknown as Record<string, unknown>);
+    expect(wo?.kind).toBe('move');
+    expect(wo?.assetIds.length).toBe(1);
+    expect(wo?.move?.from?.name).toBe('North yard');
+    expect(wo?.move?.to?.name).toBe('Riverside Pump Station');
+  });
+
   it('returns null for missing id payload or wrong type', () => {
     expect(parseWorkOrderIn('x', null)).toBeNull();
     expect(parseWorkOrderIn('x', { ...minimal, type: 'workorderout' })).toBeNull();

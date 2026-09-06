@@ -15,3 +15,78 @@
 **Indexes:** `idx_nte_wo`; FTS `idx_nte_fts` (`body`, `title`).
 
 **Replication:** PUSH_AND_PULL when `readyToPush`.
+
+---
+
+## JSON Schema
+
+[JSON Schema 2020-12](https://json-schema.org/draft/2020-12/schema). Document body; id is `nte:<ULID>`.
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Fujio-Turner/mobile_field_service/docs/schema/notes.json",
+  "title": "field.notes",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["type", "audit", "history", "body", "kind"],
+  "properties": {
+    "type": { "const": "note" },
+    "audit": { "$ref": "#/$defs/audit" },
+    "history": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/historyEntry" }
+    },
+    "historyTruncated": { "type": "boolean" },
+    "body": { "type": "string", "minLength": 1 },
+    "kind": { "type": "string", "enum": ["job", "general"] },
+    "title": { "type": "string" },
+    "workOrderOutId": { "type": "string" },
+    "readyToPush": { "type": "boolean" }
+  },
+  "$defs": {
+    "unixSeconds": { "type": "integer", "minimum": 0 },
+    "auditStamp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dt", "ver", "by"],
+      "properties": {
+        "dt": { "$ref": "#/$defs/unixSeconds" },
+        "ver": { "type": "string" },
+        "by": { "type": "string" }
+      }
+    },
+    "audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cr", "up"],
+      "properties": {
+        "cr": { "$ref": "#/$defs/auditStamp" },
+        "up": { "$ref": "#/$defs/auditStamp" }
+      }
+    },
+    "historyChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": { "path": { "type": "string" }, "from": true, "to": true }
+    },
+    "historyEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dt", "by", "ver", "op"],
+      "properties": {
+        "dt": { "$ref": "#/$defs/unixSeconds" },
+        "lat": { "type": "number" },
+        "lon": { "type": "number" },
+        "accuracyM": { "type": "number" },
+        "by": { "type": "string" },
+        "ver": { "type": "string" },
+        "op": { "type": "string" },
+        "changes": { "type": "array", "items": { "$ref": "#/$defs/historyChange" } }
+      }
+    }
+  }
+}
+```

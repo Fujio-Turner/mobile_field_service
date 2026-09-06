@@ -39,6 +39,7 @@ export function applyOutPatch(
     changes.push({ path: 'site.geo', to: `${patch.siteGeo.lat},${patch.siteGeo.lon}` });
     next = { ...next, site };
   }
+  if (changes.length === 0) return doc;
   next = stampAuditUpdate(next as never, {
     by: session.username,
     ver,
@@ -60,5 +61,7 @@ export async function updateWorkOrderOutFields(
 ): Promise<void> {
   const doc = await loadOutboundRaw(id);
   if (!doc) throw new OutError('missing');
-  await saveOutboundRaw(id, applyOutPatch(doc, patch, session));
+  const next = applyOutPatch(doc, patch, session);
+  if (next === doc) return;
+  await saveOutboundRaw(id, next);
 }

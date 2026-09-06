@@ -4,7 +4,7 @@ import { bytesToBase64, dbKeyItem } from './dbKeyCodec';
 
 export { bytesToBase64, dbKeyItem };
 
-/** 32 random bytes, base64. Stored in Keychain; passed to setEncryptionKey(string). */
+/** 32 random bytes, base64. Stored in Keychain; passed to setEncryptionKey(string) when lab encryption is on. */
 export async function getOrCreateDbKey(employeeId: string): Promise<string> {
   const item = dbKeyItem(employeeId);
   const existing = await SecureStore.getItemAsync(item);

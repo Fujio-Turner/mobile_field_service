@@ -29,4 +29,8 @@ export function memoryAll(collection: string): Array<{ id: string; doc: Record<s
 
 export function memoryReset(): void {
   store.clear();
+  // Lazy require so screens can seed without a cycle at module load.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const demo = require('./ensureMemoryDemo') as { resetMemoryDemoFlags?: () => void };
+  demo.resetMemoryDemoFlags?.();
 }

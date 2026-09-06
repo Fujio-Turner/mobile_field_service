@@ -6,14 +6,14 @@
 | Mode | `sales` |
 | Repo | [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service) |
 | Author | Fujio-Turner / mobile_field_service |
-| Date | 2026-09-05 |
-| Status | Stories apply; demo seed includes inbound order ORD-3301 on Today |
+| Date | 2026-09-06 |
+| Status | Demo login `priya.shah@example.com` (`E-8801`). Today is orders (ORD-3301). Map tab hidden. |
 | Index | [DAY_IN_LIFE.md](./DAY_IN_LIFE.md) |
 | Orders schema | [schema/SCHEMA_ORDERS.md](./schema/SCHEMA_ORDERS.md) |
 | Rates / taxes | [schema/SCHEMA_RATES.md](./schema/SCHEMA_RATES.md), [schema/SCHEMA_TAXES.md](./schema/SCHEMA_TAXES.md) |
 
 Collections in play: `orders`, `products`, `customers`, `rates`, `taxes`, `inventory`, `messages`.  
-Work orders are **optional** here. Pure sales is: quote/order → deliver product or service → freeze the order → next customer. **No credit card.** Catalog prices are **snapshotted**; assume stock is available. POD is a **photo**; signature pad is later. If she needs a labor ticket, she `CreateWorkOrderIn` on the phone.
+Work orders are **optional** here. Pure sales is: quote/order → deliver product or service → freeze the order → next customer. **No credit card payment** in this version. Catalog prices are **snapshotted**; assume stock is available. POD is a **photo**; signature pad is later. If she needs a labor ticket, she `CreateWorkOrderIn` on the phone.
 
 ---
 
@@ -37,9 +37,9 @@ Channel `emp:E-8801`. Today’s board is **orders** assigned to her (`role: inbo
 | When | Route | Collection(s) | Operation(s) |
 | --- | --- | --- | --- |
 | Today | `app/(tabs)/index.tsx` (orders) | `orders` | `ListTodayOrders` |
-| Order | `app/order/in/[id]` / `app/order/[id]` | KV | `GetOrder`, `StartOrder` |
+| Order | `app/order/[id].tsx` | KV | `GetOrder`, `StartOrder` |
 | Catalog | products search | `products`, `rates`, `taxes` | `AddOrderLine`, `PriceLines` |
-| Customer | `app/customer/[id]` | `customers` | `GetCustomer`, `CreateCustomer` |
+| Customer | `app/customer/[id].tsx` | `customers` | `GetCustomer`, `CreateCustomer` |
 | Deliver | same order editor | blobs + inventory | `CommitPhoto`, `ConsumeInventoryOnWork` (order-scoped) |
 
 ---
@@ -64,7 +64,7 @@ sequenceDiagram
 
 ### 08:00 — Assigned order (ORD-3301)
 
-Today lists inbound orders for the signed-in employee, `scheduled.day` today (SQL++ uses equality/`OR`, not `IN`, and a numeric LIMIT). Tap is KV. **Start order** copies inbound JSON to a new `ord:<ulid>` with `role: working`, `source.id` = inbound id. Inbound never written. Demo seed: ORD-3301 on Jon’s Today.
+Today lists inbound orders for the signed-in employee, `scheduled.day` today (SQL++ uses equality/`OR`, not `IN`, and a numeric LIMIT). Tap is KV. **Start order** copies inbound JSON to a new `ord:<ulid>` with `role: working`, `source.id` = inbound id. Inbound never written. Demo seed: ORD-3301 on Priya’s Today.
 
 She delivers the catalog lines already on the snapshot, adjusts qty only on **her** copy (qty 10 → 5 is a `history[]` row), photo POD. `CompleteOrder` freezes the working copy (`owner: backend`). `SubmitOrder` sets `ready_to_push`. Backend invoices from **that** document. Driving between stops writes `tracking` crumbs.
 

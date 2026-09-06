@@ -4,6 +4,7 @@ How we write and ship this app. Product architecture stays under [`docs/`](../do
 
 | Guide | Use when |
 | --- | --- |
+| [SETTINGS.md](SETTINGS.md) | Env, Profile, debug, Keychain — where each setting lives and what it means |
 | [LOGGING.md](LOGGING.md) | App logs + CBL `LogSinks` |
 | [HTML_CSS.md](HTML_CSS.md) | UI: theme, layout, a11y (RN StyleSheet) |
 | [RELEASE.md](RELEASE.md) | Version bump, files to touch, tag |

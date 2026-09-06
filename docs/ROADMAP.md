@@ -5,12 +5,12 @@
 | Title | Product and engineering roadmap |
 | Repo | [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service) |
 | Author | Fujio-Turner / mobile_field_service |
-| Date | 2026-09-05 |
-| Status | Implementation train (`feat/pr-01-expo-shell` → `main`) |
+| Date | 2026-09-06 |
+| Status | S01–S16 except S15 (vector) implemented. Demo three modes on iOS. |
 | Architecture | [DESIGN.md](./DESIGN.md) |
 | Use cases | [DAY_IN_LIFE.md](./DAY_IN_LIFE.md) |
 
-This is a **Fujio-Turner** offline-first field app (Expo + [cbl-reactnative fork](https://github.com/Fujio-Turner/cbl-reactnative), CBL **4.x EE** target + vector index). Repo: https://github.com/Fujio-Turner/mobile_field_service. Walk a mode day before implementing screens: [assets](./DAY_IN_LIFE_ASSETS.md), [customer](./DAY_IN_LIFE_CUSTOMER.md), [sales](./DAY_IN_LIFE_SALES.md). Auth: [AUTH.md](./AUTH.md).
+This is a **Fujio-Turner** offline-first field app (Expo + [cbl-reactnative fork](https://github.com/Fujio-Turner/cbl-reactnative), CBL **4.x EE** target + vector index). Repo: https://github.com/Fujio-Turner/mobile_field_service. Walk a mode day before implementing screens: [assets](./DAY_IN_LIFE_ASSETS.md), [customer](./DAY_IN_LIFE_CUSTOMER.md), [sales](./DAY_IN_LIFE_SALES.md). Auth: [AUTH.md](./AUTH.md). Settings: [guides/SETTINGS.md](../guides/SETTINGS.md).
 
 How to read checkboxes:
 
@@ -192,6 +192,7 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 - [x] `GetTrackingDay` / `GetTrackingLastNDays(n=7)` — seven KV gets, no query
 - [x] Push filter always true; never log the map
 - [x] Foreground / while-using only in v1 (background trail later)
+- [x] **TTL 30 days** after `day` (`expiresAt` + `setDocumentExpiration`)
 
 **Exit:** moving ~100 m+ writes a point; last 7 constructed ids KV-get; still docs do not dump crumbs.
 
@@ -289,7 +290,7 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 - Passwords in CBL
 - Mutating **dispatch** inbound `workordersin` (field `origin: field` create is allowed) or reopening a completed `workordersout` id
 - POD **signature** pad (photo proof now; see Phase future)
-- Credit-card processing at order create (later)
+- Credit card payment at order create (later; catalog snapshot only in v1)
 - Inventory reservation / “out of stock” on create (assume plenty)
 - Customer-facing chat
 - Official `@couchbase/couchbase-lite-react-native` 1.1 as the binding SoT

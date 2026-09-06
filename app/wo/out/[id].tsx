@@ -12,9 +12,12 @@ import {
   Text,
   View,
 } from 'react-native';
+import { applyInboundDecision, decideInboundAction, inspectInboundVsCopy } from '@/src/ops/inboundApply';
+import type { KitFieldDiff } from '@/src/ops/inboundDiff';
+import { useJobRules } from '@/src/dev/JobRulesContext';
 import { createAmendment } from '@/src/ops/createAmendment';
-import { getWorkOrderIn } from '@/src/ops/getWorkOrderIn';
-import { getWorkOrderOut, type WorkOrderOut } from '@/src/ops/getWorkOrderOut';
+import { parseWorkOrderOut, type WorkOrderOut } from '@/src/ops/getWorkOrderOut';
+import { loadOutboundRaw } from '@/src/ops/outboundStore';
 import { OutError } from '@/src/ops/outError';
 import { BLOCK_REASONS, isOpDone, toggleOpDone } from '@/src/ops/outStatus';
 import { DoneToggle } from '@/src/ui/DoneToggle';
@@ -36,9 +39,7 @@ import {
   vanLocationIdForEmployee,
   type DisplayStock,
 } from '@/src/ops/inventory';
-import { memorySave } from '@/src/db/memoryStore';
-import { nativeDbAvailable } from '@/src/db/database';
-import { seedProductsRatesTaxes, seedUserDoc } from '@/src/db/seedData';
+import { ensureMemoryCatalog } from '@/src/db/ensureMemoryDemo';
 import { updateWorkOrderOutFields } from '@/src/ops/updateWorkOrderOut';
 import { VanStockConsume } from '@/src/features/inventory/VanStockConsume';
 import { JobChat } from '@/src/features/chat/JobChat';
@@ -80,12 +81,18 @@ export default function WorkOrderOutScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { session } = useAuth();
+  const { rules } = useJobRules();
   const thumb = useThumbActionStyle();
   const headerHeight = useHeaderHeight();
   const [doc, setDoc] = useState<WorkOrderOut | null | undefined>(undefined);
   const [summary, setSummary] = useState('');
   const [cancelReason, setCancelReason] = useState('');
   const [banner, setBanner] = useState<string | null>(null);
+  const [dispatchBanner, setDispatchBanner] = useState<string | null>(null);
+  const [diffs, setDiffs] = useState<KitFieldDiff[]>([]);
+  const [picks, setPicks] = useState<Record<string, 'local' | 'remote'>>({});
+  const [locked, setLocked] = useState(false);
+  const [dropped, setDropped] = useState(false);
   const [busy, setBusy] = useState(false);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [notes, setNotes] = useState<NoteItem[]>([]);
@@ -100,40 +107,98 @@ export default function WorkOrderOutScreen() {
       setStock([]);
       return;
     }
-    if (!nativeDbAvailable()) {
-      const catalog = seedProductsRatesTaxes('0.1.0+1', 1_700_000_000);
-      for (const row of catalog.products) memorySave('products', row.id, row.doc as never);
-      for (const row of catalog.inventory) memorySave('inventory', row.id, row.doc as never);
-      memorySave('users', 'usr:demo', seedUserDoc('0.1.0+1', 1_700_000_000) as never);
+    ensureMemoryCatalog();
+    let raw = await loadOutboundRaw(id);
+    if (session && raw) {
+      const repaired = await repairUnappliedInventoryTx(id, session, raw);
+      if (repaired > 0) raw = await loadOutboundRaw(id);
     }
-    if (session) await repairUnappliedInventoryTx(id, session);
-    const wo = await getWorkOrderOut(id);
+    let wo = parseWorkOrderOut(id, raw);
     setDoc(wo);
     if (wo) {
       setSummary(wo.summary);
-      setTasks(await listTasksForWork(wo.id));
-      setNotes(await listNotes({ workOrderOutId: wo.id }));
-      if (session) {
-        const loc = await vanLocationIdForEmployee(session.employeeId);
-        setVanId(loc);
-        setStock(await listStockAtLocation(loc));
-      }
+      const locP = session ? vanLocationIdForEmployee(session.employeeId) : Promise.resolve(DEFAULT_VAN_ID);
+      const [nextTasks, nextNotes, loc] = await Promise.all([
+        listTasksForWork(wo.id),
+        listNotes({ workOrderOutId: wo.id }),
+        locP,
+      ]);
+      setTasks(nextTasks);
+      setNotes(nextNotes);
+      setVanId(loc);
+      if (session) setStock(await listStockAtLocation(loc));
     } else {
       setTasks([]);
       setNotes([]);
       setStock([]);
     }
     if (wo && session) {
-      const inbound = await getWorkOrderIn(wo.sourceId);
-      if (inbound && inbound.assignedTo.employeeId !== session.employeeId) {
-        setBanner(`Reassigned to ${inbound.assignedTo.displayName ?? inbound.assignedTo.employeeId}`);
-      } else if (!inbound) {
+      const inspect = await inspectInboundVsCopy(wo.id, raw);
+      const assigned = (inspect.inbound?.assignedTo ?? {}) as { employeeId?: string; displayName?: string };
+      const reassigned = Boolean(inspect.inbound && assigned.employeeId !== session.employeeId);
+      if (reassigned) {
+        setBanner(`Reassigned to ${assigned.displayName ?? assigned.employeeId}`);
+      } else if (!inspect.inbound) {
         setBanner('Assignment changed');
       } else {
         setBanner(null);
       }
+      setLocked(reassigned && rules.reassign === 'forbid_edits');
+      const src = inspect.outbound?.source as { dropped?: boolean } | undefined;
+      setDropped(src?.dropped === true);
+      const action = decideInboundAction({
+        rules,
+        untouched: inspect.untouched,
+        gone: inspect.gone,
+        diffs: inspect.diffs,
+      });
+      if (action === 'apply' || action === 'drop') {
+        const result = await applyInboundDecision(wo.id, session, rules, undefined, inspect);
+        const again = result.outbound ? parseWorkOrderOut(id, result.outbound) : wo;
+        if (again) {
+          wo = again;
+          setDoc(again);
+          setSummary(again.summary);
+        }
+        setDropped(
+          ((result.outbound?.source as { dropped?: boolean } | undefined)?.dropped === true) ||
+            action === 'drop',
+        );
+        setDiffs([]);
+        setDispatchBanner(
+          action === 'drop'
+            ? 'Dispatch cancelled or pulled this ticket. Your copy was never edited, so it is hidden from Today.'
+            : result.applied.length
+              ? `Applied inbound ${result.applied.join(', ')}.`
+              : 'Applied new inbound values onto this copy.',
+        );
+        setPicks({});
+      } else if (action === 'prompt') {
+        setDiffs(inspect.diffs);
+        setPicks((prev) => {
+          const next: Record<string, 'local' | 'remote'> = {};
+          for (const d of inspect.diffs) next[d.key] = prev[d.key] ?? (d.dirty ? 'local' : 'remote');
+          return next;
+        });
+        setDispatchBanner('Dispatch changed the ticket. Pick keep mine or take inbound for each field.');
+      } else if (inspect.diffs.length) {
+        setDiffs(inspect.diffs);
+        setDispatchBanner(
+          `Dispatch updated ${inspect.diffs.map((d) => d.key).join(', ')}. Local wins — your copy is unchanged.`,
+        );
+        setPicks({});
+      } else {
+        setDiffs([]);
+        setDispatchBanner(null);
+        setPicks({});
+      }
+    } else {
+      setDispatchBanner(null);
+      setDiffs([]);
+      setLocked(false);
+      setDropped(false);
     }
-  }, [id, session]);
+  }, [id, session, rules]);
 
   useEffect(() => {
     void reload();
@@ -175,8 +240,9 @@ export default function WorkOrderOutScreen() {
   }
 
   const s = session!;
-  const showStart = doc.editable && (doc.status === 'assigned' || doc.status === 'blocked');
-  const showComplete = doc.editable && doc.status === 'in_progress';
+  const canEdit = doc.editable && !locked && !dropped;
+  const showStart = canEdit && (doc.status === 'assigned' || doc.status === 'blocked');
+  const showComplete = canEdit && doc.status === 'in_progress';
   const showSubmit =
     !doc.editable && (doc.status === 'complete' || doc.status === 'cancelled') && doc.syncState === 'local_draft';
 
@@ -197,11 +263,59 @@ export default function WorkOrderOutScreen() {
             <Text style={styles.warnText}>{banner}</Text>
           </View>
         ) : null}
+        {dispatchBanner ? (
+          <View style={styles.warn}>
+            <Text style={styles.warnText}>{dispatchBanner}</Text>
+          </View>
+        ) : null}
+        {locked ? (
+          <View style={styles.warn}>
+            <Text style={styles.warnText}>Dev rule: further edits are forbidden after reassignment.</Text>
+          </View>
+        ) : null}
+        {diffs.length > 0 ? (
+          <View style={styles.diffBox}>
+            <Text style={styles.section}>Inbound changes</Text>
+            {diffs.map((d) => (
+              <View key={d.key} style={styles.diffRow}>
+                <Text style={styles.diffKey}>{d.key}</Text>
+                <Text style={styles.muted}>Yours {d.local}</Text>
+                <Text style={styles.muted}>Inbound {d.remote}</Text>
+                {picks[d.key] ? (
+                  <View style={styles.pickRow}>
+                    <Pressable
+                      onPress={() => setPicks((p) => ({ ...p, [d.key]: 'local' }))}
+                      style={[styles.pick, picks[d.key] === 'local' && styles.pickOn]}
+                    >
+                      <Text style={picks[d.key] === 'local' ? styles.pickLabelOn : styles.pickLabel}>Keep mine</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => setPicks((p) => ({ ...p, [d.key]: 'remote' }))}
+                      style={[styles.pick, picks[d.key] === 'remote' && styles.pickOn]}
+                    >
+                      <Text style={picks[d.key] === 'remote' ? styles.pickLabelOn : styles.pickLabel}>Take inbound</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
+              </View>
+            ))}
+            {Object.keys(picks).length > 0 && session ? (
+              <Pressable
+                disabled={busy}
+                style={styles.secondary}
+                onPress={() => void run(() => applyInboundDecision(doc.id, s, rules, picks).then(() => undefined))}
+              >
+                <Text style={styles.secondaryLabel}>Apply selected</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
         <Text style={styles.kicker}>
           {doc.role} · {doc.status} · {doc.syncState}
+          {doc.kind ? ` · ${doc.kind}` : ''}
           {doc.owner === 'backend' ? ' · frozen' : ''}
         </Text>
-        {doc.editable ? (
+        {canEdit ? (
           <>
             <Text style={styles.section}>Summary</Text>
             <FieldInput
@@ -221,6 +335,18 @@ export default function WorkOrderOutScreen() {
           <Text style={styles.summary}>{doc.summary}</Text>
         )}
         <Text style={styles.muted}>{doc.siteName}</Text>
+        {doc.move?.from || doc.move?.to ? (
+          <Text style={styles.muted}>
+            {doc.move.from ? `From ${doc.move.from.name ?? 'origin'}` : ''}
+            {doc.move.from && doc.move.to ? ' → ' : ''}
+            {doc.move.to ? `To ${doc.move.to.name ?? 'destination'}` : ''}
+          </Text>
+        ) : null}
+        {doc.orderId ? (
+          <Pressable onPress={() => router.push(`/order/${doc.orderId}`)} style={styles.rowBtn}>
+            <Text style={styles.secondaryLabel}>Open linked order</Text>
+          </Pressable>
+        ) : null}
         {doc.blockedReason ? <Text style={styles.muted}>Blocked: {doc.blockedReason} — {doc.blockedNote}</Text> : null}
         {doc.cancelledReason ? <Text style={styles.muted}>Cancelled: {doc.cancelledReason}</Text> : null}
 
@@ -233,7 +359,7 @@ export default function WorkOrderOutScreen() {
                 label={op.name ?? 'Step'}
                 required={Boolean(op.required)}
                 done={isOpDone(op.status)}
-                disabled={!doc.editable || busy}
+                disabled={!canEdit || busy}
                 onPress={() => {
                   const operations = doc.operations.map((o, j) =>
                     j === i ? { ...o, status: toggleOpDone(o.status) } : o,
@@ -254,7 +380,7 @@ export default function WorkOrderOutScreen() {
                 label={c.label ?? 'Item'}
                 required={Boolean(c.required)}
                 done={Boolean(c.done)}
-                disabled={!doc.editable || busy}
+                disabled={!canEdit || busy}
                 onPress={() => {
                   const checklist = doc.checklist.map((item, j) => (j === i ? { ...item, done: !item.done } : item));
                   void run(() => updateWorkOrderOutFields(doc.id, { checklist }, s));
@@ -266,7 +392,7 @@ export default function WorkOrderOutScreen() {
 
         <JobTasksNotes
           wooutId={doc.id}
-          editable={doc.editable}
+          editable={canEdit}
           busy={busy}
           session={s}
           tasks={tasks}
@@ -283,7 +409,7 @@ export default function WorkOrderOutScreen() {
             <Text style={styles.value}>
               {p.kind} · {p.id}
             </Text>
-            {doc.editable ? (
+            {canEdit ? (
               <Pressable
                 disabled={busy}
                 onPress={() => void run(() => deletePhoto(doc.id, p.id, s))}
@@ -294,7 +420,7 @@ export default function WorkOrderOutScreen() {
             ) : null}
           </View>
         ))}
-        {doc.editable ? (
+        {canEdit ? (
           <Pressable
             disabled={busy}
             style={({ pressed }) => [styles.secondary, thumb, pressed && styles.pressed]}
@@ -323,14 +449,14 @@ export default function WorkOrderOutScreen() {
             {m.description ?? m.sku ?? m.productId} · {m.qtyUsed} {m.uom ?? ''}
           </Text>
         ))}
-        {doc.editable ? (
+        {canEdit ? (
           <>
             <Text style={styles.section}>Van stock</Text>
             <VanStockConsume
               wooutId={doc.id}
               locationId={vanId}
               stock={stock}
-              editable={doc.editable}
+              editable={canEdit}
               busy={busy}
               session={s}
               onMutate={(fn) => void run(fn)}
@@ -357,7 +483,7 @@ export default function WorkOrderOutScreen() {
           </Pressable>
         ) : null}
 
-        {doc.editable ? (
+        {canEdit ? (
           <>
             <Text style={styles.section}>Cancel reason</Text>
             <FieldInput
@@ -444,6 +570,29 @@ const styles = StyleSheet.create({
   body: { padding: theme.space.lg, paddingBottom: theme.space.xl, backgroundColor: theme.color.bg },
   warn: { backgroundColor: theme.color.warnSoft, padding: theme.space.md, borderRadius: theme.radius, marginBottom: theme.space.md },
   warnText: { color: theme.color.warn, fontSize: theme.type.md },
+  diffBox: {
+    backgroundColor: theme.color.surface,
+    borderRadius: theme.radius,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    padding: theme.space.md,
+    marginBottom: theme.space.md,
+  },
+  diffRow: { marginBottom: theme.space.md },
+  diffKey: { fontSize: theme.type.md, color: theme.color.text, fontWeight: '600' },
+  pickRow: { flexDirection: 'row', gap: theme.space.sm, marginTop: theme.space.sm },
+  pick: {
+    minHeight: 40,
+    paddingHorizontal: theme.space.md,
+    borderRadius: theme.radiusSm,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    justifyContent: 'center',
+    backgroundColor: theme.color.bg,
+  },
+  pickOn: { borderColor: theme.color.accent, backgroundColor: theme.color.accentSoft },
+  pickLabel: { color: theme.color.text, fontSize: theme.type.sm },
+  pickLabelOn: { color: theme.color.accent, fontSize: theme.type.sm, fontWeight: '600' },
   kicker: { fontSize: theme.type.sm, color: theme.color.muted, marginBottom: theme.space.sm, textTransform: 'capitalize' },
   summary: { fontSize: theme.type.title, fontWeight: '600', color: theme.color.text, marginBottom: theme.space.sm },
   section: { marginTop: theme.space.lg, marginBottom: theme.space.xs, fontSize: theme.type.sm, color: theme.color.muted, fontWeight: '600' },
