@@ -30,6 +30,7 @@ export default function RootLayout() {
             <Stack.Screen name="chat" />
             <Stack.Screen name="order" />
             <Stack.Screen name="search" />
+            <Stack.Screen name="debug" />
           </Stack>
         </DatabaseProvider>
       </HandednessProvider>

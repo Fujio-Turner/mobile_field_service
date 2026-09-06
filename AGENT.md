@@ -40,7 +40,8 @@ Canonical collection docs: **`docs/schema/SCHEMA_*.md`**. Index: `docs/schema/RE
 - SG login = **email**. Channel = `emp:{employeeId}`. Session via `POST /_session`, honor TTL. [docs/AUTH.md](docs/AUTH.md)
 - One person, one device. Chat = employees only. No card processing. Snapshot prices. No stock reservation on quote.
 - Binding: [Fujio-Turner/cbl-reactnative](https://github.com/Fujio-Turner/cbl-reactnative). Not official plugin 1.1 as SoT.
-- `local.tmp` never in the replicator. Push filters: `"show source"` pure functions. [guides/REPLICATION.md](guides/REPLICATION.md)
+- `local.tmp` never in the replicator. Push filters: `"show source"` pure functions. Per-collection **pull channels** are a `string[]` on each collection config; **default empty** (no client filter — SG grants). Replication **schema** is build-time `EXPO_PUBLIC_REPL_SCHEMA=simple|oneshot` — not a Profile control. Conflict resolvers are a **switch per collection** (CBL default today). Listeners classify HTTP 401/403/404/409/413/429/5xx. [guides/REPLICATION.md](guides/REPLICATION.md)
+- Profile **Settings / debug** shows software versions, CBL db name/path, replicator URL/status/last pull+push, and document counts. Do not show session cookies or the DB encryption key.
 - User/device docs append `history[]` (path + from/to + lat/lon/dt). No `lastAction`. Movement crumbs: `field.tracking` id `track:{YYYY-MM-DD}:{employeeId}` — last 7 days is seven KV gets. Never log the tracking map. [docs/schema/SCHEMA_COMMON.md](docs/schema/SCHEMA_COMMON.md), [docs/schema/SCHEMA_TRACKING.md](docs/schema/SCHEMA_TRACKING.md)
 - Logs: [guides/LOGGING.md](guides/LOGGING.md) — no secrets/PII/doc bodies / tracking maps.
 - UI: [guides/HTML_CSS.md](guides/HTML_CSS.md). Release: [guides/RELEASE.md](guides/RELEASE.md).
@@ -49,7 +50,16 @@ Canonical collection docs: **`docs/schema/SCHEMA_*.md`**. Index: `docs/schema/RE
 
 ## Code hygiene
 
-- Expo **development builds**, not Expo Go.
+- Expo **development builds**, not Expo Go. `postinstall` fetches `ios/cbl-js-swift` + `src/cblite-js` (npm does not clone those).
 - Version from `app.json` / Expo Application APIs — never hard-code in UI.
 - After Hub-style JS templates: no nested backticks (if any web/HTML strings appear).
 - Prefer `src/ops/*` names matching the DESIGN catalog.
+- **CBL SQL++ (Mobile):** no `IN ['a','b']` / `NOT IN [...]`, no `LIMIT $limit` / `OFFSET $offset`. Use `status != 'x' AND status != 'y'`, `status = 'a' OR status = 'b'`, and interpolate integer LIMIT/OFFSET. `FindOutboundForSources` is a bounded `OR` list (max 20).
+- **Live queries:** Today jobs + orders use `Query.addChangeListener` (`src/db/liveQuery.ts`, `watchTodayWork`, `watchTodayOrders`). Pages 2+ stay one-shot `execute()`.
+- **ULID random:** `expo-crypto` `getRandomBytes` — Hermes has no `global.crypto`.
+- **Query explain:** opt-in `EXPO_PUBLIC_QUERY_EXPLAIN=1`, not every `runQuery` in `__DEV__`.
+- **UI:** theme tokens in `src/theme.ts`. Job ops/checklist use `DoneToggle` (outline ↔ filled), not a 4-way status cycle. Inputs: `src/ui/FieldInput.tsx` (`showSoftInputOnFocus`). Optional **Large screen optimize** (and **Left hand**) on Profile — default off is full-width buttons. Stack screens show **Back** (`goStackBack`: pop, else Today); Left hand puts Back on the right.
+
+## Do not start S15
+
+Vector / CLIP stays blocked until the native model and vector index land. Do not scaffold `src/embed/` or a similarity screen.

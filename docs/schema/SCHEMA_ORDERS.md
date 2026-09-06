@@ -171,7 +171,7 @@ Field-created orders omit `source` or set `source` to the parent WO (`type: work
 | `idx_ord_sync` | value | `syncState`, `role` |
 | `idx_ord_amends` | value | `amends.id` |
 
-Today (inbound): `role = 'inbound' AND assignedTo.employeeId = $employeeId AND scheduled.day = $day AND status NOT IN ['cancelled'] ORDER BY scheduled.startDt DESC LIMIT 20 OFFSET n`.
+Today (inbound): `role = 'inbound' AND assignedTo.employeeId = $employeeId AND scheduled.day = $day AND status != 'cancelled'` (CBL Mobile: no `IN [...]`; numeric LIMIT). Working/amendment rows use status equality/`OR` (`draft` / `quoted` / `accepted` / `in_fulfillment`). App: `ListTodayOrders` projection — no per-row KV get.
 
 Active working: `role IN ['working','amendment'] AND assignedTo.employeeId = $employeeId AND status IN ['draft','quoted','accepted','in_fulfillment']` (no day filter). Collapse per `source.id` / `number`, preferring working.
 

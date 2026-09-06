@@ -151,8 +151,12 @@ Map replicator `status.getError()` to app logs:
 
 | Condition | App event | Level |
 | --- | --- | --- |
-| 401, 404, 10401 | `mfs.repl.auth_fail` | error → then [AUTH.md](../docs/AUTH.md) refresh |
-| 408, 429, 5xx, 1001 | `mfs.repl.offline` | warn (CBL retries) |
+| 401, 404, 10401 (replicator) | `mfs.repl.auth_fail` / `http_auth` / `http_not_found` | error → then [AUTH.md](../docs/AUTH.md) refresh |
+| 403 | `mfs.repl.http_forbidden` | warn |
+| 409 | `mfs.repl.conflict` / `http_conflict` | warn (per-collection policy, default CBL) |
+| 413 | `mfs.repl.doc_payload` | error |
+| 408, 429, 5xx, 1001 | `mfs.repl.offline` / `http_timeout` / `http_rate_limit` | warn (CBL retries) |
+| 400, 422 | `mfs.repl.http_client` | warn |
 | 11006 / 1006 TLS mismatch | `mfs.repl.tls` | error |
 | 5011 unknown/self-signed cert | `mfs.repl.tls` | error |
 

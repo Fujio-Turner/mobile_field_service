@@ -8,7 +8,8 @@ tests/
   session/       strategy, expiry skew
   db/            ids, audit, stampHistory, collections, tracking id
   ops/           listTodayWork collapse, StartWork, SubmitOrder, …
-  sync/          push filters (pure fns)
+  sync/          push filters, channels, schema, HTTP error classes, per-collection conflicts
+  ui/            handedness, stack Back
   README.md
 ```
 

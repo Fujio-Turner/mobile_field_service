@@ -5,8 +5,8 @@
 | Title | Sync Gateway login, tokens, expiry |
 | Repo | [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service) |
 | Author | Fujio-Turner / mobile_field_service |
-| Date | 2026-09-04 |
-| Status | Draft |
+| Date | 2026-09-05 |
+| Status | Implemented (`basic` + `demo`; OIDC screens stubbed behind env) |
 | Design | [DESIGN.md](./DESIGN.md) |
 
 How the **login screen** gets a credential, how the **replicator** presents it to Sync Gateway / App Services, where it is stored, and what happens when it **expires**.
@@ -57,7 +57,7 @@ flowchart TB
   Enclave --> OpenDB
 ```
 
-**Basic UI:** one identifier field (email or username), password, Sign in, offline error, invalid-credential error. No “remember password” checkbox — the OS secure store **is** the remember.
+**Basic UI:** one identifier field (email or username), password, Sign in, offline error, invalid-credential error. Fields use `FieldInput` (`showSoftInputOnFocus`). No “remember password” checkbox — the OS secure store **is** the remember. **Demo UI:** identifier only; any non-empty value; no server. `.env.example` uses **demo**.
 
 **OIDC UI:** no password field. One button. iOS: `ASWebAuthenticationSession` / Expo AuthSession. Android: Chrome Custom Tabs. Never a WebView that can see the password on the IdP page if the IdP supports the system browser.
 

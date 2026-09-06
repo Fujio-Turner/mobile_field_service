@@ -16,6 +16,8 @@ type DbState = {
   status: DbStatus;
   nativeAvailable: boolean;
   dbName: string | null;
+  dbPath: string | null;
+  dbDirectory: string | null;
   error: string | null;
 };
 
@@ -25,6 +27,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   const { session, refreshAuth, onAuthLost } = useAuth();
   const [status, setStatus] = useState<DbStatus>('idle');
   const [dbName, setDbName] = useState<string | null>(null);
+  const [dbPath, setDbPath] = useState<string | null>(null);
+  const [dbDirectory, setDbDirectory] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const nativeAvailable = nativeDbAvailable();
 
@@ -34,6 +38,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       void stopReplicator().then(() => closeFieldDatabase());
       setStatus('idle');
       setDbName(null);
+      setDbPath(null);
+      setDbDirectory(null);
       setError(null);
       return;
     }
@@ -47,6 +53,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
         const opened = await openFieldDatabase(session.employeeId);
         if (cancelled) return;
         setDbName(opened.name);
+        setDbPath(opened.path);
+        setDbDirectory(opened.directory);
         setStatus('ready');
         setError(null);
         void startReplicator(session, { refreshAuth, onAuthLost });
@@ -62,8 +70,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   }, [session, nativeAvailable, refreshAuth, onAuthLost]);
 
   const value = useMemo(
-    () => ({ status, nativeAvailable, dbName, error }),
-    [status, nativeAvailable, dbName, error],
+    () => ({ status, nativeAvailable, dbName, dbPath, dbDirectory, error }),
+    [status, nativeAvailable, dbName, dbPath, dbDirectory, error],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

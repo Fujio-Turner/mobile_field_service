@@ -5,8 +5,8 @@
 | Title | Use-case index (three field apps, one database) |
 | Repo | [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service) |
 | Author | Fujio-Turner / mobile_field_service |
-| Date | 2026-09-04 |
-| Status | Draft |
+| Date | 2026-09-05 |
+| Status | Stories still apply; the Expo app implements assets-mode Today + jobs (S01–S16 except vector) |
 | Architecture | [DESIGN.md](./DESIGN.md) |
 | Roadmap | [ROADMAP.md](./ROADMAP.md) |
 

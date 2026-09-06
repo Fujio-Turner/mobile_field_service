@@ -6,8 +6,8 @@
 | Mode | `customer` |
 | Repo | [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service) |
 | Author | Fujio-Turner / mobile_field_service |
-| Date | 2026-09-04 |
-| Status | Draft |
+| Date | 2026-09-05 |
+| Status | Stories apply; demo seed is assets-mode Jon Hale (orders UI is on Today + `/order`) |
 | Index | [DAY_IN_LIFE.md](./DAY_IN_LIFE.md) |
 | Orders schema | [schema/SCHEMA_ORDERS.md](./schema/SCHEMA_ORDERS.md) |
 | Rates / taxes | [schema/SCHEMA_RATES.md](./schema/SCHEMA_RATES.md), [schema/SCHEMA_TAXES.md](./schema/SCHEMA_TAXES.md) |

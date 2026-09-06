@@ -5,8 +5,8 @@
 | Title | Product and engineering roadmap |
 | Repo | [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service) |
 | Author | Fujio-Turner / mobile_field_service |
-| Date | 2026-09-04 |
-| Status | Draft |
+| Date | 2026-09-05 |
+| Status | Implementation train (`feat/pr-01-expo-shell` → `main`) |
 | Architecture | [DESIGN.md](./DESIGN.md) |
 | Use cases | [DAY_IN_LIFE.md](./DAY_IN_LIFE.md) |
 
@@ -33,7 +33,7 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 - [x] This roadmap + PR plan
 - [x] Engineering guides: logging, UI, release, replication ([guides/](../guides/README.md))
 - [x] [AGENT.md](../AGENT.md); tests live in `tests/`; local slices in gitignored `work/`
-- [x] README: EE license, Expo **development builds**, iOS/Android only, CBL **3.3.3 EE** (lands with first code PR)
+- [x] README: EE license, Expo **development builds**, iOS/Android only, CBL via Fujio-Turner/cbl-reactnative (4.x EE target on the fork)
 
 **Exit:** an engineer can implement without inventing field names, prefixes, or SQL++.
 
@@ -41,7 +41,7 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 1 — App shell and session UI
 
-- [x] Expo SDK **52**, RN **0.76.9** (SDK 52 pin; DESIGN cited 0.76.6), Node ≥ 20, `newArchEnabled: true`
+- [x] Expo SDK **52**, RN **0.76.9** (SDK 52 pin), Node ≥ 20, `newArchEnabled: true`
 - [x] iOS **15.1+**, Android **API 24+** (`expo-build-properties`)
 - [x] Expo Router: Login, Today placeholder, Profile
 - [x] Login UI (email or username + password) — [AUTH.md](./AUTH.md)
@@ -50,9 +50,9 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 - [x] Phone-first tabs; large-phone / small-tablet safe areas
 - [x] Camera / location **usage strings** in `app.json` (runtime prompts in later PRs)
 - [x] Jest (or equivalent) test runner wired
-- [ ] “Development build required” if the native module is missing (PR-02)
+- [x] “Development build required” if the native module is missing
 
-**Exit:** installable iOS/Android binary; login navigates to an empty Today screen.
+**Exit:** installable iOS/Android binary; demo login navigates to Today (seed jobs on a development build).
 
 ---
 
@@ -65,9 +65,9 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 - [x] `stampAuditCreate` / `stampAuditUpdate` / `stampHistory` (unix **seconds**, app version, path from/to, lat/lon when GPS)
 - [x] ULID + prefixes (`woin`, `woout`, `ast`, `prd`, `inv`, `invtx`, `usr`, `cus`, `tsk`, `nte`, `msg`, `ord`, `rate`, `tax`, `tmp`) + tracking `track:{day}:{employeeId}`
 - [x] Users seed with `employeeId` + `email` (channel `emp:E-4412`)
-- [ ] Optional pre-built / JSON seed: ~12 inbound jobs, assets near sites, van stock, products, one user, one customer (three inbound jobs + user + customer in v1 seed)
+- [x] Optional JSON seed: three inbound jobs (WO-10470 / 10482 / 10490), assets, van stock, products, rates, taxes, user + dispatch user, Hartford customer, one inbound order. Skip KV loop if seed markers already exist.
 - [x] `tmp` in scope `local`; replicator allow-list cannot include it; expiration helper
-- [ ] `RebuildStock` read-model stub (no stock `save`; unused until inventory PR)
+- [x] `RebuildStock` read-model stub (no stock `save`)
 - [x] Guard screen if the native module is missing (Expo Go)
 
 **Exit:** `cblite` / VSCode CBL inspector shows `field.workordersin` seed docs with audit stamps.
@@ -78,16 +78,17 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 ## Phase 3 — Today list + KV detail
 
-- [x] `ListTodayWork`: inbound `assignedTo.employeeId = $employeeId`, `status NOT IN ('cancelled','superseded')`, `scheduled.day = $day`, `ORDER BY scheduled.startDt DESC LIMIT 20 OFFSET n`
+- [x] `ListTodayWork`: inbound `assignedTo.employeeId = $employeeId`, `status != 'cancelled' AND status != 'superseded'`, `scheduled.day = $day`, `ORDER BY scheduled.startDt DESC` with **numeric** `LIMIT`/`OFFSET` (CBL Mobile rejects `IN [...]` and `$limit`)
 - [x] **Reassigned** / **Assignment changed** badge when inbound assignee ≠ session but local outbound exists
-- [x] Page 0 **UNION ALL** active outbound: `workordersout` `status IN ('assigned','in_progress','blocked')` — **no** `day` filter; unpaged; collapse one row per `source.id` preferring outbound
+- [x] Page 0 merge of active outbound: `workordersout` `status = 'assigned' OR status = 'in_progress' OR status = 'blocked'` — **no** `day` filter; unpaged; collapse one row per `source.id` preferring outbound
 - [x] Infinite scroll (offset += 20) on inbound only
-- [x] Live query on inbound page 0 only; re-run active-outbound on those callbacks and pull-to-refresh
+- [x] Live query on inbound **and** active outbound page 0; coalesce (~50 ms); skip `FindOutboundForSources` for sources already in the active-outbound set
 - [x] Empty / error / stale-sync states (stale-sync waits on replicator)
-- [x] Batched `FindOutboundForSources` → `openId` + `openCollection` on each row
+- [x] Batched `FindOutboundForSources` (`OR` of `source.id = $sN`, max 20) → `openId` + `openCollection` on each row
 - [x] Row tap → **one** KV get on `openCollection` (S04)
-- [x] Read-only inbound detail screen (S04)
-- [x] `query.explain()` debug on today list (index `idx_woin_today`)
+- [x] Read-only inbound detail screen (S04); **Start work** pinned in a bottom dock
+- [x] `query.explain()` opt-in via `EXPO_PUBLIC_QUERY_EXPLAIN=1` (not every query in `__DEV__`)
+- [x] Today header clock + seconds countdown (`src/ops/todayClock.ts`)
 
 **Exit:** scrolling 40+ seed jobs stays on the indexed plan; tap does not re-query the list.
 
@@ -116,8 +117,8 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 ## Phase 5 — Outbound editor, status, Submit (no camera yet)
 
 - [x] Status machine: `assigned` → `in_progress` ⇄ `blocked` → `complete` / `cancelled`
-- [x] Operation statuses `pending | in_progress | done | skipped`
-- [x] Editable operations + embedded checklist
+- [x] Operation statuses `pending | in_progress | done | skipped` (schema). Field UI **toggles done ↔ pending** (`DoneToggle`: outline vs filled) — does not cycle `in_progress`/`skipped` on tap
+- [x] Editable operations + embedded checklist (same outline/filled buttons)
 - [x] `CompleteWork` gates required operations `status === 'done'` and required checklist `done === true` (required **tasks** added in the tasks PR)
 - [x] `CancelWork` with reason (tech); dispatch cancel is inbound-only
 - [x] `SubmitWork` only after complete/cancel; sets `syncState=ready_to_push`
@@ -231,12 +232,16 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 - [x] Replicator change listener: 401 / 404 / 10401 → `OnReplicatorAuthFailure`
 - [x] `await Replicator.create`; collection allow-list; **`local.tmp` not included**
 - [x] RN `"show source"` push filters (never-push for pull-only; woout/notes/tasks/tx as specified)
-- [x] **No pull filters** in v1
+- [x] **No JS pull-filter functions** in v1 (optional `channels: string[]` per collection; default empty)
 - [x] `addDocumentChangeListener` → `syncState` `pushed` / `push_error`
 - [x] Feature-detect pending-ids; else COUNT `ready_to_push`
 - [x] Sync status on Profile; foreground restart
+- [x] Profile **Large screen optimize** (optional right-thumb zone + **Left hand** checkbox)
 - [x] `ReconcileDuplicateOutbound` on pull
 - [x] Channels sketch; SG sync function is **external**
+- [x] Per-collection pull `channels: string[]` on `CollectionConfig` (**default empty** = no client filter)
+- [x] Profile **Settings / debug**: versions, DB path, replicator URL/status/last times, collection counts, start/stop/restart, channel editor
+- [x] Build-time replication schema `simple` (continuous all `field.*`) vs `oneshot` (bootstrap `workordersin`+`orders`, then periodic + foreground one-shots). Not a Profile toggle.
 
 **Exit:** lab SG round-trip: pull inbound, push submitted outbound + blobs + txs.
 
@@ -311,15 +316,15 @@ Ordered, independently reviewable PRs. Each PR should build, typecheck, and leav
 | | |
 | --- | --- |
 | Title | `feat: Expo SDK 52 shell, navigation, and login screen` |
-| Files | `package.json` (Expo **52**, `react-native` **0.76.6**, Node engines ≥ 20), `app.json` (`newArchEnabled`, iOS 15.1, camera/location usage strings), `app/_layout.tsx`, `app/login.tsx`, `app/(tabs)/*`, `src/theme.ts`, `src/session/AuthContext.tsx` (HTTP stub), `plugin.config.js`, `jest.config.js` (or equivalent), `.env.example` |
+| Files | `package.json` (Expo **52**, `react-native` **0.76.9**, Node engines ≥ 20), `app.json` (`newArchEnabled`, iOS 15.1, camera/location usage strings), `app/_layout.tsx`, `app/login.tsx`, `app/(tabs)/*`, `src/theme.ts`, `src/session/AuthContext.tsx` (HTTP stub), `plugin.config.js`, `jest.config.js` (or equivalent), `.env.example` |
 | Deps | PR-00 |
-| Description | Development-build Expo app, New Architecture on, phone-first tabs. Login per [AUTH.md](./AUTH.md) (default basic → Keychain session). Demo strategy skips SG. README: EE license, no Expo Go, native CBL 3.3.3. Test runner wired with a smoke test. |
+| Description | Development-build Expo app, New Architecture on, phone-first tabs. Login per [AUTH.md](./AUTH.md) (default basic → Keychain session). Demo strategy skips SG. README: EE license, no Expo Go, Fujio-Turner/cbl-reactnative. Test runner wired with a smoke test. |
 
 ### PR-02 — CBL open, collections, audit, seed
 
 | | |
 | --- | --- |
-| Title | `feat: encrypted CBL 3.3.3 database, field collections, local.tmp, seed` |
+| Title | `feat: encrypted CBL database, field collections, local.tmp, seed` |
 | Files | `src/db/engine.ts`, `src/db/database.ts`, `src/db/collections.ts`, `src/db/indexes.ts`, `src/db/seed.ts`, `src/ids.ts`, `src/audit.ts`, `src/session/dbKey.ts` |
 | Deps | PR-01 |
 | Description | Singleton engine, per-employee encrypted DB (`mfs_<safe>_<hash8>`), `setDirectory(FileSystem.getDefaultPath())`, string `setEncryptionKey`, **fourteen** `field.*` collections (including `messages`, `orders`, `rates`, `taxes`, `tracking`) + `local.tmp`, value/FTS indexes, ULID helpers, audit + `stampHistory`. Seed users with `employeeId`/`email`/`workModes`. Optional seed of today’s jobs + inbound order. Guard if native module missing. |
@@ -331,7 +336,7 @@ Ordered, independently reviewable PRs. Each PR should build, typecheck, and leav
 | Title | `feat: today’s work list with LIMIT/OFFSET, filters, and live query` |
 | Files | `src/ops/listTodayWork.ts`, `src/ops/findOutboundForSources.ts`, `app/(tabs)/index.tsx`, `src/features/today/*` |
 | Deps | PR-02 |
-| Description | SQL++ today list keyed by `assignedTo.employeeId` (`idx_woin_today`) excluding cancelled/superseded, page size 20, infinite scroll. Page 0 UNION ALL active outbound, collapse per `source.id`. **Reassigned** badge. Live query inbound only; re-run active-outbound on callbacks. `openId`/`openCollection` via batched lookup. |
+| Description | SQL++ today list keyed by `assignedTo.employeeId` (`idx_woin_today`) excluding cancelled/superseded via `!=` (not `IN`), page size 20, numeric LIMIT/OFFSET. Page 0 merge of active outbound (`OR` of statuses), collapse per `source.id`. **Reassigned** badge. Live query inbound + outbound; coalesce. `openId`/`openCollection` via batched `OR` lookup. |
 
 ### PR-04 — KV inbound detail
 
@@ -412,7 +417,7 @@ Ordered, independently reviewable PRs. Each PR should build, typecheck, and leav
 | Title | `feat: collection replicator, RN push filters, and sync status` |
 | Files | `src/sync/replicator.ts`, `src/sync/filters.ts`, `app/(tabs)/profile.tsx`, `src/ops/syncSnapshot.ts` |
 | Deps | **PR-07, PR-08, PR-10, PR-14** (woout + photos + notes/tasks/tx + messages filters). Do not merge before those filters exist. |
-| Description | Session auth, `Replicator.create`, explicit allow-list of **fourteen** `field` collections (including `tracking`), omit `local.tmp`, `"show source"` push filters, `emp:{employeeId}` channels, document listener calls **`SetSyncState`** for `pushed`/`push_error`, pending-count fallback, foreground restart, duplicate-outbound reconcile (primaries only). Lab `wss` URL via env. Lab SG collection list lives in DESIGN.md. |
+| Description | Session auth, `Replicator.create` + `addCollection`, explicit allow-list of **fourteen** `field` collections (including `tracking`), omit `local.tmp`, `"show source"` push filters, optional per-collection `channels: string[]` (default empty), `emp:{employeeId}` on SG, document listener calls **`SetSyncState`** for `pushed`/`push_error`, pending-count fallback, foreground restart, duplicate-outbound reconcile (primaries only). Profile Settings / debug. Lab `wss` URL via env. Lab SG collection list lives in DESIGN.md. |
 
 ### PR-12 — Observability and FTS search chrome
 

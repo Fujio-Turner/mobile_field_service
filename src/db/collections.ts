@@ -29,3 +29,10 @@ export function replicatorAllowList(): readonly string[] {
 export function isReplicatorCollection(name: string): boolean {
   return (FIELD_COLLECTIONS as readonly string[]).includes(name);
 }
+
+/** Operator-facing lists (debug). `tracking` is internal movement crumbs — not shown. */
+export const OPERATOR_COLLECTIONS = FIELD_COLLECTIONS.filter((n) => n !== 'tracking');
+
+export function isOperatorCollection(name: string): boolean {
+  return name !== 'tracking' && name !== TMP_COLLECTION && isReplicatorCollection(name);
+}
