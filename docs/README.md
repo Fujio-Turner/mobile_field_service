@@ -1,6 +1,6 @@
 # Docs
 
-The **official public site** is [Fujio-Turner/mobile_field_service_pages](https://github.com/Fujio-Turner/mobile_field_service_pages) (static HTML for CloudFront). Markdown here is what engineers and coding agents read next to the app.
+The **official public site** is [https://mobile.fuj.io](https://mobile.fuj.io) (source: [mobile_field_service_pages](https://github.com/Fujio-Turner/mobile_field_service_pages)). Markdown here is what engineers and coding agents read next to the app.
 
 | Public page | This repo |
 | --- | --- |

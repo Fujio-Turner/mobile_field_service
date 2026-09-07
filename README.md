@@ -1,6 +1,6 @@
 # Mobile Field Service
 
-**Official website (static HTML / CloudFront):** [Fujio-Turner/mobile_field_service_pages](https://github.com/Fujio-Turner/mobile_field_service_pages) — product story, screens, day-in-the-life, architecture, schemas.
+**Official website:** [https://mobile.fuj.io](https://mobile.fuj.io) — product story, screens, day-in-the-life, architecture, schemas. Source: [Fujio-Turner/mobile_field_service_pages](https://github.com/Fujio-Turner/mobile_field_service_pages).
 
 A **phone app for people who work in the field** — inspect a pump, deliver parts, take an order on a doorstep — **even when there is no signal**.
 
@@ -155,7 +155,7 @@ Binding: [Fujio-Turner/cbl-reactnative](https://github.com/Fujio-Turner/cbl-reac
 
 | I want to… | Go here |
 | --- | --- |
-| Understand the product | [Official site](https://github.com/Fujio-Turner/mobile_field_service_pages) + this README + [DAY_IN_LIFE.md](docs/DAY_IN_LIFE.md) |
+| Understand the product | [Official site](https://mobile.fuj.io) + this README + [DAY_IN_LIFE.md](docs/DAY_IN_LIFE.md) |
 | See collections, queries, freeze rules | [DESIGN.md](docs/DESIGN.md) |
 | See document / collection fields | [docs/schema/](docs/schema/README.md) |
 | See login, Keychain, 401 handling | [AUTH.md](docs/AUTH.md) |

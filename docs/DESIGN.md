@@ -1,6 +1,6 @@
 # Mobile Field Service — Design
 
-Public HTML: [mobile_field_service_pages](https://github.com/Fujio-Turner/mobile_field_service_pages) (`docs/architecture.html`). This file stays the in-repo spec for engineers.
+Public HTML: [https://mobile.fuj.io/docs/architecture.html](https://mobile.fuj.io/docs/architecture.html). This file stays the in-repo spec for engineers.
 
 | Field | Value |
 | --- | --- |
