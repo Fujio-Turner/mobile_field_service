@@ -1,6 +1,7 @@
 # Agent notes — mobile_field_service
 
 Repo: [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service)  
+Official site: [https://mobile.fuj.io](https://mobile.fuj.io) (HTML source: [mobile_field_service_pages](https://github.com/Fujio-Turner/mobile_field_service_pages)).  
 Not koten-ai. Product design: `docs/`. How we code: `guides/`. Env / Profile / debug: [guides/SETTINGS.md](guides/SETTINGS.md).
 
 ---

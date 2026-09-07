@@ -1,5 +1,7 @@
 # Day in the life — index
 
+Public HTML: [https://mobile.fuj.io/docs/day-in-the-life.html](https://mobile.fuj.io/docs/day-in-the-life.html).
+
 | Field | Value |
 | --- | --- |
 | Title | Use-case index (three field apps, one database) |

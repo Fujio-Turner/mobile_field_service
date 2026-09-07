@@ -1,5 +1,7 @@
 # Mobile Field Service — Design
 
+Public HTML: [https://mobile.fuj.io/docs/architecture.html](https://mobile.fuj.io/docs/architecture.html). This file stays the in-repo spec for engineers.
+
 | Field | Value |
 | --- | --- |
 | Title | Offline-first field service mobile app |
