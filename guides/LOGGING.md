@@ -96,7 +96,7 @@ Prefix `mfs.`. Keep a closed set; add in the same PR as the code.
 | `mfs.dev.simulate_inbound` | Lab-only dispatch kit simulate (Settings / debug) |
 | `mfs.repl.skip` | Replicator not started (demo, native missing) |
 | `mfs.db.open` | DB opened; `encryption` true/false only — **never** the key |
-| `mfs.db.open_fail` / `mfs.db.wipe` | Open failed (often encrypt mismatch); local file deleted then re-open |
+| `mfs.db.open_fail` / `mfs.db.wipe` / `mfs.db.recover` | Open failed (often encrypt mismatch); leftover native handle closed, file deleted, then re-open. `recover` logs `from_encryption` / `to_encryption` only |
 
 ---
 

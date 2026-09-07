@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -19,6 +20,7 @@ type DbState = {
   dbPath: string | null;
   dbDirectory: string | null;
   error: string | null;
+  retry: () => void;
 };
 
 const Ctx = createContext<DbState | null>(null);
@@ -30,7 +32,9 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   const [dbPath, setDbPath] = useState<string | null>(null);
   const [dbDirectory, setDbDirectory] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retryTick, setRetryTick] = useState(0);
   const nativeAvailable = nativeDbAvailable();
+  const retry = useCallback(() => setRetryTick((n) => n + 1), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,11 +71,11 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [session, nativeAvailable, refreshAuth, onAuthLost]);
+  }, [session, nativeAvailable, refreshAuth, onAuthLost, retryTick]);
 
   const value = useMemo(
-    () => ({ status, nativeAvailable, dbName, dbPath, dbDirectory, error }),
-    [status, nativeAvailable, dbName, dbPath, dbDirectory, error],
+    () => ({ status, nativeAvailable, dbName, dbPath, dbDirectory, error, retry }),
+    [status, nativeAvailable, dbName, dbPath, dbDirectory, error, retry],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

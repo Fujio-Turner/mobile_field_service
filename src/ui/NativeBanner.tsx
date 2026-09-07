@@ -1,10 +1,11 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useDatabase } from '../db/DatabaseProvider';
 import { useAuth } from '../session/AuthContext';
 import { theme } from '../theme';
+import { SyncStatusBar } from './SyncStatusBar';
 
-export function NativeBanner() {
-  const { status, error } = useDatabase();
+export function NativeBanner({ showSync = true }: { showSync?: boolean }) {
+  const { status, error, retry } = useDatabase();
   const { needsReauth } = useAuth();
   if (needsReauth) {
     return (
@@ -17,16 +18,17 @@ export function NativeBanner() {
     return (
       <View style={styles.warn}>
         <Text style={styles.warnText}>
-          Development build required for Couchbase Lite. Expo Go cannot open the encrypted database.
+          Development build required for Couchbase Lite. Expo Go cannot open the local database.
         </Text>
       </View>
     );
   }
   if (status === 'error') {
     return (
-      <View style={styles.err}>
+      <Pressable onPress={() => retry()} style={styles.err} accessibilityRole="button">
         <Text style={styles.errText}>{error ?? 'Database failed to open'}</Text>
-      </View>
+        <Text style={styles.retry}>Retry</Text>
+      </Pressable>
     );
   }
   if (status === 'opening') {
@@ -36,7 +38,7 @@ export function NativeBanner() {
       </View>
     );
   }
-  return null;
+  return showSync ? <SyncStatusBar /> : null;
 }
 
 const styles = StyleSheet.create({
@@ -54,4 +56,5 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius,
   },
   errText: { color: theme.color.danger, fontSize: theme.type.md },
+  retry: { color: theme.color.accent, fontSize: theme.type.md, fontWeight: '600', marginTop: 4 },
 });

@@ -156,7 +156,7 @@ flowchart TB
 ### Process bootstrap
 
 1. Register `CblReactNativeEngine` exactly once (`src/db/engine.ts`).
-2. After **online** login (or `RestoreSession` when a session cookie is still in Keychain), open the per-employee DB. **Encryption is a lab toggle** (`mfs.dev.dbEncryption`, default **off**). When on: generate 32 random bytes, **base64-encode** them, store as Keychain `mfs.dbkey.<employeeId>`, pass to `setEncryptionKey` (string, not `Uint8Array`). When off: do not call `setEncryptionKey`. Switching the toggle **wipes and reseeds** the local file.
+2. After **online** login (or `RestoreSession` when a session cookie is still in Keychain), open the per-employee DB. **Encryption is a lab toggle** (`mfs.dev.dbEncryption`, default **off**). When on: generate 32 random bytes, **base64-encode** them, store as Keychain `mfs.dbkey.<employeeId>`, pass to `setEncryptionKey` (string, not `Uint8Array`). When off: do not call `setEncryptionKey`. Switching the toggle **wipes and reseeds** the local file. An encrypt-mismatch open (leftover encrypted file, toggle off) closes any leftover native handle, deletes the `.cblite2` folder, and reopens to match the toggle.
 3. Always set the database directory to the plugin default path before open:
 
 ```typescript
@@ -256,9 +256,9 @@ flowchart LR
 - Inbound query: today’s `workordersin` with `status != 'cancelled' AND status != 'superseded'` (CBL Mobile **does not** parse `IN [...]`), `ORDER BY scheduled.startDt DESC`, numeric `LIMIT 20 OFFSET y` baked into the SQL string (not `$limit`). Scrolling increments `OFFSET` by 20.
 - **Active outbound (page 0, unpaged):** all `workordersout` with `status = 'assigned' OR status = 'in_progress' OR status = 'blocked'` for this user — **no** `scheduled.day` predicate. Covers overnight jobs **and** same-day work whose inbound was cancelled, superseded, or auto-purged. Typical cardinality 0–20; not paginated.
 - **Collapse:** one row per `source.id` (inbound `META().id`). Prefer `openCollection = workordersout` when an active outbound exists. Sort the merged page 0 by `scheduled.startDt DESC`. Pages 1+ are inbound-only; skip inbound ids already shown as outbound on page 0.
-- Empty: “No work for today” + last-sync timestamp.
+- Empty: “No work for today” + last-sync timestamp (same copy as the sync bar).
 - Error: query failure with retry.
-- Stale-sync: banner if replicator `OFFLINE`/`STOPPED` with error, or `lastPullSuccessAt` older than 15 minutes while the tech expected a morning dispatch.
+- **Sync HUD** on the Today clock, to the right of the time: **green dot** = connected; **yellow/red dot** + compact elapsed (`12m` / `2h`) when not connected; pending-push **count** when &gt; 0. Other `NativeBanner` screens keep a one-line bar. Demo: yellow dot on the clock, **Local only** on the bar.
 - Each row carries `openId` + `openCollection` (`workordersin` \| `workordersout`) from `FindOutboundForSources` and/or the active-outbound query. **Tap is one KV get:** `collections[openCollection].document(openId)`. No SQL++ on tap. `workordersin` → inbound detail route; `workordersout` → outbound editor (read-only if `status` is `complete`/`cancelled`; CTA **Add follow-up**).
 
 **Reassigned:** inbound (if still present) has `assignedTo.employeeId !==` session employee, **and** this user has a local outbound for that `source.id`. Show badge **Reassigned** (include the new assignee name when inbound is still on device). Keep the row — do not hide their paper. Their copy still completes and pushes. If inbound was auto-purged from `emp:{id}`, badge **Assignment changed**.
@@ -2039,7 +2039,19 @@ Delta sync: EE server-side; enable on SG when available.
 
 ### Sync status UI
 
-Map `ReplicatorActivityLevel` 0–4 to `stopped | offline | connecting | idle | busy`. Show `progress.completed/total` while busy. Persist `lastPullSuccessAt` / `lastPushSuccessAt` in **memory + SecureStore**. A `local.tmp` doc `tmp:sync-meta` is acceptable (not replicated). Pending-push count: feature-detect pending-ids; else COUNT `syncState = 'ready_to_push'`.
+Map `ReplicatorActivityLevel` 0–4 to `stopped | offline | connecting | idle | busy`. **Operator copy** (`src/ops/syncStatus.ts` + `SyncStatusBar`):
+
+| Live state | What the tech sees |
+| --- | --- |
+| `idle` + started | **Connected** |
+| `busy` + recent pull | **Downloading…** (progress `n of m` when CBL reports it) |
+| `busy` + pending push | **Sending N…** |
+| `busy` both / unknown | **Syncing…** |
+| `connecting` | **Connecting…** |
+| `stopped` / `offline` | **Not connected** · last synced *N* min/hours ago (or not synced yet) |
+| Demo | **Local only** |
+
+Always append **N waiting to send** (bar) or the pending **count** (Today clock HUD) when pending > 0 (native pending-ids, else COUNT `syncState = 'ready_to_push'`). Persist `lastPullSuccessAt` / `lastPushSuccessAt` in **memory + SecureStore**. Today: HUD on the clock, not a second card. Other `NativeBanner` surfaces keep the bar.
 
 **Settings / debug** (Profile): software versions (app, Expo SDK, RN, Hermes, `cbl-reactnative`, native linked/missing, OS), CBL database **name + directory + path**, replicator URL, status, last pull/push, document counts per `field.*` and `local.tmp`, start/stop/restart, per-collection channel lists. Never show the session cookie or DB encryption key.
 
@@ -2068,7 +2080,7 @@ Map `ReplicatorActivityLevel` 0–4 to `stopped | offline | connecting | idle | 
 
 - Login: [AUTH.md](./AUTH.md). Default **email + password** → `POST /_session` → `SessionAuthenticator`. OIDC: ID token → `POST /_session` Bearer → session (JWT not on the replicator). Demo: synthetic session, no CBL password.
 - Secrets in iOS Keychain / Android Keystore (Secure Enclave / StrongBox when present). Honor `sessionExpiresAt` / JWT `exp`. Pre-refresh at T−5 min. On replicator **401/404/10401**: STOPPED → refresh once → login.
-- Encryption **off by default** (lab). When on: 32 random bytes, **base64**, Keychain `mfs.dbkey.<employeeId>`, `setEncryptionKey(string)`. Directory: `FileSystem.getDefaultPath()`. Toggle wipes the local DB.
+- Encryption **off by default** (lab). When on: 32 random bytes, **base64**, Keychain `mfs.dbkey.<employeeId>`, `setEncryptionKey(string)`. Directory: `FileSystem.getDefaultPath()`. Toggle wipes the local DB. Encrypt-mismatch open recovers by closing leftover native handles and deleting the `.cblite2` folder.
 - TLS: `wss://`; `acceptOnlySelfSignedServerCertificate = false` in production; true only for lab SG.
 
 ### Data handling

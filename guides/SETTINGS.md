@@ -77,7 +77,7 @@ Route: `/debug`. Do **not** show session cookies or the DB encryption string.
 | **off** (default, `'0'`) | Open CBL **without** `setEncryptionKey`. Lab/default. |
 | **on** (`'1'`) | Mint/load `mfs.dbkey.<employeeId>` in Keychain and pass it to `setEncryptionKey` (AES-256). |
 
-Switching **deletes the local database and reseeds** (encrypted vs plain files are not interchangeable). The key is never shown on this screen.
+Switching **deletes the local database and reseeds** (encrypted vs plain files are not interchangeable). The key is never shown on this screen. If a leftover encrypted file cannot open with encryption off, the app closes any native handle, deletes the `.cblite2` folder, and opens a new file matching the toggle.
 
 ### Job rules (`mfs.dev.jobRules`)
 
@@ -104,7 +104,7 @@ Per-collection `string[]` on the replicator config. **Empty (default)** = no cli
 | `mfs.sync.lastPullSuccessAt` | Unix seconds, last successful pull (memory + SecureStore). |
 | `mfs.sync.lastPushSuccessAt` | Same for push. |
 
-Debug also shows software versions, CBL db name/path, replicator URL/status/progress, collection counts, schema (`simple`/`oneshot`). Demo never starts the replicator.
+Today’s clock HUD (green / yellow / red + `12m`/`2h` + pending count) and the one-line bar on other screens use these timestamps plus replicator activity and pending-push count. Debug also shows software versions, CBL db name/path, replicator URL/status/progress, collection counts, schema (`simple`/`oneshot`). Demo never starts the replicator.
 
 ---
 
@@ -119,6 +119,7 @@ Logout deletes **auth.*** and keeps **dbkey**.
 | `mfs.auth.password` | **basic only**, to mint sessions |
 | `mfs.auth.sessionId` / `cookieName` / `sessionExpiresAt` | SG session |
 | `mfs.dbkey.<employeeId>` | CBL encryption string (base64 of 32 random bytes). Created only when encryption is **on**. **Never log.** |
+| `mfs.cbluid.<employeeId>` | Native CBL unique open-name (not a secret). Used to close leftover handles after Fast Refresh. |
 
 ---
 

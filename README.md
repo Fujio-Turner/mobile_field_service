@@ -17,11 +17,11 @@ When the radio comes back, the phone syncs with Couchbase (Sync Gateway or Capel
 ![Sign in, Today list, open a job, work offline, complete and sync](images/app-flow.svg)
 
 1. **Sign in** with work email (or Sign in with your company IdP). Demo: Jon Hale / Maya Chen / Priya Shah (or any other non-empty id as Jon).
-2. **Today** shows a live clock and a seconds countdown (next start, in-progress end, late-by, or end of day), then jobs and orders for this calendar day, newest first. Scroll for more.
+2. **Today** shows a live clock and a seconds countdown (next start, in-progress end, late-by, or end of day), then jobs and orders for this calendar day, newest first. Scroll for more. **Right of the time** is a tiny sync HUD (green / yellow / pending count) — not a second card.
 3. **Tap a row** to open it by document id. **Start work** (bottom of the inbound screen) makes **your copy**. Hermes has no `crypto`; ids use **expo-crypto**.
 4. **Do the work** with no network: photos, parts, notes, employee chat, map of nearby assets. Mark operations and checklist with **outline vs filled** buttons (not a cycling row tap). Each save keeps a **history** of what changed (qty 10 → 5) with time and place. Driving around writes **tracking** crumbs for that employee and day (TTL **30 days**).
 5. **Complete.** That copy **freezes** and the office owns it. Forgot a photo? You add a **new sheet of paper** that points at the original — you do not reopen the frozen one.
-6. **Profile** has sync status, optional **Large screen optimize** (right-thumb zone; **Left hand** when that is on), and **Settings / debug** (versions, database path, replicator, collection counts, channel filters, **job rules**). Developer catalog of every setting: [guides/SETTINGS.md](guides/SETTINGS.md).
+6. **Profile** has a one-line **sync bar**, optional **Large screen optimize** (right-thumb zone; **Left hand** when that is on), and **Settings / debug** (versions, database path, replicator, collection counts, channel filters, **job rules**). Developer catalog of every setting: [guides/SETTINGS.md](guides/SETTINGS.md).
 
 Walk through a real day:
 
@@ -41,9 +41,20 @@ The tab bar is **Today · Notes · Map · Stock · Chat · Profile**. Notes and 
 
 ### Today
 
-![Today: live clock, walk-up job, inspect/repair/move rows with Reassigned and Started badges](images/Home-Jobs-Workorders-Today.png)
+![Today: live clock with yellow sync dot after PM, walk-up job, inspect/repair/move rows](images/Home-Jobs-Workorders-Today.png)
 
 This is the home list. The teal header is a **live clock** plus a seconds countdown (next start, in-progress end, late-by, or end of day) and the job that countdown belongs to.
+
+**Sync HUD** sits in that same row, immediately after the time — a dot and at most two short figures, not another card on top:
+
+| You see | Meaning |
+| --- | --- |
+| **Green dot** | Connected to Sync Gateway |
+| **Yellow dot** + `12m` / `2h` | Not connected; time since last successful sync |
+| **Number** after the dot | Documents waiting to push |
+| **Red dot** | Sync error |
+
+Demo has no replicator, so Today shows a **yellow dot** and no elapsed/count (nothing has synced, nothing is queued). Other tabs (Notes, Map, Stock, Chat, Profile) keep a one-line bar: **Connected**, **Not connected · last synced …**, **N waiting to send**, or **Local only** in demo.
 
 **Walk-up job** creates a field inbound ticket (`CreateWorkOrderIn`) assigned to you — still a ticket, not labor. Labor starts after **Start work** on that inbound screen.
 
@@ -67,11 +78,11 @@ Type a **DM employeeId** (or `@` them in the body) and a message. Tag a job with
 
 ### Profile
 
-![Profile: tech.jon, E-4412, assets mode, demo sync off, Settings/debug, Search, Sign out](images/Profile-Settings-Debugger.png)
+![Profile: tech.jon, E-4412, assets mode, Local only sync bar, Settings/debug, Search, Sign out](images/Profile-Settings-Debugger.png)
 
-Who you are on this device: username, email, **employeeId**, **workModes**, auth strategy, encrypted DB name, app version. **Crumbs today** is a count of tracking points (no map dump).
+Who you are on this device: username, email, **employeeId**, **workModes**, auth strategy, DB name, app version. **Crumbs today** is a count of tracking points (no map dump).
 
-**Large screen optimize** (off by default) moves primary buttons into the thumb zone; **Left hand** appears when that is on. Demo builds show **Sync: replicator off**. **Settings / debug** is versions, DB path, replicator URL/status, collection counts, optional channel filters, **job rules**, and **DB encryption** (default off). Full list: [guides/SETTINGS.md](guides/SETTINGS.md). **Search** is FTS over notes, products, and assets. **Sign out** drops the session, not the database key.
+The **sync bar** at the top is the same status as Today’s HUD, in words (demo: **Local only**). **Large screen optimize** (off by default) moves primary buttons into the thumb zone; **Left hand** appears when that is on. **Settings / debug** is versions, DB path, replicator URL/status, collection counts, optional channel filters, **job rules**, and **DB encryption** (default off). Full list: [guides/SETTINGS.md](guides/SETTINGS.md). **Search** is FTS over notes, products, and assets. **Sign out** drops the session, not the database key.
 
 ---
 

@@ -281,4 +281,5 @@ Capella: same `wss` replicator; travel sample’s App Endpoint + collection **li
 - [x] `start(false)`
 - [x] No password in `app.json` (unlike the travel sample extra field)
 - [x] Profile **Settings / debug**: versions, DB path/name, replicator URL/status/last success, collection counts, start/stop/restart
+- [x] Operator sync bar: connected / not connected + last synced / pending push / downloading
 - [x] Build-time `EXPO_PUBLIC_REPL_SCHEMA=simple|oneshot` (oneshot interval `EXPO_PUBLIC_REPL_ONESHOT_SEC`)
