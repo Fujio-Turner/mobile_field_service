@@ -1,5 +1,7 @@
 # Day in the life — index
 
+Public HTML: [mobile_field_service_pages](https://github.com/Fujio-Turner/mobile_field_service_pages) (`docs/day-in-the-life.html`).
+
 | Field | Value |
 | --- | --- |
 | Title | Use-case index (three field apps, one database) |

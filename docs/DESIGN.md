@@ -1,5 +1,7 @@
 # Mobile Field Service — Design
 
+Public HTML: [mobile_field_service_pages](https://github.com/Fujio-Turner/mobile_field_service_pages) (`docs/architecture.html`). This file stays the in-repo spec for engineers.
+
 | Field | Value |
 | --- | --- |
 | Title | Offline-first field service mobile app |
