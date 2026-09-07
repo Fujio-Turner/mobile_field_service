@@ -12,6 +12,7 @@ import {
 } from '../ops/todayClock';
 import type { TodayRow } from '../ops/todayTypes';
 import { theme } from '../theme';
+import { SyncClockHud } from './SyncStatusBar';
 
 export function TodayClock({ rows }: { rows: TodayRow[] }) {
   const [now, setNow] = useState(() => new Date());
@@ -36,9 +37,12 @@ export function TodayClock({ rows }: { rows: TodayRow[] }) {
       accessibilityLabel={`${formatClockTime(now)}. ${clockLabel(target.kind)} ${formatHms(remain)}${jobLine ? `. ${jobLine}` : ''}`}
     >
       <Text style={styles.date}>{formatClockDate(now)}</Text>
-      <Text style={styles.time} accessibilityLiveRegion="none">
-        {formatClockTime(now)}
-      </Text>
+      <View style={styles.timeRow}>
+        <Text style={styles.time} accessibilityLiveRegion="none">
+          {formatClockTime(now)}
+        </Text>
+        <SyncClockHud nowSec={nowSec} />
+      </View>
       <View style={styles.split}>
         <View style={styles.countdownBlock}>
           <Text style={styles.kicker}>{clockLabel(target.kind)}</Text>
@@ -74,6 +78,11 @@ const styles = StyleSheet.create({
     marginBottom: theme.space.xs,
     textTransform: 'capitalize',
   },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.space.md,
+  },
   time: {
     fontSize: theme.type.clock,
     lineHeight: 42,
@@ -81,6 +90,7 @@ const styles = StyleSheet.create({
     color: theme.color.onAccent,
     fontVariant: ['tabular-nums'],
     letterSpacing: -0.5,
+    flexShrink: 1,
   },
   split: {
     flexDirection: 'row',

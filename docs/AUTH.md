@@ -144,6 +144,7 @@ iOS Keychain / Android Keystore via `expo-secure-store` (`src/session/enclave.ts
 | `mfs.auth.refreshToken` | OIDC refresh token if the IdP issued one |
 | `mfs.auth.idTokenExpiresAt` | JWT `exp` |
 | `mfs.dbkey.<employeeId>` | DB encryption string (only if Settings / debug encryption is **on**) |
+| `mfs.cbluid.<employeeId>` | Native CBL unique open-name for leftover-handle close (not a secret) |
 
 Logout deletes **auth.*** keys (session, password, tokens). DB encryption key stays unless `LogoutAndWipe`.
 

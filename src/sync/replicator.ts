@@ -58,6 +58,8 @@ type LiveStatus = {
   lastErrorCode?: number;
   lastPullSuccessAt?: number;
   lastPushSuccessAt?: number;
+  lastPullDocAt?: number;
+  lastPushDocAt?: number;
   progressCompleted?: number;
   progressTotal?: number;
   started: boolean;
@@ -94,8 +96,12 @@ let lastErrorCode: number | undefined;
 let lastErrorClass: ReplErrorClass | undefined;
 let lastPullSuccessAt: number | undefined;
 let lastPushSuccessAt: number | undefined;
+let lastPullDocAt: number | undefined;
+let lastPushDocAt: number | undefined;
 let progressCompleted: number | undefined;
 let progressTotal: number | undefined;
+const statusListeners = new Set<() => void>();
+let emitTimer: ReturnType<typeof setTimeout> | null = null;
 let authRefreshTried = false;
 let fatalTls = false;
 let pendingOverride: number | null = null;
@@ -144,6 +150,28 @@ function nowSec(): number {
   return Math.floor(Date.now() / 1000);
 }
 
+export function subscribeReplicatorStatus(listener: () => void): () => void {
+  statusListeners.add(listener);
+  return () => {
+    statusListeners.delete(listener);
+  };
+}
+
+function emitReplicatorStatus(): void {
+  if (emitTimer) return;
+  emitTimer = setTimeout(() => {
+    emitTimer = null;
+    for (const fn of statusListeners) fn();
+  }, 50);
+}
+
+export function noteReplicatedDirection(isPush: boolean): void {
+  const t = nowSec();
+  if (isPush) lastPushDocAt = t;
+  else lastPullDocAt = t;
+  emitReplicatorStatus();
+}
+
 export function replicatorLiveStatus(): LiveStatus {
   const meta = openedDatabaseMeta();
   const docs = replDocStats();
@@ -154,6 +182,8 @@ export function replicatorLiveStatus(): LiveStatus {
     lastErrorCode,
     lastPullSuccessAt,
     lastPushSuccessAt,
+    lastPullDocAt,
+    lastPushDocAt,
     progressCompleted,
     progressTotal,
     started,
@@ -192,6 +222,7 @@ export async function hydrateSyncTimes(): Promise<void> {
   timesHydrated = true;
   if (lastPullSuccessAt == null) lastPullSuccessAt = await loadEpoch(LAST_PULL_KEY);
   if (lastPushSuccessAt == null) lastPushSuccessAt = await loadEpoch(LAST_PUSH_KEY);
+  emitReplicatorStatus();
 }
 
 async function pendingFromNative(repl: NativeReplicator): Promise<number | null> {
@@ -218,11 +249,13 @@ export async function refreshPendingCount(): Promise<number> {
     const n = await pendingFromNative(nativeRepl);
     if (n != null) {
       pendingOverride = n;
+      emitReplicatorStatus();
       return n;
     }
   }
   const n = await pendingPushCountLocal();
   pendingOverride = n;
+  emitReplicatorStatus();
   return n;
 }
 
@@ -264,6 +297,7 @@ async function onStatus(raw: unknown): Promise<void> {
     lastPushSuccessAt = t;
     void saveEpoch(LAST_PULL_KEY, t);
     void saveEpoch(LAST_PUSH_KEY, t);
+    schedulePendingRefresh();
     if (!liveContinuous) queueOneshotFinish('idle');
   }
   if (!liveContinuous && activityLevel === 0 && !isAuthFailureCode(code) && !isTlsCode(code)) {
@@ -291,16 +325,19 @@ async function onStatus(raw: unknown): Promise<void> {
       }
     }
     hooks?.onAuthLost();
+    emitReplicatorStatus();
     return;
   }
   if (isTlsCode(code)) {
     fatalTls = true;
+    emitReplicatorStatus();
     return;
   }
   if (isTransientCode(code) || activityLevel === 1) {
     const key = `${activityLevel}:${code ?? ''}`;
     if (key !== lastStatusLog) lastStatusLog = key;
   }
+  emitReplicatorStatus();
 }
 
 function logReplicatorHttpError(code: number, activity: number): void {
@@ -456,6 +493,7 @@ export async function startReplicator(
     skippedReason = 'demo';
     oneshotBusy = false;
     log.info('mfs.repl.skip', { op: 'StartReplicator', err: 'demo' });
+    emitReplicatorStatus();
     return { ok: false, reason: 'demo' };
   }
   const sgUrl = sgReplicatorUrl();
@@ -525,6 +563,7 @@ export async function startReplicator(
     await replicator.addDocumentChangeListener?.(async (change) => {
       if (!liveSession) return;
       for (const ev of parseReplicatedDocs(change)) {
+        noteReplicatedDirection(ev.isPush);
         await handleReplicatedDoc(ev, liveSession);
       }
       schedulePendingRefresh();
@@ -542,6 +581,7 @@ export async function startReplicator(
       channelFilterCollections: filteredCollectionCount(liveChannels),
     });
     schedulePendingRefresh();
+    emitReplicatorStatus();
     return { ok: true };
   } catch (err) {
     log.error('mfs.repl.start_fail', { op: 'StartReplicator', err });
@@ -614,6 +654,7 @@ export async function stopReplicator(): Promise<void> {
     // already stopped
   }
   if (repl) log.info('mfs.repl.stop', { op: 'StopReplicator' });
+  emitReplicatorStatus();
 }
 
 /** Foreground / keep-alive. Simple schema restarts a continuous replicator; oneshot fires a cycle. */
@@ -637,6 +678,8 @@ export function resetReplicatorTestState(): void {
   lastErrorClass = undefined;
   lastPullSuccessAt = undefined;
   lastPushSuccessAt = undefined;
+  lastPullDocAt = undefined;
+  lastPushDocAt = undefined;
   progressCompleted = undefined;
   progressTotal = undefined;
   authRefreshTried = false;
@@ -659,5 +702,10 @@ export function resetReplicatorTestState(): void {
     pendingTimer = null;
   }
   lastStatusLog = '';
+  if (emitTimer) {
+    clearTimeout(emitTimer);
+    emitTimer = null;
+  }
+  statusListeners.clear();
   resetReplDocStats();
 }

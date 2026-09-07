@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { FieldInput } from '@/src/ui/FieldInput';
+import { NativeBanner } from '@/src/ui/NativeBanner';
 import { createNote, listNotes, type NoteItem } from '@/src/ops/notes';
 import { OutError } from '@/src/ops/outError';
 import { useAuth } from '@/src/session/AuthContext';
@@ -63,6 +64,7 @@ export default function NotesScreen() {
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           <View>
+            <NativeBanner />
             <Text style={styles.title}>Notes</Text>
             <FieldInput
               value={q}

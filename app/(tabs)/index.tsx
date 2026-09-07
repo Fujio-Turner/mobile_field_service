@@ -14,7 +14,7 @@ import {
 import { useDatabase } from '@/src/db/DatabaseProvider';
 import { TodayRowView } from '@/src/features/today/TodayRowView';
 import { deviceLocalDay } from '@/src/ids';
-import { nativeDbAvailable } from '@/src/db/database';
+import { getOpenedDatabase, nativeDbAvailable } from '@/src/db/database';
 import { ensureMemoryOrders } from '@/src/db/ensureMemoryDemo';
 import { createWorkOrderIn, CreateWorkOrderInError } from '@/src/ops/createWorkOrderIn';
 import { listTodayWork, sourceIdsFromRows, TODAY_PAGE_SIZE } from '@/src/ops/listTodayWork';
@@ -28,6 +28,7 @@ import { useAuth } from '@/src/session/AuthContext';
 import { useJobRules } from '@/src/dev/JobRulesContext';
 import { showsTodayJobs, showsTodayOrders, workModesForEmployee } from '@/src/session/workModes';
 import { NativeBanner } from '@/src/ui/NativeBanner';
+import { useSyncStatus } from '@/src/ui/SyncStatusBar';
 import { FieldInput } from '@/src/ui/FieldInput';
 import { TodayClock } from '@/src/ui/TodayClock';
 import { theme } from '@/src/theme';
@@ -37,6 +38,7 @@ export default function TodayScreen() {
   const { session } = useAuth();
   const { rules } = useJobRules();
   const { status: dbStatus } = useDatabase();
+  const syncView = useSyncStatus();
   const day = deviceLocalDay();
   const [rows, setRows] = useState<TodayRow[]>([]);
   const [preview, setPreview] = useState(false);
@@ -88,7 +90,7 @@ export default function TodayScreen() {
     setError(null);
     try {
       let result = await listTodayWork({ employeeId, day, offset: 0 });
-      if (session) {
+      if (session && nativeDbAvailable() && getOpenedDatabase()) {
         let applied = false;
         for (const row of result.rows) {
           if (row.openCollection !== 'workordersout') continue;
@@ -201,7 +203,7 @@ export default function TodayScreen() {
         onEndReachedThreshold={0.4}
         ListHeaderComponent={
           <View>
-            <NativeBanner />
+            <NativeBanner showSync={false} />
             <TodayClock rows={rows} />
             {preview ? (
               <Text style={styles.preview}>Preview from seed. Live list needs a development build.</Text>
@@ -284,7 +286,7 @@ export default function TodayScreen() {
           ) : showJobs ? (
             <View style={styles.emptyWrap}>
               <Text style={styles.empty}>No work for today</Text>
-              <Text style={styles.muted}>Not synced yet</Text>
+              <Text style={styles.muted}>{syncView.detail ?? syncView.title}</Text>
             </View>
           ) : null
         }

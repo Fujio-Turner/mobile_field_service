@@ -10,7 +10,7 @@ import { tmpExpiryDate, TMP_TTL_MS } from '../../src/db/tmp';
 import { TRACKING_TTL_DAYS, trackingExpiryDate } from '../../src/ops/tracking';
 import { FTS_INDEXES, VALUE_INDEXES } from '../../src/db/indexes';
 import { trackingDocId } from '../../src/ids';
-import { bytesToBase64, dbKeyItem } from '../../src/session/dbKeyCodec';
+import { bytesToBase64, cblUniqueItem, dbKeyItem } from '../../src/session/dbKeyCodec';
 
 describe('collections', () => {
   it('has fourteen field collections including tracking', () => {
@@ -80,6 +80,7 @@ describe('tracking expiry', () => {
 describe('db key codec', () => {
   it('names the key by employeeId', () => {
     expect(dbKeyItem('E-4412')).toBe('mfs.dbkey.E-4412');
+    expect(cblUniqueItem('E-4412')).toBe('mfs.cbluid.E-4412');
   });
 
   it('base64-encodes 32 bytes', () => {

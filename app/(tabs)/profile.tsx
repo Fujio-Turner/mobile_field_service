@@ -4,9 +4,7 @@ import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useDatabase } from '@/src/db/DatabaseProvider';
 import { deviceLocalDay } from '@/src/ids';
-import { syncSnapshot, type SyncSnapshot } from '@/src/ops/syncSnapshot';
 import { getTrackingDay, getTrackingLastNDays } from '@/src/ops/tracking';
-import { refreshPendingCount } from '@/src/sync/replicator';
 import { useAuth } from '@/src/session/AuthContext';
 import { workModesForEmployee } from '@/src/session/workModes';
 import { NativeBanner } from '@/src/ui/NativeBanner';
@@ -22,7 +20,6 @@ export default function ProfileScreen() {
   const { dbName, status } = useDatabase();
   const [crumbToday, setCrumbToday] = useState<number | null>(null);
   const [crumbDays, setCrumbDays] = useState<number | null>(null);
-  const [sync, setSync] = useState<SyncSnapshot | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -33,8 +30,6 @@ export default function ProfileScreen() {
         setCrumbToday(map ? Object.keys(map).length : 0);
         const week = await getTrackingLastNDays(session.employeeId, 7);
         setCrumbDays(week.filter((d) => d.doc != null).length);
-        await refreshPendingCount();
-        setSync(syncSnapshot());
       })();
     }, [session]),
   );
@@ -89,22 +84,6 @@ export default function ProfileScreen() {
             <Text style={styles.muted}>Mirror the zone for left-thumb reach.</Text>
           </View>
         </Pressable>
-      ) : null}
-
-      <Text style={styles.label}>Sync</Text>
-      <Text style={styles.muted}>
-        {sync
-          ? sync.skippedReason === 'demo'
-            ? 'Demo — replicator off'
-            : `${sync.activity}${sync.started ? '' : ' (not started)'}${
-                sync.pending ? ` · pending ${sync.pending}` : ''
-              }${sync.lastErrorCode != null ? ` · error ${sync.lastErrorCode}` : ''}`
-          : '—'}
-      </Text>
-      {sync?.progressTotal ? (
-        <Text style={styles.muted}>
-          Progress {sync.progressCompleted ?? 0}/{sync.progressTotal}
-        </Text>
       ) : null}
 
       {needsReauth ? (

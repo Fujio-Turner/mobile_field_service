@@ -237,6 +237,7 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 - [x] `addDocumentChangeListener` → `syncState` `pushed` / `push_error`
 - [x] Feature-detect pending-ids; else COUNT `ready_to_push`
 - [x] Sync status on Profile; foreground restart
+- [x] Operator sync bar: connected / not connected + last synced / pending push / downloading
 - [x] Profile **Large screen optimize** (optional right-thumb zone + **Left hand** checkbox)
 - [x] `ReconcileDuplicateOutbound` on pull
 - [x] Channels sketch; SG sync function is **external**

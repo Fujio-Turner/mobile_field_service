@@ -30,6 +30,7 @@ Keep a small palette (names, not brand fluff):
 | `color.danger` | Destructive, push_error |
 | `color.warn` | Reassigned, stale sync |
 | `color.ok` | Synced, complete |
+| `color.okBright` / `warnBright` / `dangerBright` | Dots on the dark Today clock |
 | `space.xs…xl` | 4 / 8 / 12 / 16 / 24 |
 | `type.sm` / `md` / `lg` / `title` | 13 / 15 / 17 / 22 |
 
@@ -60,7 +61,7 @@ Light theme first. Dark: follow `useColorScheme` later; do not invert ad hoc in 
 | Text field | Label above, error below, `secureTextEntry` on password |
 | Row (Today) | 64+ pt, number + site + time + badge |
 | Empty | One sentence + last-sync time |
-| Offline | Banner, not a modal that blocks the job |
+| Offline | Today clock HUD (dot + elapsed + pending count), not a modal that blocks the job |
 
 Copy: short, sentence case. “Sign in”, “Start work”, “Add follow-up”. No marketing voice.
 
