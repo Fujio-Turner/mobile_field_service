@@ -2,7 +2,7 @@ import { nowSec, stampAuditCreate, stampAuditUpdate, stampHistory } from '../aud
 import { newDocId } from '../ids';
 import { appVersion } from '../version';
 import { deleteChild, listChildrenMemory, loadChild, queryChildRowsIfNative, saveChild } from './childStore';
-import type { StartSession } from './copyInbound';
+import { assignedToFromSession, type StartSession } from './copyInbound';
 import { OutError } from './outError';
 import { childReadyToPush, isFrozen } from './outStatus';
 import { loadOutboundRaw } from './outboundStore';
@@ -114,12 +114,17 @@ export async function createNote(
   const ver = appVersion();
   const dt = nowSec();
   const id = newDocId('nte');
+  const parentCustomer = parent?.customerId != null ? String(parent.customerId) : undefined;
   let doc: Record<string, unknown> = {
     type: 'note',
     kind: input.kind ?? (input.workOrderOutId ? 'job' : 'general'),
     body,
     title: input.title,
     workOrderOutId: input.workOrderOutId,
+    customerId: parentCustomer,
+    assignedTo: assignedToFromSession(session),
+    employeeId: session.employeeId,
+    email: session.email,
     readyToPush: parent ? childReadyToPush(parent) : true,
   };
   doc = stampAuditCreate(doc, { by: session.username, ver, dt });

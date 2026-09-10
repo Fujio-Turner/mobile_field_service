@@ -149,7 +149,7 @@ function trackingPushFilter(_document: any, _flags: any): boolean {
 - Device-owned crumbs; do not wait for Submit.
 - Never log the `tracking` map. Channel `emp:{employeeId}`. Id uses employeeId, not email.
 
-Channels: `emp:{employeeId}` (SG username is **email**). See DESIGN matrix.
+Channels come from document fields: `emp:{employeeId}`, `email:{lowercase}`, `cus:{customerId}` (at least one on users / workorders* / orders / notes). Catalogs use `type:` / `sku:` / `loc:` / … — never `channel("!")`. See DESIGN matrix.
 
 ### Pull channel lists (optional)
 

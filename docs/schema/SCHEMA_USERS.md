@@ -12,7 +12,7 @@
 
 **Never:** `password`, `hash`, `session`, `token`.
 
-SG login = **email**. Channel = `emp:{employeeId}`. `audit.by` = `username`.
+SG login = **email**. Channels = `emp:{employeeId}`, `email:{lowercase email}`, plus `type:user` / `role:{role}` / `crew:{crewId}` / `district:{districtId}` when those fields are set. `audit.by` = `username`.
 
 **Indexes:** `idx_usr_employee`; `idx_usr_email`; `idx_usr_username`.
 

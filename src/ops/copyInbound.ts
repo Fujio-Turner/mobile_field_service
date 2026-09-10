@@ -19,6 +19,17 @@ const DROP_FROM_COPY = new Set([
 
 export type StartSession = AssignedTo & { username: string; email: string; employeeId: string };
 
+/** Stamp assignedTo / identity fields used by App Services channels. */
+export function assignedToFromSession(session: StartSession): AssignedTo {
+  return {
+    userId: session.userId,
+    employeeId: session.employeeId,
+    email: session.email,
+    username: session.username,
+    displayName: session.displayName ?? session.username,
+  };
+}
+
 export function inboundSnapshot(inboundRaw: Record<string, unknown>, inboundId: string): Record<string, unknown> {
   const snapshot: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(inboundRaw)) {
@@ -47,13 +58,7 @@ export function buildWorkOrderOut(input: {
   body.status = 'assigned';
   body.syncState = 'local_draft';
   body.source = inboundSnapshot(input.inboundRaw, input.inboundId);
-  body.assignedTo = {
-    userId: input.session.userId,
-    employeeId: input.session.employeeId,
-    email: input.session.email,
-    username: input.session.username,
-    displayName: input.session.displayName ?? input.session.username,
-  };
+  body.assignedTo = assignedToFromSession(input.session);
   const created = stampAuditCreate(body, {
     by: input.session.username,
     ver: input.ver,

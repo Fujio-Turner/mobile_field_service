@@ -3,7 +3,7 @@ import { log } from '../log/logger';
 import { newDocId, ulid } from '../ids';
 import { appVersion } from '../version';
 import { listChildrenMemory, loadChild, queryChildRowsIfNative, saveChild } from './childStore';
-import type { StartSession } from './copyInbound';
+import { assignedToFromSession, type StartSession } from './copyInbound';
 import { createCustomer } from './customers';
 import { isFrozen } from './outStatus';
 import { OutError } from './outError';
@@ -67,14 +67,7 @@ async function saveOrder(id: string, body: Record<string, unknown>): Promise<voi
   await saveChild('orders', id, body);
 }
 
-function assignedToFromSession(session: StartSession) {
-  return {
-    employeeId: session.employeeId,
-    email: session.email,
-    username: session.username,
-    displayName: session.displayName,
-  };
-}
+
 
 function stripOrderCopy(raw: Record<string, unknown>): Record<string, unknown> {
   const next: Record<string, unknown> = {};

@@ -17,7 +17,7 @@ Complete/cancel → `owner: backend`, body **frozen**. Forgotten facts → new d
 
 **Indexes:** `idx_woout_source` (`assignedTo.employeeId`, `source.id`, `role`); `idx_woout_today`; `idx_woout_amends`; `idx_woout_sync`.
 
-**Replication:** PUSH_AND_PULL. Filter: `syncState` in ready_to_push \| pushed \| push_error.
+**Replication:** PUSH_AND_PULL. Filter: `syncState` in ready_to_push \| pushed \| push_error. Channels: `emp:{assignedTo.employeeId}`, `email:{assignedTo.email}`, `cus:{customerId}` (at least one required).
 
 ---
 

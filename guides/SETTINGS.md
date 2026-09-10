@@ -95,7 +95,7 @@ Try buttons and deep link `mfs://debug?demo=local\|prompt\|remote\|reassign\|unt
 
 ### Pull channels (`mfs.sync.collectionChannels`)
 
-Per-collection `string[]` on the replicator config. **Empty (default)** = no client filter; SG grants `emp:` / `district:` / `public`. A non-empty list only **narrows** pull. Saved from the debug form; `EXPO_PUBLIC_SG_CHANNELS` is the fallback when nothing is stored.
+Per-collection `string[]` on the replicator config. **Empty (default)** = no client filter; SG grants channels from document fields (`emp:` / `email:` / `cus:` / `type:`). A non-empty list only **narrows** pull. Saved from the debug form; `EXPO_PUBLIC_SG_CHANNELS` is the fallback when nothing is stored.
 
 ### Sync timestamps
 

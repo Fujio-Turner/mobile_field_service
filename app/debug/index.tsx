@@ -411,7 +411,7 @@ export default function DebugScreen() {
             onChangeText={setShared}
             autoCapitalize="none"
             autoCorrect={false}
-            placeholder="emp:E-4412, public"
+            placeholder="emp:E-4412, email:jon.hale@example.com"
             style={styles.input}
           />
           <Pressable

@@ -18,7 +18,7 @@
 
 **Indexes:** `idx_woin_today` (`assignedTo.employeeId`, `scheduled.day`, `scheduled.startDt`); `idx_woin_number`; `idx_woin_customer`.
 
-**Replication:** PULL dispatch. PUSH if `origin == 'field' && readyToPush`.
+**Replication:** PULL dispatch. PUSH if `origin == 'field' && readyToPush`. Channels: `emp:{assignedTo.employeeId}`, `email:{assignedTo.email}`, `cus:{customerId}` (at least one required).
 
 ---
 

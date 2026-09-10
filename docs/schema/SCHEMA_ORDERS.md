@@ -36,7 +36,7 @@ Commercial document: customer, lines, **snapshotted** prices and tax, fulfillmen
 
 Every document: `type`, `audit.cr|up.{dt,ver,by}` (unix **seconds**), `history[]` on working copies ([SCHEMA_COMMON.md](./SCHEMA_COMMON.md)).
 
-`assignedTo` includes `employeeId`, `email`, `username`, `displayName`, `userId`. Channel: `emp:{employeeId}`.
+`assignedTo` includes `employeeId`, `email`, `username`, `displayName`, `userId`. Channels: `emp:{employeeId}`, `email:{email}`, `cus:{customerId}` (at least one required).
 
 ---
 

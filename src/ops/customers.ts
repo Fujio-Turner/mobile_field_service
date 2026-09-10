@@ -2,7 +2,7 @@ import { nowSec, stampAuditCreate, stampHistory } from '../audit';
 import { newDocId } from '../ids';
 import { appVersion } from '../version';
 import { listChildrenMemory, loadChild, queryChildRowsIfNative, saveChild } from './childStore';
-import type { StartSession } from './copyInbound';
+import { assignedToFromSession, type StartSession } from './copyInbound';
 import { OutError } from './outError';
 
 export type CustomerItem = {
@@ -55,11 +55,9 @@ export async function createCustomer(
     name,
     accountNumber: input.accountNumber,
     readyToPush: true,
-    assignedTo: {
-      employeeId: session.employeeId,
-      email: session.email,
-      username: session.username,
-    },
+    assignedTo: assignedToFromSession(session),
+    employeeId: session.employeeId,
+    email: session.email,
   };
   doc = stampAuditCreate(doc, { by: session.username, ver, dt });
   doc = stampHistory(doc as never, {

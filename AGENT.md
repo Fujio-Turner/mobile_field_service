@@ -38,7 +38,7 @@ Canonical collection docs: **`docs/schema/SCHEMA_*.md`**. Index: `docs/schema/RE
 
 - Dispatch inbound: **never patch**. Field jobs: **new** `woin:` `origin: field`.
 - Labor/sales work on a **copy**. Complete **freezes**. Forgotten facts → **amendment** (`amends.id`).
-- SG login = **email**. Channel = `emp:{employeeId}`. Session via `POST /_session`, honor TTL. [docs/AUTH.md](docs/AUTH.md)
+- SG login = **email**. Channels from doc fields: `emp:{employeeId}`, `email:{email}`, `cus:{customerId}` (at least one on users / workorders* / orders / notes). Session via `POST /_session`, honor TTL. [docs/AUTH.md](docs/AUTH.md)
 - One person, one device. Chat = employees only. **No credit card payment** in this version. Snapshot prices. No stock reservation on quote.
 - Binding: [Fujio-Turner/cbl-reactnative](https://github.com/Fujio-Turner/cbl-reactnative). Not official plugin 1.1 as SoT.
 - `local.tmp` never in the replicator. Push filters: `"show source"` pure functions. Per-collection **pull channels** are a `string[]` on each collection config; **default empty** (no client filter — SG grants). Replication **schema** is build-time `EXPO_PUBLIC_REPL_SCHEMA=simple|oneshot` — not a Profile control. Conflict resolvers are a **switch per collection** (CBL default today). Listeners classify HTTP 401/403/404/409/413/429/5xx. [guides/REPLICATION.md](guides/REPLICATION.md)

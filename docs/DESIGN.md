@@ -1875,22 +1875,22 @@ flowchart LR
   Phone -.-> none
 ```
 
-| Collection | Direction | Channels | Push filter (v1) |
+| Collection | Direction | Channels (from document fields; never `!` / `public`) | Push filter (v1) |
 | --- | --- | --- | --- |
-| `field.workordersin` | PUSH_AND_PULL | `emp:{employeeId}` | `origin == 'field' && readyToPush` (dispatch inbound never pushes) |
-| `field.workordersout` | PUSH_AND_PULL | `emp:{employeeId}` | `syncState` in `ready_to_push` \| `pushed` \| `push_error` |
-| `field.assets` | PULL | `district:{id}` | **false** |
-| `field.products` | PULL | `public` or `district:{id}` | **false** |
-| `field.inventory` | PUSH_AND_PULL | `emp:{employeeId}` | `type == 'inventory_tx' && readyToPush` (stock never pushes) |
-| `field.users` | PULL | `emp:{employeeId}`, `crew:{id}` | **false** |
-| `field.customers` | PUSH_AND_PULL | `district:{id}`, `emp:{id}` | `origin == 'field' && readyToPush` (master never pushes) |
-| `field.orders` | PUSH_AND_PULL | `emp:{employeeId}` | `role != 'inbound' && syncState` in `ready_to_push` \| `pushed` \| `push_error` |
-| `field.rates` | PULL | `district:{id}`, `public` | **false** |
-| `field.taxes` | PULL | `district:{id}`, `public` | **false** |
-| `field.tasks` | PUSH_AND_PULL | `emp:{employeeId}` | `type == 'task' && readyToPush` (templates never push) |
-| `field.notes` | PUSH_AND_PULL | `emp:{employeeId}` | `readyToPush === true` |
-| `field.messages` | PUSH_AND_PULL | `emp:{employeeId}`, `wo:{woinId}` | `readyToPush === true` |
-| `field.tracking` | PUSH_AND_PULL | `emp:{employeeId}` | **true** (always; device-owned crumbs) |
+| `field.workordersin` | PUSH_AND_PULL | `emp:` `email:` `cus:` (at least one required) | `origin == 'field' && readyToPush` |
+| `field.workordersout` | PUSH_AND_PULL | `emp:` `email:` `cus:` (at least one required) | `syncState` in `ready_to_push` \| `pushed` \| `push_error` |
+| `field.orders` | PUSH_AND_PULL | `emp:` `email:` `cus:` (at least one required) | `role != 'inbound' && syncState` in `ready_to_push` \| `pushed` \| `push_error` |
+| `field.notes` | PUSH_AND_PULL | `emp:` `email:` `cus:` (at least one required) | `readyToPush === true` |
+| `field.users` | PULL | `emp:` `email:` plus `type:user` `role:` `crew:` `district:` | **false** |
+| `field.assets` | PULL | `type:asset` `ownership:` `assetType:` `code:` `cus:` | **false** |
+| `field.products` | PULL | `type:product` `cat:` `sku:` | **false** |
+| `field.inventory` | PUSH_AND_PULL | `type:` `loc:` `emp:` `email:` `prd:` `woout:` | `type == 'inventory_tx' && readyToPush` |
+| `field.customers` | PUSH_AND_PULL | `cus:{_id}` `type:customer` `emp:` `email:` `district:` | `origin == 'field' && readyToPush` |
+| `field.rates` | PULL | `type:rate` `district:` `crew:` `kind:` `code:` | **false** |
+| `field.taxes` | PULL | `type:tax` `code:` `geo:{country}` | **false** |
+| `field.tasks` | PUSH_AND_PULL | `type:` `emp:` `email:` `woout:` | `type == 'task' && readyToPush` |
+| `field.messages` | PUSH_AND_PULL | `emp:` `email:` `wo:` `woout:` `ord:` `cus:` | `readyToPush === true` |
+| `field.tracking` | PUSH_AND_PULL | `emp:` `email:` | **true** |
 | `local.tmp` | **none** | — | **Not in `addCollection`** |
 
 `ReplicatorType` is **replicator-wide** (`PUSH_AND_PULL`), not per collection. v1 uses **push filters** plus optional per-collection **channel `string[]`** (default empty). No JS pull-filter functions (RN pull filters have a documented freeze around ~100 docs). **Schema (build-time `EXPO_PUBLIC_REPL_SCHEMA`, not Profile):** `simple` (default) = one continuous replicator of all `field.*` except `tmp`; `oneshot` = one-shot `workordersin`+`orders`, then one-shot all field collections every N seconds (default 300) and on foreground. Production URL `wss://`.
@@ -1994,22 +1994,23 @@ await replicator.start(false);
 
 ### Channels
 
-Durable key is **`employeeId`**. Email is login / alias, not the channel name (emails change).
+Channels are **read from the document**. `channel("!")` / `public` is not used. Users, workorders*, orders, and notes must have at least one of `employeeId`, `email`, or `customerId` (on the doc or `assignedTo` / `from`).
 
-| Channel | Who | What |
+| Channel | Source field | What |
 | --- | --- | --- |
-| `emp:{employeeId}` | That person | Inbound assigned to them, their outbound copies, van txs, their messages, their tracking day docs, their user profile |
-| `email:{lowercase email}` | Optional alias | SG user mapping at login only; documents still tagged `emp:` |
-| `wo:{woinId}` | Current + recent assignees, dispatch | Job chat thread |
-| `crew:{crewId}` | Crew | Directory slice |
-| `district:{districtId}` | District | Assets, customers, catalog |
-| `public` | Everyone | Global products |
+| `emp:{employeeId}` | `assignedTo.employeeId` / `employeeId` / `from.employeeId` | That technician’s jobs, notes, tracking |
+| `email:{lowercase}` | `assignedTo.email` / `email` / `from.email` | Same person; login alias |
+| `cus:{customerId}` | `customerId` or customer `_id` | Docs for that account |
+| `type:{doc.type}` | `type` | Catalog divider (product, rate, tax, asset, …) |
+| `loc:{locationId}` | `locationId` | Van / warehouse stock |
+| `cat:` `sku:` `code:` `kind:` `ownership:` `assetType:` `district:` `crew:` `role:` `geo:` | matching schema fields | Natural catalog / org slices |
+| `wo:{woinId}` | `workOrderInId` | Job chat thread |
 
 Assigning a work order **adds** `emp:{employeeId}` on inbound. Reassigning **moves** that access to the new employee (old phone may auto-purge inbound). Outbound copies **stay** on the original tech’s `emp:` channel until they complete and the backend ages them out — that is how offline work still syncs after reassignment.
 
 Hard rule: **no full enterprise asset dump on every phone**.
 
-v1 replicator **defaults to no client channel filter** (`channels: []` on each `CollectionConfig` — do not call `setChannels`). The SG sync function grants `emp:` / `district:` / `public`. A non-empty per-collection `string[]` is optional (lab/debug, or `EXPO_PUBLIC_SG_CHANNELS`) and only **narrows** pull; SG still ignores channels the user cannot access. Edit from Profile → **Settings / debug**.
+v1 replicator **defaults to no client channel filter** (`channels: []` on each `CollectionConfig` — do not call `setChannels`). The SG sync function grants channels from document fields (`emp:` / `email:` / `cus:` / `type:` / …). A non-empty per-collection `string[]` is optional (lab/debug, or `EXPO_PUBLIC_SG_CHANNELS`) and only **narrows** pull; SG still ignores channels the user cannot access. Edit from Profile → **Settings / debug**.
 
 ### Lab Sync Gateway fixture (docs-only, Phase 8 prerequisite)
 
