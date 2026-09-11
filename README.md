@@ -161,6 +161,7 @@ Binding: [Fujio-Turner/cbl-reactnative](https://github.com/Fujio-Turner/cbl-reac
 
 | I want to… | Go here |
 | --- | --- |
+| Get the phone running and syncing | [Getting started](https://mobile.fuj.io/docs/getting-started) |
 | Understand the product | [Official site](https://mobile.fuj.io) + this README + [DAY_IN_LIFE.md](docs/DAY_IN_LIFE.md) |
 | See collections, queries, freeze rules | [DESIGN.md](docs/DESIGN.md) |
 | See document / collection fields | [docs/schema/](docs/schema/README.md) |
