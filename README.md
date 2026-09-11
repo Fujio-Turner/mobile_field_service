@@ -2,6 +2,12 @@
 
 **Official website:** [https://mobile.fuj.io](https://mobile.fuj.io) — product story, screens, day-in-the-life, architecture, schemas.
 
+| Repo | What |
+| --- | --- |
+| [mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service) | Phone app (this repo) |
+| [mobile_field_service_pages](https://github.com/Fujio-Turner/mobile_field_service_pages) | Docs site — [mobile.fuj.io](https://mobile.fuj.io) |
+| [mobile_field_service_deployment](https://github.com/Fujio-Turner/mobile_field_service_deployment) | Capella cluster + App Services (Terraform / Ansible) |
+
 A **phone app for people who work in the field** — inspect a pump, deliver parts, take an order on a doorstep — **even when there is no signal**.
 
 When the radio comes back, the phone syncs with Couchbase (Sync Gateway or Capella). The office sees **your copy** of the work, not a tug-of-war on the same document.
@@ -168,13 +174,13 @@ Binding: [Fujio-Turner/cbl-reactnative](https://github.com/Fujio-Turner/cbl-reac
 
 ---
 
-## Sync Gateway user (example)
+## Sync Gateway / App Services user (example)
 
-Login identifier is the **email**. The durable channel is `employeeId` on the profile.
+Login identifier is the **email**. Channels come from document fields (`emp:`, `email:`, `cus:`, `route:`, `region:`, `store:`, …) — never a hardcoded `public` / `type:` channel. A job can sit on a **route** before it is assigned to a person.
 
 ```text
 username:     jon.hale@example.com
-password:     (set on Sync Gateway; never stored in Couchbase Lite)
+password:     (set on App Services; never stored in Couchbase Lite)
 session:      POST /mfs/_session  →  session_id + expires
 replicator:   SessionAuthenticator(session_id, "SyncGatewaySession")
 
@@ -183,11 +189,21 @@ Profile (field.users)
   email:        jon.hale@example.com
   username:     tech.jon          ← audit.by only
   workModes:    ["assets"]        ← Maya Chen customer / Priya Shah sales
+  routeIds:     ["HFD-NORTH"]
+  region:       CT
+  storeId:      HFD-YARD
+  customerIds:  [cus:…]
+  assetTypes:   ["pump", "valve"]
 
-Channel:      emp:E-4412
+Channels:     emp:E-4412
+              email:jon.hale@example.com
+              route:HFD-NORTH
+              region:CT
+              store:HFD-YARD
+              …plus cus: and assetType: from the profile
 ```
 
-One person, one device in this version. Lab/testing the native module does **not** require a Couchbase Lite Enterprise license; shipping encryption + vector still does.
+Lab/testing the native module does **not** require a Couchbase Lite Enterprise license; shipping encryption + vector still does. Capella layout: [mobile_field_service_deployment](https://github.com/Fujio-Turner/mobile_field_service_deployment).
 
 ---
 
