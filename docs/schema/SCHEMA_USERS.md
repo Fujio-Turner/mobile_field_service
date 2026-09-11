@@ -8,11 +8,13 @@
 
 **Required:** `type`, `audit`, `employeeId`, `email`, `username`, `displayName`, `role`.
 
-**Optional:** `workModes[]` (`assets` \| `customer` \| `sales`), `crewId`, `districtId`, `vanId`, `phone`, `active`.
+**Optional:** `workModes[]` (`assets` \| `customer` \| `sales`), `crewId`, `districtId`, `vanId`, `phone`, `active`, **`routeIds[]`**, **`customerIds[]`**, **`assetTypes[]`**, **`region`**, **`storeId`**, `routeId`.
+
+`field.users` is the person’s **filter config** as well as their profile: routes they own, customers assigned to them, asset types they may see. A shared device later picks a profile and filters with `WHERE customerId = …` / `routeId = …` (`channelsFromUserProfile`).
 
 **Never:** `password`, `hash`, `session`, `token`.
 
-SG login = **email**. Channels = `emp:{employeeId}`, `email:{lowercase email}`, plus `type:user` / `role:{role}` / `crew:{crewId}` / `district:{districtId}` when those fields are set. `audit.by` = `username`.
+SG login = **email**. Channels = `emp:{employeeId}`, `email:{email}`, `route:{routeIds[]}`, `cus:{customerIds[]}`, `assetType:{assetTypes[]}`, `region:`, `store:`. Never `type:`. `audit.by` = `username`.
 
 **Indexes:** `idx_usr_employee`; `idx_usr_email`; `idx_usr_username`.
 
@@ -57,7 +59,13 @@ SG login = **email**. Channels = `emp:{employeeId}`, `email:{lowercase email}`, 
     "districtId": { "type": "string" },
     "vanId": { "type": "string" },
     "phone": { "type": "string" },
-    "active": { "type": "boolean" }
+    "active": { "type": "boolean" },
+    "routeId": { "type": "string" },
+    "routeIds": { "type": "array", "items": { "type": "string" } },
+    "customerIds": { "type": "array", "items": { "type": "string" } },
+    "assetTypes": { "type": "array", "items": { "type": "string" } },
+    "region": { "type": "string" },
+    "storeId": { "type": "string" }
   },
   "$defs": {
     "unixSeconds": { "type": "integer", "minimum": 0 },

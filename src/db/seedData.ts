@@ -34,6 +34,7 @@ export function seedTaskTemplates(ver: string, dt: number) {
           title: 'Lockout / tagout',
           required: true,
           sort: 10,
+          routeId: SEED_ROUTE_ID,
         },
         { by: 'dispatch.maya', ver: 'server-dispatch', dt },
       ),
@@ -79,6 +80,11 @@ export function seedUserDoc(ver: string, dt: number) {
       role: 'technician',
       workModes: ['assets'],
       vanId: 'van:12',
+      routeIds: [SEED_ROUTE_ID],
+      customerIds: [SEED_CUSTOMER_ID],
+      assetTypes: ['pump', 'valve'],
+      region: SEED_REGION,
+      storeId: SEED_STORE_ID,
       active: true,
     },
     { by: 'seed', ver, dt },
@@ -112,6 +118,9 @@ export function seedMayaUserDoc(ver: string, dt: number) {
       role: 'technician',
       workModes: ['customer'],
       vanId: 'van:12',
+      routeIds: [SEED_ROUTE_ID],
+      region: SEED_REGION,
+      storeId: SEED_STORE_ID,
       active: true,
     },
     { by: 'seed', ver, dt },
@@ -129,6 +138,9 @@ export function seedPriyaUserDoc(ver: string, dt: number) {
       role: 'technician',
       workModes: ['sales'],
       vanId: 'van:12',
+      routeIds: [SEED_ROUTE_ID],
+      region: SEED_REGION,
+      storeId: SEED_STORE_ID,
       active: true,
     },
     { by: 'seed', ver, dt },
@@ -142,6 +154,9 @@ export function seedCustomerDoc(ver: string, dt: number) {
       origin: 'dispatch',
       name: 'Hartford Water Works',
       accountNumber: 'HWW-100',
+      routeId: SEED_ROUTE_ID,
+      region: SEED_REGION,
+      assignedTo: assignedJon,
     },
     { by: 'seed', ver, dt },
   );
@@ -159,6 +174,10 @@ export const SEED_TAX_ID = 'tax:01K4Q6TAX00000000000001';
 export const SEED_INBOUND_ORDER_ID = 'ord:01K4Q7INBOUND000000000001';
 export const SEED_INV_ID = 'inv:01K4Q6INV0000000000000001';
 export const SEED_VAN_ID = 'van:12';
+export const SEED_ROUTE_ID = 'HFD-NORTH';
+export const SEED_REGION = 'CT';
+export const SEED_STORE_ID = 'HFD-YARD';
+export const SEED_WAREHOUSE_ID = 'wh:north';
 
 export function seedAssets(ver: string, dt: number) {
   const pumps = [
@@ -176,6 +195,9 @@ export function seedAssets(ver: string, dt: number) {
         assetType: p.assetType,
         status: 'active',
         ownership: 'company',
+        region: SEED_REGION,
+        storeId: SEED_STORE_ID,
+        locationId: SEED_WAREHOUSE_ID,
         geo: { lat: p.lat, lon: p.lon },
       },
       { by: 'seed', ver, dt },
@@ -196,6 +218,9 @@ export function seedProductsRatesTaxes(ver: string, dt: number) {
             uom: 'ea',
             description: '4 inch check valve',
             category: 'valves',
+            class: 'store',
+            storeId: SEED_STORE_ID,
+            region: SEED_REGION,
             active: true,
             defaultRateId: SEED_RATE_ID,
           },
@@ -218,6 +243,8 @@ export function seedProductsRatesTaxes(ver: string, dt: number) {
             unit: 'ea',
             taxInclusive: false,
             defaultTaxIds: [SEED_TAX_ID],
+            region: SEED_REGION,
+            storeId: SEED_STORE_ID,
             active: true,
           },
           { by: 'seed', ver, dt },
@@ -236,6 +263,7 @@ export function seedProductsRatesTaxes(ver: string, dt: number) {
             unit: 'hour',
             taxInclusive: false,
             defaultTaxIds: [SEED_TAX_ID],
+            region: SEED_REGION,
             active: true,
           },
           { by: 'seed', ver, dt },
@@ -254,7 +282,7 @@ export function seedProductsRatesTaxes(ver: string, dt: number) {
             inclusive: false,
             compound: false,
             stack: 10,
-            jurisdiction: { country: 'US', region: 'CT' },
+            jurisdiction: { country: 'US', region: 'CT', county: 'Hartford', city: 'Hartford' },
             active: true,
           },
           { by: 'seed', ver, dt },
@@ -271,6 +299,8 @@ export function seedProductsRatesTaxes(ver: string, dt: number) {
             sku: 'VLV-CHK-4',
             locationId: SEED_VAN_ID,
             locationType: 'van',
+            storeId: SEED_STORE_ID,
+            region: SEED_REGION,
             qtyOnHand: 4,
             uom: 'ea',
           },
@@ -375,6 +405,8 @@ export function seedInboundJobs(ver: string, dt: number, day = deviceLocalDay())
         status: 'assigned',
         assignedTo: j.assignedTo,
         customerId: SEED_CUSTOMER_ID,
+        routeId: SEED_ROUTE_ID,
+        region: SEED_REGION,
         site,
         scheduled: {
           startDt: dt + 3600,

@@ -4,7 +4,7 @@ import { memorySave } from '../db/memoryStore';
 import { saveJsonDoc } from '../db/saveJson';
 import { deviceLocalDay, newDocId } from '../ids';
 import { appVersion } from '../version';
-import { assignedToFromSession, type StartSession } from './copyInbound';
+import { assignedToFromSession, placeStamp, type StartSession } from './copyInbound';
 
 export class CreateWorkOrderInError extends Error {
   constructor(public code: 'summary_empty') {
@@ -41,6 +41,7 @@ export function buildFieldInbound(input: {
     orderId: input.orderId,
     readyToPush: true,
     assignedTo: assignedToFromSession(input.session),
+    ...placeStamp(input.session),
   };
   const created = stampAuditCreate(body, { by: input.session.username, ver: input.ver, dt: input.dt });
   return stampHistory(created, {

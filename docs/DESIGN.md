@@ -1875,21 +1875,21 @@ flowchart LR
   Phone -.-> none
 ```
 
-| Collection | Direction | Channels (from document fields; never `!` / `public`) | Push filter (v1) |
+| Collection | Direction | Channels (from document fields; never `type:` / `!`) | Push filter (v1) |
 | --- | --- | --- | --- |
-| `field.workordersin` | PUSH_AND_PULL | `emp:` `email:` `cus:` (at least one required) | `origin == 'field' && readyToPush` |
-| `field.workordersout` | PUSH_AND_PULL | `emp:` `email:` `cus:` (at least one required) | `syncState` in `ready_to_push` \| `pushed` \| `push_error` |
-| `field.orders` | PUSH_AND_PULL | `emp:` `email:` `cus:` (at least one required) | `role != 'inbound' && syncState` in `ready_to_push` \| `pushed` \| `push_error` |
-| `field.notes` | PUSH_AND_PULL | `emp:` `email:` `cus:` (at least one required) | `readyToPush === true` |
-| `field.users` | PULL | `emp:` `email:` plus `type:user` `role:` `crew:` `district:` | **false** |
-| `field.assets` | PULL | `type:asset` `ownership:` `assetType:` `code:` `cus:` | **false** |
-| `field.products` | PULL | `type:product` `cat:` `sku:` | **false** |
-| `field.inventory` | PUSH_AND_PULL | `type:` `loc:` `emp:` `email:` `prd:` `woout:` | `type == 'inventory_tx' && readyToPush` |
-| `field.customers` | PUSH_AND_PULL | `cus:{_id}` `type:customer` `emp:` `email:` `district:` | `origin == 'field' && readyToPush` |
-| `field.rates` | PULL | `type:rate` `district:` `crew:` `kind:` `code:` | **false** |
-| `field.taxes` | PULL | `type:tax` `code:` `geo:{country}` | **false** |
-| `field.tasks` | PUSH_AND_PULL | `type:` `emp:` `email:` `woout:` | `type == 'task' && readyToPush` |
-| `field.messages` | PUSH_AND_PULL | `emp:` `email:` `wo:` `woout:` `ord:` `cus:` | `readyToPush === true` |
+| `field.workordersin` | PUSH_AND_PULL | `emp:` `email:` `cus:` `route:` (≥1 required) | `origin == 'field' && readyToPush` |
+| `field.workordersout` | PUSH_AND_PULL | `emp:` `email:` `cus:` `route:` (≥1 required) | `syncState` in `ready_to_push` \| `pushed` \| `push_error` |
+| `field.orders` | PUSH_AND_PULL | `emp:` `email:` `cus:` `route:` (≥1 required) | `role != 'inbound' && syncState` in `ready_to_push` \| `pushed` \| `push_error` |
+| `field.notes` | PUSH_AND_PULL | `emp:` `email:` `cus:` `route:` (≥1 required) | **true** (phone + tablet) |
+| `field.users` | PULL | `emp:` `email:` `routeIds[]` `customerIds[]` `assetTypes[]` `region:` `store:` | **false** |
+| `field.customers` | PUSH_AND_PULL | `emp:` `route:` `region:` `cus:{_id}` | `origin == 'field' && readyToPush` |
+| `field.tasks` | PUSH_AND_PULL | `emp:` `email:` `route:` | instances `readyToPush`; templates never |
+| `field.products` | PULL | `class:{online\|store}` `store:` `region:` | **false** |
+| `field.rates` | PULL | `store:` `cus:` `region:` | **false** |
+| `field.taxes` | PULL | `state:` `county:` `city:` | **false** |
+| `field.assets` | PULL | `region:` `store:` `loc:` `assetType:` | **false** |
+| `field.inventory` | PUSH_AND_PULL | `loc:` `store:` `region:` `emp:` | `inventory_tx && readyToPush` |
+| `field.messages` | PUSH_AND_PULL | `emp:` `email:` `route:` `wo:` | `readyToPush === true` |
 | `field.tracking` | PUSH_AND_PULL | `emp:` `email:` | **true** |
 | `local.tmp` | **none** | — | **Not in `addCollection`** |
 
@@ -1994,17 +1994,21 @@ await replicator.start(false);
 
 ### Channels
 
-Channels are **read from the document**. `channel("!")` / `public` is not used. Users, workorders*, orders, and notes must have at least one of `employeeId`, `email`, or `customerId` (on the doc or `assignedTo` / `from`).
+Channels are **read from the document**. Never `channel("!")` and never `type:` (the collection already is that type). Users, workorders*, orders, and notes must have at least one of `employeeId`, `email`, `customerId`, or `routeId`.
 
 | Channel | Source field | What |
 | --- | --- | --- |
-| `emp:{employeeId}` | `assignedTo.employeeId` / `employeeId` / `from.employeeId` | That technician’s jobs, notes, tracking |
-| `email:{lowercase}` | `assignedTo.email` / `email` / `from.email` | Same person; login alias |
-| `cus:{customerId}` | `customerId` or customer `_id` | Docs for that account |
-| `type:{doc.type}` | `type` | Catalog divider (product, rate, tax, asset, …) |
-| `loc:{locationId}` | `locationId` | Van / warehouse stock |
-| `cat:` `sku:` `code:` `kind:` `ownership:` `assetType:` `district:` `crew:` `role:` `geo:` | matching schema fields | Natural catalog / org slices |
-| `wo:{woinId}` | `workOrderInId` | Job chat thread |
+| `emp:{employeeId}` | `assignedTo.employeeId` / `employeeId` / `from.employeeId` | That person |
+| `email:{lowercase}` | `assignedTo.email` / `email` / `from.email` | Login alias |
+| `cus:{customerId}` | `customerId` or customer `_id` | That account |
+| `route:{routeId}` | `routeId` / `routeIds[]` | Jobs/orders/notes/tasks for a route (no employee yet) |
+| `region:{region}` | `region` | Assets, products, rates, customers |
+| `store:{storeId}` | `storeId` | Store-level catalog / assets / promos |
+| `class:{online\|store}` | `class` | Website vs in-store products |
+| `state:` `county:` `city:` | `jurisdiction` | Taxes |
+| `loc:{locationId}` | `locationId` | Van / warehouse |
+| `assetType:{assetType}` | `assetTypes[]` on user, `assetType` on asset | What this person may see |
+| `wo:{woinId}` | `workOrderInId` | Job chat |
 
 Assigning a work order **adds** `emp:{employeeId}` on inbound. Reassigning **moves** that access to the new employee (old phone may auto-purge inbound). Outbound copies **stay** on the original tech’s `emp:` channel until they complete and the backend ages them out — that is how offline work still syncs after reassignment.
 

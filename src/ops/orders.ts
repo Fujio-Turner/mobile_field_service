@@ -3,7 +3,7 @@ import { log } from '../log/logger';
 import { newDocId, ulid } from '../ids';
 import { appVersion } from '../version';
 import { listChildrenMemory, loadChild, queryChildRowsIfNative, saveChild } from './childStore';
-import { assignedToFromSession, type StartSession } from './copyInbound';
+import { assignedToFromSession, placeStamp, type StartSession } from './copyInbound';
 import { createCustomer } from './customers';
 import { isFrozen } from './outStatus';
 import { OutError } from './outError';
@@ -185,6 +185,7 @@ export async function createOrder(
     currency: input.currency ?? 'USD',
     customerId,
     assignedTo: assignedToFromSession(session),
+    ...placeStamp(session),
     lines: [],
     totals: { subtotal: 0, taxTotal: 0, total: 0 },
   };

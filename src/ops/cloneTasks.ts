@@ -1,6 +1,6 @@
 import { stampAuditCreate, stampHistory } from '../audit';
 import { newDocId } from '../ids';
-import { assignedToFromSession, type StartSession } from './copyInbound';
+import { assignedToFromSession, placeStamp, type StartSession } from './copyInbound';
 
 export function buildTaskInstance(input: {
   template: Record<string, unknown>;
@@ -22,6 +22,7 @@ export function buildTaskInstance(input: {
     assignedTo: assignedToFromSession(input.session),
     employeeId: input.session.employeeId,
     email: input.session.email,
+    ...placeStamp(input.session),
     readyToPush: false,
   };
   const created = stampAuditCreate(body, {

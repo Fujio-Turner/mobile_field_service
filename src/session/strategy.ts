@@ -1,5 +1,5 @@
 import { demoIdentity } from './identity';
-import type { AuthStrategy } from './types';
+import type { AuthStrategy, Session } from './types';
 
 export function authStrategy(): AuthStrategy {
   const raw = process.env.EXPO_PUBLIC_AUTH_STRATEGY ?? 'basic';
@@ -12,15 +12,7 @@ export function authStrategy(): AuthStrategy {
 /** Demo session: no network. Known personas map; anything else is Jon. */
 export function buildDemoSession(identifier: string, nowSec: number): {
   ok: true;
-  session: {
-    strategy: 'demo';
-    username: string;
-    email: string;
-    employeeId: string;
-    sessionId: string;
-    cookieName: string;
-    sessionExpiresAt: number;
-  };
+  session: Session;
 } | { ok: false; error: string } {
   const identity = demoIdentity(identifier);
   if (!identity) {
@@ -33,6 +25,10 @@ export function buildDemoSession(identifier: string, nowSec: number): {
       username: identity.username,
       email: identity.email,
       employeeId: identity.employeeId,
+      routeId: identity.routeId,
+      routeIds: identity.routeIds,
+      region: identity.region,
+      storeId: identity.storeId,
       sessionId: 'demo-session',
       cookieName: 'SyncGatewaySession',
       sessionExpiresAt: nowSec + 7 * 24 * 3600,

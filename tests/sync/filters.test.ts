@@ -53,7 +53,7 @@ describe('push filters', () => {
   });
 
   it('notes/messages/customers use readyToPush; every filter has show source', () => {
-    expect(notesPushFilter({ readyToPush: true })).toBe(true);
+    expect(notesPushFilter({ readyToPush: false })).toBe(true);
     expect(messagesPushFilter({ readyToPush: false })).toBe(false);
     expect(customersPushFilter({ origin: 'field', readyToPush: true })).toBe(true);
     expect(customersPushFilter({ origin: 'dispatch', readyToPush: true })).toBe(false);

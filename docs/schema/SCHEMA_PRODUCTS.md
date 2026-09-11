@@ -8,7 +8,9 @@
 
 **Required:** `type`, `audit`, `sku`, `name`, `uom`.
 
-**Optional:** `description`, `category`, `barcode`, `active`, `defaultRateId` (`rate:`), `embedding`.
+**Optional:** `description`, `category`, `barcode`, `active`, `defaultRateId` (`rate:`), `embedding`, **`class`** (`online` \| `store`), **`storeId`**, **`region`**.
+
+Channels: `class:{online|store}`, `store:{storeId}`, `region:{region}` — not `type:product`.
 
 **Indexes:** `idx_prd_sku`; FTS `idx_prd_fts` (`name`, `sku`, `description`).
 
@@ -36,6 +38,9 @@
     "uom": { "type": "string", "minLength": 1 },
     "description": { "type": "string" },
     "category": { "type": "string" },
+    "class": { "type": "string", "enum": ["online", "store"] },
+    "storeId": { "type": "string" },
+    "region": { "type": "string" },
     "barcode": { "type": "string" },
     "active": { "type": "boolean" },
     "defaultRateId": { "type": "string" },

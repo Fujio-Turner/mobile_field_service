@@ -58,7 +58,7 @@ Breadcrumb GPS that is **not** tied to a field edit lives in [SCHEMA_TRACKING.md
 | **Yes** (user/device writes) | `workordersout`; `inventory_tx`; `notes`; `messages`; `tasks` instances; `customers` `origin: field`; `workordersin` `origin: field`; `orders` `role` working/amendment |
 | **No** | Pull catalogs (`assets`, `products`, `users`, `rates`, `taxes`, stock `inventory`, `task_template`, dispatch inbound, inbound orders); `tracking`; `tmp` |
 
-`assignedTo` (when present): `{ userId, employeeId, email, username, displayName }`. Sync channels (at least one required on users / workorders* / orders / notes): `emp:{employeeId}`, `email:{lowercase email}`, `cus:{customerId}`. SG login = **email**.
+`assignedTo` (when present): `{ userId, employeeId, email, username, displayName }`. Sync channels (at least one required on users / workorders* / orders / notes): `emp:{employeeId}`, `email:{lowercase email}`, `cus:{customerId}`, `route:{routeId}`. Jobs may be tagged to a **route** before anyone is assigned. SG login = **email**. Never channel by `type`.
 
 Ids: `<prefix>:<ULID>`. Reserved: `_id`, `_rev`, `_sequence`, `_attachments`, `_deleted`, `_removed`.
 

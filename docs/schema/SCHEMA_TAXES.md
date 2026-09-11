@@ -31,7 +31,9 @@ Tax codes / jurisdictions. **Pull-only catalog.** Orders snapshot computed `line
 | `rateBps` | Integer **basis points**. `625` = 6.25%. Never a float percent. |
 | `inclusive` | Tax is already in `rates.amount` / `unitPrice` |
 | `compound` | Applied to (subtotal + earlier taxes) when `stack` is higher |
-| `jurisdiction` | `{ country, region?, city? }` e.g. `US` / `CT` |
+| `jurisdiction` | `{ country, region? (state), county?, city? }` e.g. `US` / `CT` / `Hartford` |
+
+Channels: `state:{jurisdiction.region}` `county:` `city:`.
 | `effectiveFromDt` / `effectiveToDt` | Unix seconds |
 
 v1 `PriceLines` (exclusive, non-compound — the default):

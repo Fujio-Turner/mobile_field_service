@@ -24,7 +24,9 @@ Price book: labor, product, service, travel, surcharge. **Pull-only catalog.** T
 
 **Required:** `type`, `audit`, `code`, `name`, `kind`, `amount`, `currency`, `unit`, `active`.
 
-**Optional:** `productId`, `description`, `effectiveFromDt`, `effectiveToDt`, `taxInclusive`, `defaultTaxIds[]`, `minQty`, `crewId`, `districtId`.
+**Optional:** `productId`, `description`, `effectiveFromDt`, `effectiveToDt`, `taxInclusive`, `defaultTaxIds[]`, `minQty`, `crewId`, `districtId`, **`storeId`**, **`customerId`**, **`region`**.
+
+Channels: `store:` `cus:` `region:` (promo by store, customer, or region).
 
 | Field | Values / notes |
 | --- | --- |

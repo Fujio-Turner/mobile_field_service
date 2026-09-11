@@ -2,7 +2,7 @@ import { nowSec, stampAuditCreate, stampAuditUpdate, stampHistory } from '../aud
 import { newDocId } from '../ids';
 import { appVersion } from '../version';
 import { deleteChild, listChildrenMemory, loadChild, queryChildRowsIfNative, saveChild } from './childStore';
-import { assignedToFromSession, type StartSession } from './copyInbound';
+import { assignedToFromSession, placeStamp, type StartSession } from './copyInbound';
 import { OutError } from './outError';
 import { childReadyToPush, isFrozen } from './outStatus';
 import { loadOutboundRaw } from './outboundStore';
@@ -125,6 +125,7 @@ export async function createNote(
     assignedTo: assignedToFromSession(session),
     employeeId: session.employeeId,
     email: session.email,
+    ...placeStamp(session),
     readyToPush: parent ? childReadyToPush(parent) : true,
   };
   doc = stampAuditCreate(doc, { by: session.username, ver, dt });

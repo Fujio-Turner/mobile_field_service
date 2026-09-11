@@ -2,7 +2,7 @@ import { nowSec, stampAuditCreate, stampAuditUpdate, stampHistory } from '../aud
 import { newDocId } from '../ids';
 import { appVersion } from '../version';
 import { listChildrenMemory, loadChild, queryChildRowsIfNative, saveChild } from './childStore';
-import { assignedToFromSession, type StartSession } from './copyInbound';
+import { assignedToFromSession, placeStamp, type StartSession } from './copyInbound';
 import { OutError } from './outError';
 import { childReadyToPush, isFrozen } from './outStatus';
 import { loadOutboundRaw, saveOutboundRaw } from './outboundStore';
@@ -343,6 +343,7 @@ export async function consumeInventoryOnWork(
     employeeId: session.employeeId,
     email: session.email,
     customerId: (parent ?? order)?.customerId != null ? String((parent ?? order)?.customerId) : undefined,
+    ...placeStamp(session),
     readyToPush: childReadyToPush(parent ?? order ?? {}),
     appliedToWo: false,
   };

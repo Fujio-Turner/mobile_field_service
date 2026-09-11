@@ -10,7 +10,7 @@
 
 **Optional:** `title`, `workOrderOutId`, `readyToPush`, `customerId`.
 
-**Required for sync:** `assignedTo` (or top-level `employeeId` / `email`) so the doc can land on `emp:` / `email:` / `cus:` — at least one identity field.
+**Required for sync:** `assignedTo` (or `employeeId` / `email` / `customerId` / `routeId`) — at least one. **Push and pull** so notes appear on phone and tablet.
 
 **409** if parent WO is frozen — use amendment or [SCHEMA_MESSAGES.md](./SCHEMA_MESSAGES.md).
 

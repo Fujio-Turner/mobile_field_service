@@ -8,7 +8,9 @@
 
 **Required:** `type`, `audit`, `name`. Field-created also `history[]`.
 
-**Optional:** `origin` (`dispatch` \| `field`), `accountNumber`, `contacts[]`, `sites[]`, `readyToPush`, `assignedTo`.
+**Optional:** `origin` (`dispatch` \| `field`), `accountNumber`, `contacts[]`, `sites[]`, `readyToPush`, `assignedTo`, **`routeId`**, **`region`**.
+
+Channels: `emp:` `route:` `region:` `cus:{id}`.
 
 **Never patch** `origin: dispatch`. Walk-up → `CreateCustomer` new id, `origin: field`.
 

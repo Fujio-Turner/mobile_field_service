@@ -8,7 +8,9 @@
 
 **Required:** `type`, `audit`, `name`, `assetType`, `geo` `{ lat, lon }`.
 
-**Optional:** `code`, `status`, `ownership` (`company` \| `customer`), `customerId`, `address`, `parentAssetId`, `tags[]`, `embedding`.
+**Optional:** `code`, `status`, `ownership` (`company` \| `customer`), `customerId`, `address`, `parentAssetId`, `tags[]`, `embedding`, **`region`**, **`storeId`**, **`locationId`** (warehouse), **`routeId`**.
+
+Channels: `region:` `store:` `loc:` `assetType:` — not `type:asset`.
 
 v1: **pull catalog**. Completing a move WO does **not** `save` the asset; backend applies location from the frozen outbound.
 

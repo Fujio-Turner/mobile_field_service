@@ -2,7 +2,7 @@ import { nowSec, stampAuditCreate, stampAuditUpdate, stampHistory } from '../aud
 import { newDocId } from '../ids';
 import { appVersion } from '../version';
 import { deleteChild, listChildrenMemory, loadChild, queryChildRowsIfNative, saveChild } from './childStore';
-import { assignedToFromSession, type StartSession } from './copyInbound';
+import { assignedToFromSession, placeStamp, type StartSession } from './copyInbound';
 import { OutError } from './outError';
 import { childReadyToPush, isFrozen, type TaskLike } from './outStatus';
 import { loadOutboundRaw } from './outboundStore';
@@ -115,6 +115,7 @@ export async function upsertTask(
     employeeId: session.employeeId,
     email: session.email,
     customerId: parent.customerId != null ? String(parent.customerId) : undefined,
+    ...placeStamp(session),
     readyToPush: childReadyToPush(parent),
   };
   body = stampAuditCreate(body, { by: session.username, ver, dt });

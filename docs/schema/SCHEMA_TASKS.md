@@ -9,7 +9,9 @@
 
 **Required:** `type`, `audit`, `history[]`, `title`, `status` (`open` \| `done` \| `skipped`), `workOrderOutId`.
 
-**Optional:** `required`, `sort`, `templateId`, `readyToPush`.
+**Optional:** `required`, `sort`, `templateId`, `readyToPush`, **`routeId`**, `assignedTo` / `employeeId`.
+
+Channels: `emp:` (boss → Bob) and/or `route:` (everyone on that route).
 
 Cloned from inbound `taskIds` on `StartWork`. Do not complete templates.
 

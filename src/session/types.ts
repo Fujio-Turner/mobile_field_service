@@ -8,6 +8,10 @@ export type Session = {
   sessionId: string;
   cookieName: string;
   sessionExpiresAt: number; // unix seconds
+  routeId?: string;
+  routeIds?: string[];
+  region?: string;
+  storeId?: string;
 };
 
 export const AUTH_KEYS = {

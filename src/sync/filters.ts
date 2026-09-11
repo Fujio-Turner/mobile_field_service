@@ -33,9 +33,9 @@ export function readyToPushFilter(document: PushDoc, _flags?: unknown): boolean 
   return document['readyToPush'] === true;
 }
 
-export function notesPushFilter(document: PushDoc, _flags?: unknown): boolean {
+export function notesPushFilter(_document: PushDoc, _flags?: unknown): boolean {
   'show source';
-  return document['readyToPush'] === true;
+  return true;
 }
 
 export function messagesPushFilter(document: PushDoc, _flags?: unknown): boolean {

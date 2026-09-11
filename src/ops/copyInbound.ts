@@ -17,7 +17,25 @@ const DROP_FROM_COPY = new Set([
   '_attachments',
 ]);
 
-export type StartSession = AssignedTo & { username: string; email: string; employeeId: string };
+export type StartSession = AssignedTo & {
+  username: string;
+  email: string;
+  employeeId: string;
+  routeId?: string;
+  routeIds?: string[];
+  region?: string;
+  storeId?: string;
+};
+
+/** route / region / store copied onto jobs, orders, notes, tasks. */
+export function placeStamp(session: StartSession): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (session.routeId) out.routeId = session.routeId;
+  else if (session.routeIds && session.routeIds[0]) out.routeId = session.routeIds[0];
+  if (session.region) out.region = session.region;
+  if (session.storeId) out.storeId = session.storeId;
+  return out;
+}
 
 /** Stamp assignedTo / identity fields used by App Services channels. */
 export function assignedToFromSession(session: StartSession): AssignedTo {
@@ -59,6 +77,7 @@ export function buildWorkOrderOut(input: {
   body.syncState = 'local_draft';
   body.source = inboundSnapshot(input.inboundRaw, input.inboundId);
   body.assignedTo = assignedToFromSession(input.session);
+  Object.assign(body, placeStamp(input.session));
   const created = stampAuditCreate(body, {
     by: input.session.username,
     ver: input.ver,
