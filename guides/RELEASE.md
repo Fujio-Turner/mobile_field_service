@@ -38,7 +38,8 @@ Bump these files on every ship. The app is real (`app.json` `expo.version` is wh
 | `ios/.../Info.plist` | `CFBundleShortVersionString` / `CFBundleVersion` | EAS/prebuild usually copies from `app.json` — **verify after prebuild** |
 | `android/app/build.gradle` | `versionName` / `versionCode` | Same — **verify after prebuild** |
 | `RELEASE_NOTES.md` | New section **at the top** | `## v0.1.0 — YYYY-MM-DD` |
-| `README.md` | Badge / “current version” if present | Match |
+| `README.md` | **Version** line | Match `expo.version` |
+| Product docs `Version` | DESIGN, ROADMAP, DAY_IN_LIFE*, AUTH | Same semver as `expo.version` |
 
 **Native module pin** (not the app semver, but must be recorded in notes):
 
@@ -92,6 +93,7 @@ Create or update at repo root. Newest section first:
 ## 4. Docs sweep
 
 - [ ] README version / SG example still true
+- [ ] Product-doc `Version` fields (DESIGN, ROADMAP, DAY_IN_LIFE*, AUTH) match `expo.version`
 - [ ] `docs/DESIGN.md` / `docs/AUTH.md` / `guides/*` not contradicting the binary
 - [ ] Replication allow-list still excludes `local.tmp`
 
@@ -166,6 +168,7 @@ Merge the release branch to `main` after the build is accepted.
 - [ ] iOS `buildNumber`
 - [ ] Android `versionCode`
 - [ ] `RELEASE_NOTES.md`
+- [ ] README + product-doc `Version` fields
 - [ ] `cbl-reactnative` git pin
 - [ ] Tests + tsc
 - [ ] Auth + replication smoke

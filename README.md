@@ -12,6 +12,7 @@ A **phone app for people who work in the field** — inspect a pump, deliver par
 
 When the radio comes back, the phone syncs with Couchbase (Sync Gateway or Capella). The office sees **your copy** of the work, not a tug-of-war on the same document.
 
+**Version:** **0.1.0** (`0.1.0+1` on device) — [RELEASE_NOTES.md](RELEASE_NOTES.md)  
 **Status:** Expo SDK 52 + Couchbase Lite (encrypted `field.*` + replicator). Vector search is **not** on.  
 **Platforms:** iOS and Android **development builds** (not Expo Go).  
 **Repo:** [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service)
@@ -173,6 +174,7 @@ Binding: [Fujio-Turner/cbl-reactnative](https://github.com/Fujio-Turner/cbl-reac
 | See every env / Profile / debug setting | [guides/SETTINGS.md](guides/SETTINGS.md) |
 | Inspect versions, DB path, replication on device | Profile → **Settings / debug** |
 | See what we build in what order | [ROADMAP.md](docs/ROADMAP.md) |
+| See what shipped in this build | [RELEASE_NOTES.md](RELEASE_NOTES.md) |
 | Log, style UI, cut a release, sync | [guides/](guides/README.md) |
 | Agent / coding rules | [AGENT.md](AGENT.md) |
 | Tests | [tests/](tests/README.md) |

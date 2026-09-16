@@ -6,6 +6,7 @@
 | Repo | [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service) |
 | Author | Fujio-Turner / mobile_field_service |
 | Date | 2026-09-06 |
+| Version | 0.1.0 ([RELEASE_NOTES.md](../RELEASE_NOTES.md)) |
 | Status | Implemented (`basic` + `demo`; OIDC screens stubbed behind env) |
 | Design | [DESIGN.md](./DESIGN.md) |
 

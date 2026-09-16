@@ -8,6 +8,7 @@ Public HTML: [https://mobile.fuj.io/docs/day-in-the-life.html](https://mobile.fu
 | Repo | [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service) |
 | Author | Fujio-Turner / mobile_field_service |
 | Date | 2026-09-06 |
+| Version | 0.1.0 ([RELEASE_NOTES.md](../RELEASE_NOTES.md)) |
 | Status | Demo login walks all three modes (Jon assets, Maya customer, Priya sales) on iOS. Vector/CLIP still skipped. No credit card payment. |
 | Architecture | [DESIGN.md](./DESIGN.md) |
 | Roadmap | [ROADMAP.md](./ROADMAP.md) |
