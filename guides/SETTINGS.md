@@ -2,6 +2,8 @@
 
 One page for **developers**. Operators and field users only see Profile + **Settings / debug**.
 
+**App version** on the phone is `appVersion()` (`0.1.0+1` for v0.1.0). Ship notes: [RELEASE_NOTES.md](../RELEASE_NOTES.md).
+
 Restart Expo (and rebuild a native binary) after changing `EXPO_PUBLIC_*`. Device toggles persist in **SecureStore** (Keychain / Keystore) until you change them or wipe the app.
 
 | Layer | When it applies | Where |

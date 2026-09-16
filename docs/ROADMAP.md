@@ -6,6 +6,7 @@
 | Repo | [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service) |
 | Author | Fujio-Turner / mobile_field_service |
 | Date | 2026-09-06 |
+| Version | 0.1.0 ([RELEASE_NOTES.md](../RELEASE_NOTES.md)) |
 | Status | S01–S16 except S15 (vector) implemented. Demo three modes on iOS. |
 | Architecture | [DESIGN.md](./DESIGN.md) |
 | Use cases | [DAY_IN_LIFE.md](./DAY_IN_LIFE.md) |

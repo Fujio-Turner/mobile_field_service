@@ -8,6 +8,7 @@ Public HTML: [https://mobile.fuj.io/docs/architecture.html](https://mobile.fuj.i
 | Repo | [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service) |
 | Author | Fujio-Turner / mobile_field_service |
 | Date | 2026-09-06 |
+| Version | 0.1.0 ([RELEASE_NOTES.md](../RELEASE_NOTES.md)) |
 | Status | Implemented S01–S16 except vector (S15). Three demo modes walk on iOS. |
 | Audience | Senior engineers implementing the Expo + Couchbase Lite RN app |
 

@@ -2,7 +2,8 @@
 
 Repo: [Fujio-Turner/mobile_field_service](https://github.com/Fujio-Turner/mobile_field_service)  
 Official site: [https://mobile.fuj.io](https://mobile.fuj.io) (HTML source: [mobile_field_service_pages](https://github.com/Fujio-Turner/mobile_field_service_pages)).  
-Not koten-ai. Product design: `docs/`. How we code: `guides/`. Env / Profile / debug: [guides/SETTINGS.md](guides/SETTINGS.md).
+Not koten-ai. Product design: `docs/`. How we code: `guides/`. Env / Profile / debug: [guides/SETTINGS.md](guides/SETTINGS.md).  
+**App version:** **0.1.0** (`0.1.0+1` on device) — [RELEASE_NOTES.md](RELEASE_NOTES.md). UI uses `appVersion()`; product-doc `Version` fields match `app.json`.
 
 ---
 
@@ -53,7 +54,7 @@ Canonical collection docs: **`docs/schema/SCHEMA_*.md`**. Index: `docs/schema/RE
 
 - Expo **development builds**, not Expo Go. `postinstall` (`scripts/fetch-cbl-native.sh`) fetches `ios/cbl-js-swift` + `src/cblite-js` (npm does not clone those). Missing `DatabaseManager.swift` → 50+ Swift “not in scope” errors; re-run the script, then rebuild.
 - Local Expo plugins: `plugin.config.js` (CBL), `plugin.fmt.js` (Xcode 26.4+ `{fmt}` 11.0.2 consteval). `ios/` is gitignored; plugins re-inject on prebuild. Remove `plugin.fmt.js` after Expo SDK 56.
-- Version from `app.json` / Expo Application APIs — never hard-code in UI.
+- Version from `app.json` / Expo Application APIs — never hard-code in UI. Ship lockstep: `package.json`, `app.json` (`expo.version` + iOS `buildNumber` + Android `versionCode`), [RELEASE_NOTES.md](RELEASE_NOTES.md), and product-doc `Version` fields.
 - After Hub-style JS templates: no nested backticks (if any web/HTML strings appear).
 - Prefer `src/ops/*` names matching the DESIGN catalog.
 - **CBL SQL++ (Mobile):** no `IN ['a','b']` / `NOT IN [...]`, no `LIMIT $limit` / `OFFSET $offset`. Use `status != 'x' AND status != 'y'`, `status = 'a' OR status = 'b'`, and interpolate integer LIMIT/OFFSET. `FindOutboundForSources` is a bounded `OR` list (max 20).

@@ -44,7 +44,8 @@ export default function ProfileScreen() {
       <Text style={styles.muted}>Modes {workModesForEmployee(session?.employeeId).join(', ')}</Text>
       <Text style={styles.muted}>Strategy: {session?.strategy ?? '—'}</Text>
       <Text style={styles.muted}>Database: {dbName ?? status}</Text>
-      <Text style={styles.muted}>Version {appVersion()}</Text>
+      <Text style={styles.label}>App version</Text>
+      <Text style={styles.muted}>{appVersion()}</Text>
       {crumbToday != null ? (
         <Text style={styles.muted}>
           Crumbs today {crumbToday} · days with crumbs {crumbDays ?? 0}/7 (no map dump)
