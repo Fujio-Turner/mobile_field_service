@@ -141,6 +141,10 @@ npx expo run:ios -d "iPhone 16 Pro"
 npx expo run:android
 ```
 
+**Xcode 26.4+.** Apple Clang 21 rejects `{fmt}` 11.0.2 `consteval` (React Native 0.76). `plugin.fmt.js` (listed in `app.json`) injects a CocoaPods `post_install` hook that sets `FMT_USE_CONSTEVAL 0` in the vendored `fmt` headers. `ios/` is gitignored; the plugin re-applies on prebuild. Remove it when we move to Expo SDK 56 / RN ≥ 0.83.9.
+
+**Missing CBL Swift.** npm does not clone `cbl-reactnative` submodules. If `npx expo run:ios` fails with `cannot find 'DatabaseManager' in scope` (and `ReplicatorManager` / `CollectionManager`), `node_modules/cbl-reactnative/ios/cbl-js-swift/` is empty. Run `bash scripts/fetch-cbl-native.sh` (or `npm install` so `postinstall` runs), then rebuild.
+
 `.env.example` sets `EXPO_PUBLIC_AUTH_STRATEGY=demo`. Sign in as Jon (`jon.hale@example.com`), Maya (`maya.chen@example.com`), or Priya (`priya.shah@example.com`); any other non-empty id is Jon. You land on **Today** with seed jobs (WO-10470 / 10482 / 10490, plus WO-10460 leftover) once the DB is open. Version on the login footer and Profile comes from `app.json`, not a hard-coded string.
 
 Every env flag, Profile toggle, debug job rule, and Keychain key: [guides/SETTINGS.md](guides/SETTINGS.md).

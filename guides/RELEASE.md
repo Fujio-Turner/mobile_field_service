@@ -121,6 +121,9 @@ Lab/testing **does not require** a CBL EE license. Store production with encrypt
 
 **Development:** `npx expo run:ios` / `run:android` (dev client, not Expo Go).
 
+- Xcode 26.4+: `plugin.fmt.js` must stay in `app.json` until Expo SDK 56 (fmt 11.0.2 `consteval`).
+- First iOS build needs `scripts/fetch-cbl-native.sh` (`node_modules/cbl-reactnative/ios/cbl-js-swift/DatabaseManager.swift`). Skip that and compile fails with `cannot find 'DatabaseManager' in scope`.
+
 **Release:** EAS or local archive.
 
 | Store | Artifact |

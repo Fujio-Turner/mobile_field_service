@@ -43,7 +43,7 @@ Vector similarity (on-device **mobile-CLIP** embeddings + CBL vector index) is a
 
 ### Current state
 
-This repository is an Expo SDK **52** / RN **0.76.9** field app (`app/`, `src/ops/*`, `src/db/*`, `src/sync/*`) plus docs. Git **origin** is `Fujio-Turner/mobile_field_service` (not koten-ai). Demo login (`EXPO_PUBLIC_AUTH_STRATEGY=demo`) maps Jon / Maya Chen / Priya (or any other non-empty id as Jon). Development builds only — Expo Go cannot load CBL or MapLibre.
+This repository is an Expo SDK **52** / RN **0.76.9** field app (`app/`, `src/ops/*`, `src/db/*`, `src/sync/*`) plus docs. Git **origin** is `Fujio-Turner/mobile_field_service` (not koten-ai). Demo login (`EXPO_PUBLIC_AUTH_STRATEGY=demo`) maps Jon / Maya Chen / Priya (or any other non-empty id as Jon). Development builds only — Expo Go cannot load CBL or MapLibre. `ios/` is prebuild output (gitignored). `plugin.fmt.js` disables `{fmt}` 11.0.2 consteval on Xcode 26.4+ until SDK 56. `npm install` must fetch `cbl-js-swift` or the iOS target fails (`DatabaseManager` not in scope).
 
 A sibling repo (`utility_field_service`) demonstrates field-ops UX with a **mock** `WorkRepository` and a stub `CblWorkRepository`. It targets a UtilityCo/SAP day-in-the-life demo, not this product’s collection contract or copy-on-write rule.
 

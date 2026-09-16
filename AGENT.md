@@ -51,7 +51,8 @@ Canonical collection docs: **`docs/schema/SCHEMA_*.md`**. Index: `docs/schema/RE
 
 ## Code hygiene
 
-- Expo **development builds**, not Expo Go. `postinstall` fetches `ios/cbl-js-swift` + `src/cblite-js` (npm does not clone those).
+- Expo **development builds**, not Expo Go. `postinstall` (`scripts/fetch-cbl-native.sh`) fetches `ios/cbl-js-swift` + `src/cblite-js` (npm does not clone those). Missing `DatabaseManager.swift` → 50+ Swift “not in scope” errors; re-run the script, then rebuild.
+- Local Expo plugins: `plugin.config.js` (CBL), `plugin.fmt.js` (Xcode 26.4+ `{fmt}` 11.0.2 consteval). `ios/` is gitignored; plugins re-inject on prebuild. Remove `plugin.fmt.js` after Expo SDK 56.
 - Version from `app.json` / Expo Application APIs — never hard-code in UI.
 - After Hub-style JS templates: no nested backticks (if any web/HTML strings appear).
 - Prefer `src/ops/*` names matching the DESIGN catalog.

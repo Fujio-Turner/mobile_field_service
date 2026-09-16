@@ -11,6 +11,7 @@ tests/
   dev/           job rules parse
   sync/          push filters, channels, schema, HTTP error classes, per-collection conflicts
   ui/            handedness, stack Back
+  plugins/       Expo config plugins (`plugin.fmt.js` Xcode 26 consteval)
   README.md
 ```
 
