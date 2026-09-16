@@ -52,6 +52,7 @@
       ],
       "@maplibre/maplibre-react-native",
       "./plugin.config.js",
+      "./plugin.fmt.js",
       [
         "expo-build-properties",
         {

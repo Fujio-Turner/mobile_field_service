@@ -51,7 +51,7 @@ Canonical collection docs: **`docs/schema/SCHEMA_*.md`**. Index: `docs/schema/RE
 
 ## Code hygiene
 
-- Expo **development builds**, not Expo Go. `postinstall` fetches `ios/cbl-js-swift` + `src/cblite-js` (npm does not clone those).
+- Expo **development builds**, not Expo Go. `postinstall` fetches `ios/cbl-js-swift` + `src/cblite-js` (npm does not clone those). Xcode 26.4+: `plugin.fmt.js` disables `{fmt}` consteval (RN 0.76). Remove after Expo SDK 56.
 - Version from `app.json` / Expo Application APIs — never hard-code in UI.
 - After Hub-style JS templates: no nested backticks (if any web/HTML strings appear).
 - Prefer `src/ops/*` names matching the DESIGN catalog.
