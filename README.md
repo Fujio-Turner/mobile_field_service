@@ -142,6 +142,14 @@ npx expo run:ios -d "iPhone 16 Pro"
 npx expo run:android
 ```
 
+**Already installed.** `run:ios` is the first native compile. After that, opening the app **without Metro** shows Expo’s **Development servers** screen (Connect gray if the last URL is a dead LAN IP like `10.0.0.25`). That is the dev client waiting for a bundler, not a Field Service crash. Start Metro on localhost and open the simulator:
+
+```bash
+npm run start:ios
+```
+
+Do not paste a `10.*` / `192.168.*` URL into the simulator — it talks to the Mac at `127.0.0.1:8081`. Phone on Wi-Fi: `npm start` (LAN) and scan the QR. This app is never Expo Go (`start` passes `--dev-client`).
+
 **Xcode 26.4+.** Apple Clang 21 rejects `{fmt}` 11.0.2 `consteval` (React Native 0.76). `plugin.fmt.js` (listed in `app.json`) injects a CocoaPods `post_install` hook that sets `FMT_USE_CONSTEVAL 0` in the vendored `fmt` headers. `ios/` is gitignored; the plugin re-applies on prebuild. Remove it when we move to Expo SDK 56 / RN ≥ 0.83.9.
 
 **Missing CBL Swift.** npm does not clone `cbl-reactnative` submodules. If `npx expo run:ios` fails with `cannot find 'DatabaseManager' in scope` (and `ReplicatorManager` / `CollectionManager`), `node_modules/cbl-reactnative/ios/cbl-js-swift/` is empty. Run `bash scripts/fetch-cbl-native.sh` (or `npm install` so `postinstall` runs), then rebuild.
