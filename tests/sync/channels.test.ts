@@ -77,6 +77,7 @@ describe('collectionConfigFor', () => {
     expect(cc).toBeTruthy();
     expect((cc as { channels: string[] | null }).channels).toBeNull();
     expect(setCalls).toEqual([]);
+    expect((cc as { pushFilter?: string }).pushFilter).toContain('return false');
   });
 
   it('passes a channel array when set', () => {
@@ -88,8 +89,15 @@ describe('collectionConfigFor', () => {
         setCalls.push(ch);
       }
     };
-    collectionConfigFor({ CollectionConfig: CollectionConfig as never }, {}, neverPushFilter, ['emp:E-4412']);
+    const cc = collectionConfigFor(
+      { CollectionConfig: CollectionConfig as never },
+      {},
+      neverPushFilter,
+      ['emp:E-4412'],
+      'workordersout',
+    );
     expect(setCalls).toEqual([['emp:E-4412']]);
+    expect(JSON.stringify(cc)).toContain('ready_to_push');
   });
 });
 

@@ -67,6 +67,24 @@ describe('collapseTodayPage', () => {
     expect(rows[0].badge).toBe('amendment');
   });
 
+  it('badges Done when the outbound copy is complete', () => {
+    const rows = collapseTodayPage({
+      employeeId: 'E-4412',
+      inbound: [inn({ id: 'woin:a' })],
+      activeOutbound: [],
+      outboundBySource: new Map([
+        [
+          'woin:a',
+          { id: 'woout:a', sourceId: 'woin:a', status: 'complete', role: 'primary' },
+        ],
+      ]),
+      includeActiveOutbound: true,
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].badge).toBe('done');
+    expect(rows[0].openId).toBe('woout:a');
+  });
+
   it('inbound-only rows open workordersin', () => {
     const rows = collapseTodayPage({
       employeeId: 'E-4412',

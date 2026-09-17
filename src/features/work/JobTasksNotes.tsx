@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { FieldInput } from '@/src/ui/FieldInput';
+import { StatusCycleBadge, toneForTaskStatus } from '@/src/ui/StatusCycleBadge';
 import type { StartSession } from '@/src/ops/copyInbound';
 import { createNote, deleteNote, type NoteItem } from '@/src/ops/notes';
 import { cycleTaskStatus, deleteTask, type TaskItem, upsertTask } from '@/src/ops/tasks';
@@ -27,26 +28,30 @@ export function JobTasksNotes({ wooutId, editable, busy, session, tasks, notes, 
       {tasks.length === 0 ? <Text style={styles.muted}>No tasks on this copy</Text> : null}
       {tasks.map((t) => (
         <View key={t.id} style={styles.row}>
-          <Pressable
+          <Text style={[styles.value, styles.rowMain]}>
+            {t.required ? '* ' : ''}
+            {t.title}
+          </Text>
+          <StatusCycleBadge
+            value={t.status}
+            nextValue={editable ? cycleTaskStatus(t.status) : undefined}
+            tone={toneForTaskStatus(t.status)}
             disabled={!editable || busy}
-            onPress={() =>
-              onMutate(async () => {
-                await upsertTask(session, {
-                  id: t.id,
-                  wooutId,
-                  title: t.title,
-                  required: t.required,
-                  status: cycleTaskStatus(t.status),
-                });
-              })
+            onPress={
+              editable
+                ? () =>
+                    onMutate(async () => {
+                      await upsertTask(session, {
+                        id: t.id,
+                        wooutId,
+                        title: t.title,
+                        required: t.required,
+                        status: cycleTaskStatus(t.status),
+                      });
+                    })
+                : undefined
             }
-            style={styles.rowMain}
-          >
-            <Text style={styles.value}>
-              {t.required ? '* ' : ''}
-              {t.title} · {t.status}
-            </Text>
-          </Pressable>
+          />
           {editable ? (
             <Pressable disabled={busy} onPress={() => onMutate(() => deleteTask(t.id, session))} style={styles.rowBtn}>
               <Text style={styles.dangerLabel}>Delete</Text>
@@ -64,13 +69,15 @@ export function JobTasksNotes({ wooutId, editable, busy, session, tasks, notes, 
             editable={!busy}
             returnKeyType="done"
           />
-          <Pressable
-            disabled={busy}
-            onPress={() => setTaskRequired((v) => !v)}
-            style={styles.rowBtn}
-          >
-            <Text style={styles.muted}>{taskRequired ? '* Required' : 'Optional'}</Text>
-          </Pressable>
+          <View style={styles.requiredRow}>
+            <StatusCycleBadge
+              value={taskRequired ? 'required' : 'optional'}
+              nextValue={taskRequired ? 'optional' : 'required'}
+              tone={taskRequired ? 'warn' : 'neutral'}
+              disabled={busy}
+              onPress={() => setTaskRequired((v) => !v)}
+            />
+          </View>
           <Pressable
             disabled={busy}
             style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
@@ -152,8 +159,9 @@ const styles = StyleSheet.create({
     marginTop: theme.space.sm,
   },
   noteInput: { minHeight: 88, textAlignVertical: 'top' },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44 },
-  rowMain: { flex: 1, paddingRight: theme.space.sm },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44, gap: theme.space.sm },
+  rowMain: { flex: 1, paddingRight: theme.space.xs },
+  requiredRow: { marginTop: theme.space.sm, alignItems: 'flex-start' },
   rowBtn: { minHeight: 44, justifyContent: 'center', paddingHorizontal: theme.space.sm },
   secondary: {
     marginTop: theme.space.md,

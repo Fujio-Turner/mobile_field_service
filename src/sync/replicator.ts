@@ -5,6 +5,7 @@ import { recordMetric } from '../metrics';
 import type { StartSession } from '../ops/copyInbound';
 import { pendingPushCountLocal } from '../ops/pendingPush';
 import type { Session } from '../session/types';
+import { readPassword } from '../session/enclave';
 import { acceptSelfSigned, sgReplicatorUrl } from '../session/sgSession';
 import {
   envGlobalChannels,
@@ -25,9 +26,24 @@ import {
   type ReplErrorClass,
 } from './codes';
 import { conflictPolicyMatrix, conflictResolverFor } from './conflicts';
+import { cblFileLogDirectory, configureCblLogSinks } from '../log/cblSinks';
+import { inspectWorkordersoutPush, type PushInspect } from './inspectPush';
+import { parseReplicatorChange } from './parseReplicatorChange';
+import {
+  asStringIds,
+  recordPushPending,
+  recordPushSuccess,
+  type PushQueueItem,
+} from './pushQueue';
 import { handleReplicatedDoc, parseReplicatedDocs } from './documentListener';
 import { replDocStats, resetReplDocStats } from './replStats';
-import { FIELD_PUSH_FILTERS, neverPushFilter, replicatorCollectionNames, type PushDoc } from './filters';
+import {
+  FIELD_PUSH_FILTERS,
+  FILTER_SOURCE,
+  neverPushFilter,
+  replicatorCollectionNames,
+  type PushDoc,
+} from './filters';
 import { LAST_PULL_KEY, LAST_PUSH_KEY, loadCollectionChannels, loadEpoch, saveCollectionChannels, saveEpoch } from './persist';
 import {
   oneshotCollectionsFor,
@@ -43,7 +59,11 @@ type NativeReplicator = {
   stop?: () => Promise<void>;
   addChangeListener?: (cb: (s: unknown) => void) => Promise<unknown>;
   addDocumentChangeListener?: (cb: (d: unknown) => void) => Promise<unknown>;
-  pendingDocumentIdsInCollection?: (col: unknown) => Promise<unknown>;
+  getPendingDocumentIds?: (col: unknown) => Promise<{ pendingDocumentIds?: string[] }>;
+  isDocumentPending?: (documentId: string, col: unknown) => Promise<{ isPending?: boolean }>;
+  getConfiguration?: () => { getCollections?: () => unknown[] };
+  getId?: () => string | undefined;
+  getStatus?: () => Promise<unknown>;
 };
 
 export type ReplicatorHooks = {
@@ -78,6 +98,12 @@ type LiveStatus = {
   lastOneshotAt?: number;
   activeCollections: string[];
   lastErrorClass?: ReplErrorClass;
+  lastErrorMessage?: string;
+  pushInspect?: string;
+  pushSuccess?: PushQueueItem[];
+  pushPendingIds?: PushQueueItem[];
+  pendingError?: string;
+  cblLogDir?: string;
   docsCompleted: number;
   docsFailed: number;
   docsPushOk: number;
@@ -94,6 +120,12 @@ let skippedReason: string | undefined;
 let activityLevel = 0;
 let lastErrorCode: number | undefined;
 let lastErrorClass: ReplErrorClass | undefined;
+let lastErrorMessage: string | undefined;
+let lastPushInspect: PushInspect | undefined;
+let liveCols: Array<{ name: string; col: unknown }> = [];
+let lastPushSuccess: PushQueueItem[] = [];
+let lastPushPending: PushQueueItem[] = [];
+let lastPendingError: string | undefined;
 let lastPullSuccessAt: number | undefined;
 let lastPushSuccessAt: number | undefined;
 let lastPullDocAt: number | undefined;
@@ -202,6 +234,16 @@ export function replicatorLiveStatus(): LiveStatus {
     lastOneshotAt,
     activeCollections: [...liveActiveCollections],
     lastErrorClass,
+    lastErrorMessage,
+    pushSuccess: lastPushSuccess,
+    pushPendingIds: lastPushPending,
+    pendingError: lastPendingError,
+    cblLogDir: cblFileLogDirectory() ?? undefined,
+    pushInspect: lastPushInspect
+      ? `sqlPending ${lastPushInspect.sqlPending} nativePending ${lastPushInspect.nativePending ?? 'n/a'} filter ${lastPushInspect.filterSrc} docs ${lastPushInspect.woout
+          .map((w) => `${w.id} sync=${w.syncState} st=${w.status} filter=${w.filterOk}`)
+          .join(' | ')}`
+      : undefined,
     docsCompleted: docs.completed,
     docsFailed: docs.failed,
     docsPushOk: docs.pushOk,
@@ -225,23 +267,74 @@ export async function hydrateSyncTimes(): Promise<void> {
   emitReplicatorStatus();
 }
 
-async function pendingFromNative(repl: NativeReplicator): Promise<number | null> {
-  if (typeof repl.pendingDocumentIdsInCollection !== 'function') return null;
-  const db = getOpenedDatabase();
-  if (!db) return null;
+async function nativePendingCall(
+  repl: NativeReplicator,
+  col: unknown,
+  name: string,
+): Promise<string[]> {
+  const rid = typeof repl.getId === 'function' ? repl.getId() : undefined;
+  const rec = col as {
+    name?: string;
+    scope?: { name?: string };
+    database?: { getUniqueName?: () => string };
+  };
+  const dbName = rec.database?.getUniqueName?.() ?? '';
+  const scopeName = rec.scope?.name ?? FIELD_SCOPE;
   try {
-    let total = 0;
-    for (const name of buildCollectionAllowList()) {
-      if ((FIELD_PUSH_FILTERS[name] ?? neverPushFilter) === neverPushFilter) continue;
-      const col = await db.collection(name, FIELD_SCOPE);
-      const ids = await repl.pendingDocumentIdsInCollection(col);
-      if (ids && typeof (ids as { size?: number }).size === 'number') total += (ids as { size: number }).size;
-      else if (Array.isArray(ids)) total += ids.length;
+    const { NativeModules } = require('react-native') as {
+      NativeModules?: { CblReactnative?: { replicator_GetPendingDocumentIds?: Function } };
+    };
+    const native = NativeModules?.CblReactnative?.replicator_GetPendingDocumentIds;
+    if (typeof native === 'function' && rid && dbName) {
+      const res = await native.call(NativeModules.CblReactnative, rid, dbName, scopeName, name);
+      return asStringIds(res);
     }
-    return total;
   } catch {
+    // fall through to JS wrapper
+  }
+  if (typeof repl.getPendingDocumentIds !== 'function') return [];
+  const res = await repl.getPendingDocumentIds(col);
+  return asStringIds(res);
+}
+
+async function pendingIdsFromNative(repl: NativeReplicator): Promise<PushQueueItem[] | null> {
+  const cols = liveCols.length
+    ? liveCols
+    : (repl.getConfiguration?.()?.getCollections?.() ?? []).map((col) => ({
+        name: String((col as { name?: string }).name ?? ''),
+        col,
+      }));
+  if (cols.length === 0) {
+    lastPendingError = 'no collections on replicator';
     return null;
   }
+  try {
+    const out: PushQueueItem[] = [];
+    const errors: string[] = [];
+    for (const { name, col } of cols) {
+      if (!name || (FIELD_PUSH_FILTERS[name] ?? neverPushFilter) === neverPushFilter) continue;
+      try {
+        const ids = await nativePendingCall(repl, col, name);
+        for (let i = 0; i < ids.length; i++) out.push({ id: ids[i], collection: name });
+      } catch (e) {
+        errors.push(`${name}:${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+    lastPendingError = errors.length ? errors.slice(0, 3).join('; ') : undefined;
+    if (errors.length && out.length === 0) return null;
+    return out;
+  } catch (e) {
+    lastPendingError = e instanceof Error ? e.message : String(e);
+    log.warn('mfs.repl.pending_fail', { op: 'PendingIds', err: lastPendingError });
+    return null;
+  }
+}
+
+async function pendingFromNative(repl: NativeReplicator): Promise<number | null> {
+  const ids = await pendingIdsFromNative(repl);
+  if (ids == null) return null;
+  lastPushPending = await recordPushPending(ids);
+  return ids.length;
 }
 
 export async function refreshPendingCount(): Promise<number> {
@@ -259,37 +352,28 @@ export async function refreshPendingCount(): Promise<number> {
   return n;
 }
 
-type StatusBlob = {
-  activity?: number;
-  getActivityLevel?: () => number;
-  error?: { code?: number; getCode?: () => number };
-  getError?: () => { code?: number; getCode?: () => number } | null;
-  progress?: { completed?: number; total?: number };
-  getProgress?: () => { completed?: number; total?: number };
-};
-
 async function onStatus(raw: unknown): Promise<void> {
-  const wrapped = raw as StatusBlob & { status?: StatusBlob };
-  const st: StatusBlob = wrapped.status ?? wrapped;
-  const level =
-    typeof st.getActivityLevel === 'function'
-      ? st.getActivityLevel()
-      : Number(st.activity ?? activityLevel);
-  const nextLevel = Number.isFinite(level) ? level : 0;
+  const parsed = parseReplicatorChange(raw);
+  const nextLevel = parsed.activityLevel;
   if (nextLevel !== activityLevel) recordMetric('mfs_replicator_activity', nextLevel);
   activityLevel = nextLevel;
-
-  const errObj = typeof st.getError === 'function' ? st.getError() : st.error;
-  const code = extractErrorCode(errObj);
-  const progress = typeof st.getProgress === 'function' ? st.getProgress() : st.progress;
-  if (progress) {
-    progressCompleted = progress.completed;
-    progressTotal = progress.total;
-  }
+  const code = parsed.errorCode;
+  if (parsed.progressCompleted != null) progressCompleted = parsed.progressCompleted;
+  if (parsed.progressTotal != null) progressTotal = parsed.progressTotal;
+  if (parsed.errorMessage) lastErrorMessage = parsed.errorMessage;
+  log.info('mfs.repl.status', {
+    op: 'OnReplicatorStatus',
+    activity: activityName(activityLevel),
+    errCode: code,
+    err: parsed.errorMessage,
+    progressCompleted,
+    progressTotal,
+  });
 
   if (activityLevel === 3 || activityLevel === 4) {
     lastErrorCode = undefined;
     lastErrorClass = undefined;
+    lastErrorMessage = undefined;
   }
   if (activityLevel === 3) {
     const t = nowSec();
@@ -405,6 +489,7 @@ function queueOneshotFinish(how: 'idle' | 'stopped' | 'stopped_error'): void {
 }
 
 type CollectionConfigLike = {
+  pushFilter?: string;
   setPushFilter?: (fn: (doc: PushDoc, flags?: unknown) => boolean) => void;
   setChannels?: (channels: string[]) => void;
   setConflictResolver?: (fn: (local: unknown, remote: unknown) => unknown) => void;
@@ -422,6 +507,7 @@ type ReplicatorConfigLike = {
 type CblReplApi = {
   URLEndpoint?: new (url: string) => unknown;
   SessionAuthenticator?: new (id: string, cookie?: string) => unknown;
+  BasicAuthenticator?: new (username: string, password: string) => unknown;
   CollectionConfig?: new (channels: string[] | null, documentIds: string[] | null) => CollectionConfigLike;
   CollectionConfiguration?: new (col: unknown) => CollectionConfigLike;
   ReplicatorConfiguration?: (new (endpoint: unknown) => ReplicatorConfigLike) &
@@ -440,6 +526,13 @@ export function collectionConfigFor(
   const list = [...channels];
   const attach = (cc: CollectionConfigLike) => {
     cc.setPushFilter?.(filter);
+    const src = (collectionName && FILTER_SOURCE[collectionName]) || filter.toString();
+    cc.pushFilter = src;
+    (cc as { toJSON?: () => unknown }).toJSON = () => ({
+      channels: list,
+      documentIds: [],
+      pushFilter: src,
+    });
     if (list.length) cc.setChannels?.(list);
     if (collectionName) {
       const resolver = conflictResolverFor(collectionName);
@@ -485,6 +578,7 @@ export async function startReplicator(
   const phase: 'bootstrap' | 'full' =
     opts?.phase ?? (schema === 'oneshot' && !oneshotBootstrapDone ? 'bootstrap' : 'full');
 
+  await configureCblLogSinks();
   await hydrateSyncTimes();
   const stored = await loadCollectionChannels();
   liveChannels = snapshotChannelMap(stored, envGlobalChannels());
@@ -514,6 +608,7 @@ export async function startReplicator(
   oneshotFinishQueued = false;
   resetReplDocStats();
   lastErrorClass = undefined;
+  lastErrorMessage = undefined;
   liveContinuous = continuous;
   liveActiveCollections = names;
   oneshotPhase = continuous ? 'idle' : phase;
@@ -522,7 +617,7 @@ export async function startReplicator(
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const cbl = require('cbl-reactnative') as CblReplApi;
-    if (!cbl.URLEndpoint || !cbl.ReplicatorConfiguration || !cbl.Replicator || !cbl.SessionAuthenticator) {
+    if (!cbl.URLEndpoint || !cbl.ReplicatorConfiguration || !cbl.Replicator) {
       skippedReason = 'api_missing';
       oneshotBusy = false;
       return { ok: false, reason: 'api_missing' };
@@ -531,6 +626,7 @@ export async function startReplicator(
     const endpoint = new cbl.URLEndpoint(sgUrl);
     const config = new cbl.ReplicatorConfiguration(endpoint);
     let attached = 0;
+    liveCols = [];
     for (const name of names) {
       const col = await db.collection(name, FIELD_SCOPE);
       if (!col) continue;
@@ -539,6 +635,7 @@ export async function startReplicator(
       const cc = collectionConfigFor(cbl, col, filter, channels, name);
       if (typeof config.addCollection === 'function') {
         config.addCollection(col, cc);
+        liveCols.push({ name, col });
         attached += 1;
       }
     }
@@ -548,12 +645,44 @@ export async function startReplicator(
       log.error('mfs.repl.start_fail', { op: 'StartReplicator', err: 'no_collections' });
       return { ok: false, reason: 'no_collections' };
     }
-    config.setAuthenticator?.(new cbl.SessionAuthenticator(session.sessionId, session.cookieName || 'SyncGatewaySession'));
+    const password = session.strategy === 'basic' ? await readPassword() : null;
+    if (password && cbl.BasicAuthenticator) {
+      config.setAuthenticator?.(
+        new cbl.BasicAuthenticator(session.email || session.username, password),
+      );
+    } else if (cbl.SessionAuthenticator) {
+      config.setAuthenticator?.(
+        new cbl.SessionAuthenticator(session.sessionId, session.cookieName || 'SyncGatewaySession'),
+      );
+    } else {
+      skippedReason = 'api_missing';
+      oneshotBusy = false;
+      return { ok: false, reason: 'api_missing' };
+    }
     config.setContinuous?.(continuous);
     const selfSigned = acceptSelfSigned(sgUrl);
-    config.setAcceptOnlySelfSignedServerCertificate?.(selfSigned);
     config.setAcceptOnlySelfSignedCerts?.(selfSigned);
-    if (cbl.ReplicatorType?.PUSH_AND_PULL) config.setReplicatorType?.(cbl.ReplicatorType.PUSH_AND_PULL);
+    const ReplicatorType =
+      cbl.ReplicatorType ??
+      (cbl.ReplicatorConfiguration as { ReplicatorType?: { PUSH_AND_PULL?: unknown } } | undefined)?.ReplicatorType;
+    if (ReplicatorType?.PUSH_AND_PULL) config.setReplicatorType?.(ReplicatorType.PUSH_AND_PULL);
+
+    const dumped = typeof (config as { toJson?: () => Record<string, unknown> }).toJson === 'function'
+      ? (config as { toJson: () => Record<string, unknown> }).toJson()
+      : null;
+    const ccDump = dumped && typeof dumped.collectionConfig === 'string' ? dumped.collectionConfig : '';
+    log.info('mfs.repl.config', {
+      op: 'StartReplicator',
+      replicatorType: dumped?.replicatorType != null ? String(dumped.replicatorType) : 'unset',
+      continuous: dumped?.continuous === true,
+      acceptSelfSigned: dumped?.acceptSelfSignedCerts === true,
+      authType:
+        dumped?.authenticator && typeof dumped.authenticator === 'object'
+          ? String((dumped.authenticator as { type?: string }).type ?? '')
+          : '',
+      wooutFilter: ccDump.includes('ready_to_push'),
+      collections: attached,
+    });
 
     const replicator = await cbl.Replicator.create(config);
     nativeRepl = replicator;
@@ -561,9 +690,27 @@ export async function startReplicator(
       void onStatus(status);
     });
     await replicator.addDocumentChangeListener?.(async (change) => {
+      const evs = parseReplicatedDocs(change);
+      const failed = evs.find((e) => e.error);
+      log.info('mfs.repl.docs', {
+        op: 'OnReplicatedDocs',
+        n: evs.length,
+        isPush: evs[0]?.isPush,
+        errCode: failed?.error?.code,
+        err: failed?.error?.message,
+        docId: failed?.id ?? evs[0]?.id,
+        collection: failed?.collection ?? evs[0]?.collection,
+      });
       if (!liveSession) return;
-      for (const ev of parseReplicatedDocs(change)) {
+      for (const ev of evs) {
         noteReplicatedDirection(ev.isPush);
+        if (ev.isPush && !ev.error) {
+          lastPushSuccess = await recordPushSuccess({
+            id: ev.id,
+            collection: ev.collection,
+            dt: nowSec(),
+          });
+        }
         await handleReplicatedDoc(ev, liveSession);
       }
       schedulePendingRefresh();
@@ -572,6 +719,15 @@ export async function startReplicator(
     started = true;
     authRefreshTried = false;
     activityLevel = 2;
+    lastErrorMessage = undefined;
+    if (typeof replicator.getStatus === 'function') {
+      try {
+        await onStatus(await replicator.getStatus());
+      } catch {
+        // listener still owns live updates
+      }
+    }
+    lastPushInspect = await inspectWorkordersoutPush(await pendingFromNative(replicator));
     log.info('mfs.repl.start', {
       op: 'StartReplicator',
       schema,
@@ -647,9 +803,12 @@ export async function stopReplicator(): Promise<void> {
   lastStatusLog = '';
   const repl = nativeRepl;
   nativeRepl = null;
+  liveCols = [];
   started = false;
   try {
-    await repl?.stop?.();
+    const cleanup = (repl as { cleanup?: () => Promise<void> } | null)?.cleanup;
+    if (typeof cleanup === 'function') await cleanup.call(repl);
+    else await repl?.stop?.();
   } catch {
     // already stopped
   }
@@ -665,17 +824,24 @@ export async function ensureReplicatorRunning(session: Session | null, nextHooks
     await runOneshot(session, nextHooks ?? hooks ?? undefined, oneshotBootstrapDone ? 'foreground' : 'bootstrap');
     return;
   }
-  if (started && activityLevel !== 0) return;
+  if (nativeRepl && started && activityLevel !== 0) return;
+  if (nativeRepl && started && activityLevel === 0 && lastErrorMessage) return;
   await startReplicator(session, nextHooks ?? hooks ?? undefined);
 }
 
 export function resetReplicatorTestState(): void {
   nativeRepl = null;
+  liveCols = [];
   started = false;
   skippedReason = undefined;
   activityLevel = 0;
   lastErrorCode = undefined;
   lastErrorClass = undefined;
+  lastErrorMessage = undefined;
+  lastPushInspect = undefined;
+  lastPushSuccess = [];
+  lastPushPending = [];
+  lastPendingError = undefined;
   lastPullSuccessAt = undefined;
   lastPushSuccessAt = undefined;
   lastPullDocAt = undefined;

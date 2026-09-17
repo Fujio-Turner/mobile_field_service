@@ -45,7 +45,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const stored = await readSession();
         if (cancelled) return;
-        if (stored && sessionIsLive(stored.sessionExpiresAt, nowSec())) {
+        const strategy = authStrategy();
+        if (
+          stored &&
+          sessionIsLive(stored.sessionExpiresAt, nowSec()) &&
+          !(strategy === 'basic' && stored.strategy === 'demo')
+        ) {
           setSession(stored);
         }
       } finally {
@@ -76,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return true;
       }
       if (strategy === 'basic') {
+        log.info('mfs.auth.session_post', { op: 'LoginRemote' });
         const result = await loginRemoteBasic(identifier, password, nowSec());
         if (!result.ok) {
           setError(result.error);

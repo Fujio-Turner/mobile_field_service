@@ -1,0 +1,47 @@
+{
+  "type": "workorderin",
+  "origin": "dispatch",
+  "number": "WO-CAP-10482",
+  "kind": "repair",
+  "priority": "high",
+  "status": "assigned",
+  "assignedTo": {
+    "userId": "usr:01K4Q6AAA00000000000000001",
+    "employeeId": "E-4412",
+    "email": "jon.hale@example.com",
+    "username": "tech.jon",
+    "displayName": "Jon Hale"
+  },
+  "customerId": "cus:01K4Q6CCC00000000000000001",
+  "routeId": "HFD-NORTH",
+  "region": "CT",
+  "site": {
+    "name": "Riverside Pump Station",
+    "address": {
+      "line1": "1 State St",
+      "city": "Hartford",
+      "region": "CT",
+      "postal": "06103",
+      "country": "US"
+    },
+    "geo": { "lat": 41.7658, "lon": -72.6734, "accuracyM": 15 }
+  },
+  "scheduled": {
+    "startDt": 1789653600,
+    "endDt": 1789660800,
+    "day": "2026-09-17"
+  },
+  "summary": "Capella test — replace failed check valve; verify flow.",
+  "operations": [
+    { "id": "op-1", "name": "Site check", "required": true, "status": "pending" },
+    { "id": "op-2", "name": "Close out", "required": false, "status": "pending" }
+  ],
+  "checklist": [{ "id": "cl-ppe", "label": "PPE on", "required": true, "done": false }],
+  "taskIds": ["tsk:01K4Q6TTT00000000000000001"],
+  "assetIds": ["ast:01K4Q6AST00000000000000001"],
+  "materials": [],
+  "audit": {
+    "cr": { "dt": 1789657051, "ver": "capella-import", "by": "dispatch.maya" },
+    "up": { "dt": 1789657051, "ver": "capella-import", "by": "dispatch.maya" }
+  }
+}

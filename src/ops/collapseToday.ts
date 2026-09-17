@@ -73,11 +73,12 @@ export function collapseTodayPage(input: {
     if (used.has(inn.id)) continue;
     const ref = input.outboundBySource.get(inn.id);
     if (ref) {
+      const terminal = ref.status === 'complete' || ref.status === 'cancelled';
       rows.push(
         inboundRow(inn, {
           openId: ref.id,
           openCollection: 'workordersout',
-          badge: ref.role === 'amendment' ? 'amendment' : 'started',
+          badge: terminal ? 'done' : ref.role === 'amendment' ? 'amendment' : 'started',
         }),
       );
     } else {

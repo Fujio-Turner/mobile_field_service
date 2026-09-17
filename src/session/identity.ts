@@ -100,7 +100,14 @@ export function resolveLoginIdentity(identifier: string): LoginIdentity | null {
       workModes: ['assets'],
     };
   }
-  return null;
+  // Capella / SG users that are not in the seed roster still get a local profile.
+  const email = raw.includes('@') ? raw : `${raw.toLowerCase()}@local`;
+  return {
+    employeeId: raw,
+    email,
+    username: raw.includes('@') ? raw.slice(0, raw.indexOf('@')) : raw,
+    workModes: ['assets'],
+  };
 }
 
 export function demoIdentity(identifier: string): LoginIdentity | null {

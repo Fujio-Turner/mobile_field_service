@@ -19,15 +19,10 @@ import { createAmendment } from '@/src/ops/createAmendment';
 import { parseWorkOrderOut, type WorkOrderOut } from '@/src/ops/getWorkOrderOut';
 import { loadOutboundRaw } from '@/src/ops/outboundStore';
 import { OutError } from '@/src/ops/outError';
-import { BLOCK_REASONS, isOpDone, toggleOpDone } from '@/src/ops/outStatus';
+import { BLOCK_REASONS, isOpDone, remainingCompleteItems, toggleOpDone } from '@/src/ops/outStatus';
 import { DoneToggle } from '@/src/ui/DoneToggle';
-import { submitWork } from '@/src/ops/submitWork';
-import {
-  blockWork,
-  cancelWork,
-  completeWork,
-  startOrResumeWork,
-} from '@/src/ops/transitionStatus';
+import { cancelAndSubmitWork, completeAndSubmitWork, submitWork } from '@/src/ops/submitWork';
+import { blockWork, startOrResumeWork } from '@/src/ops/transitionStatus';
 import { captureAndCommitPhoto } from '@/src/ops/capturePhoto';
 import { listNotes, type NoteItem } from '@/src/ops/notes';
 import { deletePhoto } from '@/src/ops/photos';
@@ -245,6 +240,7 @@ export default function WorkOrderOutScreen() {
   const showComplete = canEdit && doc.status === 'in_progress';
   const showSubmit =
     !doc.editable && (doc.status === 'complete' || doc.status === 'cancelled') && doc.syncState === 'local_draft';
+  const stillRequired = showComplete ? remainingCompleteItems(doc, tasks) : [];
 
   return (
     <KeyboardAvoidingView
@@ -496,7 +492,7 @@ export default function WorkOrderOutScreen() {
             <Pressable
               disabled={busy}
               style={({ pressed }) => [styles.danger, thumb, pressed && styles.pressed]}
-              onPress={() => void run(() => cancelWork(doc.id, s, cancelReason))}
+              onPress={() => void run(() => cancelAndSubmitWork(doc.id, s, cancelReason))}
             >
               <Text style={styles.dangerLabel}>Cancel job</Text>
             </Pressable>
@@ -528,6 +524,20 @@ export default function WorkOrderOutScreen() {
         >
           <Text style={styles.secondaryLabel}>View inbound ticket</Text>
         </Pressable>
+        {showComplete ? (
+          stillRequired.length > 0 ? (
+            <View style={styles.warn}>
+              <Text style={styles.warnText}>Before Complete, mark these done (tap the status badge):</Text>
+              {stillRequired.map((item) => (
+                <Text key={item} style={styles.warnText}>
+                  • {item}
+                </Text>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.muted}>Required steps are done. Press and hold Complete to freeze and send.</Text>
+          )
+        ) : null}
       </ScrollView>
       {showStart || showComplete || showSubmit ? (
         <ThumbDock>
@@ -542,11 +552,16 @@ export default function WorkOrderOutScreen() {
           ) : null}
           {showComplete ? (
             <Pressable
-              disabled={busy}
-              style={({ pressed }) => [styles.primary, thumb, pressed && styles.pressed]}
-              onPress={() => void run(() => completeWork(doc.id, s))}
+              accessibilityRole="button"
+              accessibilityLabel="Hold to complete and submit"
+              accessibilityHint="Press and hold. Completes the job and queues it to send."
+              disabled={busy || stillRequired.length > 0}
+              delayLongPress={700}
+              style={({ pressed }) => [styles.primary, thumb, pressed && styles.pressed, (busy || stillRequired.length > 0) && styles.disabled]}
+              onPress={() => Alert.alert('Complete', 'Press and hold to complete and send this job.')}
+              onLongPress={() => void run(() => completeAndSubmitWork(doc.id, s))}
             >
-              <Text style={styles.primaryLabel}>Complete</Text>
+              <Text style={styles.primaryLabel}>Hold to complete & send</Text>
             </Pressable>
           ) : null}
           {showSubmit ? (
@@ -555,7 +570,7 @@ export default function WorkOrderOutScreen() {
               style={({ pressed }) => [styles.primary, thumb, pressed && styles.pressed]}
               onPress={() => void run(() => submitWork(doc.id, s))}
             >
-              <Text style={styles.primaryLabel}>Submit</Text>
+              <Text style={styles.primaryLabel}>Send now</Text>
             </Pressable>
           ) : null}
         </ThumbDock>
@@ -639,4 +654,5 @@ const styles = StyleSheet.create({
   dangerLabel: { color: theme.color.danger, fontSize: theme.type.md, fontWeight: '600' },
   photoRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44 },
   pressed: { opacity: 0.85 },
+  disabled: { opacity: 0.5 },
 });

@@ -30,3 +30,5 @@ fetch "$PKG/src/cblite-js" \
   063f796bb3a984df820065e4b63f7ef9ad9a5bf4 \
   cblite/index.ts
 
+python3 "$ROOT/scripts/patch-cbl-rn-events.py"
+

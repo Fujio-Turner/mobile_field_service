@@ -45,6 +45,25 @@ export function toggleOpDone(current: string | undefined): OpStatus {
 
 export type TaskLike = { required?: boolean; status?: string; title?: string; type?: string };
 
+export function remainingCompleteItems(doc: Record<string, unknown>, tasks: TaskLike[] = []): string[] {
+  const out: string[] = [];
+  const ops = Array.isArray(doc.operations) ? doc.operations : [];
+  for (const op of ops) {
+    const rec = op as { required?: boolean; status?: string; name?: string };
+    if (rec.required && rec.status !== 'done') out.push(rec.name ?? 'step');
+  }
+  const checks = Array.isArray(doc.checklist) ? doc.checklist : [];
+  for (const c of checks) {
+    const rec = c as { required?: boolean; done?: boolean; label?: string };
+    if (rec.required && rec.done !== true) out.push(rec.label ?? 'item');
+  }
+  for (const t of tasks) {
+    if (t.type === 'task_template') continue;
+    if (t.required && t.status !== 'done') out.push(t.title ?? 'task');
+  }
+  return out;
+}
+
 export function completeBlockedReason(doc: Record<string, unknown>, tasks: TaskLike[] = []): string | null {
   const ops = Array.isArray(doc.operations) ? doc.operations : [];
   for (const op of ops) {

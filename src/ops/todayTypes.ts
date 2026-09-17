@@ -1,6 +1,6 @@
 export const TODAY_PAGE_SIZE = 20;
 
-export type TodayBadge = 'none' | 'started' | 'reassigned' | 'amendment';
+export type TodayBadge = 'none' | 'started' | 'reassigned' | 'amendment' | 'done';
 
 export type TodayRow = {
   key: string;

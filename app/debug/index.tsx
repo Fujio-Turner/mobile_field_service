@@ -63,6 +63,7 @@ export default function DebugScreen() {
   const [result, setResult] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [encrypt, setEncrypt] = useState(false);
+  const [showDiag, setShowDiag] = useState(false);
 
   const refresh = useCallback(async () => {
     await hydrateSyncTimes();
@@ -304,40 +305,81 @@ export default function DebugScreen() {
           <Text style={styles.row}>
             Documents completed {sync?.docsCompleted ?? 0} (push {sync?.docsPushOk ?? 0} · pull{' '}
             {sync?.docsPullOk ?? 0})
-          </Text>
-          <Text style={styles.row}>
-            Documents failed {sync?.docsFailed ?? 0}
-            {sync?.docsConflict ? ` · conflicts ${sync.docsConflict}` : ''}
+            {sync?.docsFailed ? ` · failed ${sync.docsFailed}` : ''}
           </Text>
           <Text style={styles.row}>Pending {sync?.pending ?? 0}</Text>
-          {sync?.lastDocId && isOperatorCollection(sync.lastDocCollection ?? '') ? (
-            <Text style={styles.row}>
-              Last doc {sync.lastDocCollection ?? '—'}/{sync.lastDocId}
-              {sync.lastErrorClass ? ` · ${sync.lastErrorClass}` : ''}
-            </Text>
-          ) : null}
           <Text style={styles.row}>Last pull {formatEpoch(sync?.lastPullSuccessAt)}</Text>
           <Text style={styles.row}>Last push {formatEpoch(sync?.lastPushSuccessAt)}</Text>
-          {sync?.progressTotal ? (
-            <Text style={styles.row}>
-              Progress {sync.progressCompleted ?? 0}/{sync.progressTotal}
-            </Text>
+          {sync?.lastErrorMessage ? (
+            <Text style={styles.replError}>CBL {sync.lastErrorMessage}</Text>
           ) : null}
-          {sync?.lastErrorClass ? (
-            <Text style={styles.row}>
-              Last HTTP {sync.lastErrorCode} ({sync.lastErrorClass})
-            </Text>
-          ) : null}
-          <Text style={styles.muted}>
-            Conflict resolvers are per collection (switch/case). All collections currently use the
-            Couchbase Lite default; a custom resolver can replace any case later.
-          </Text>
-          <Text style={styles.muted}>
-            Demo never starts the replicator. Use basic auth and EXPO_PUBLIC_SG_URL to test a live
-            gateway. Empty channel lists pull every channel the session can access. Start/Restart
-            follows the compiled schema (continuous vs oneshot).
-          </Text>
           {result ? <Text style={styles.result}>{result}</Text> : null}
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={showDiag ? 'Hide diagnostics' : 'Show diagnostics'}
+            onPress={() => setShowDiag((v) => !v)}
+            style={({ pressed }) => [styles.secondary, thumb, pressed && styles.pressed]}
+          >
+            <Text style={styles.secondaryLabel}>{showDiag ? 'Hide diagnostics' : 'Show diagnostics'}</Text>
+          </Pressable>
+          {showDiag ? (
+            <>
+              {sync?.cblLogDir ? (
+                <Text style={styles.path} selectable>
+                  CBL logs {sync.cblLogDir} (VERBOSE ALL — Xcode / Simulator)
+                </Text>
+              ) : null}
+              <Text style={styles.label}>Last 10 pushed</Text>
+              {(sync?.pushSuccess ?? []).length === 0 ? (
+                <Text style={styles.muted}>None yet</Text>
+              ) : (
+                (sync?.pushSuccess ?? []).map((row) => (
+                  <Text key={`${row.collection}:${row.id}`} style={styles.path} selectable>
+                    {row.collection}/{row.id}
+                  </Text>
+                ))
+              )}
+              <Text style={styles.label}>Next 10 pending push</Text>
+              {sync?.pendingError ? (
+                <Text style={styles.replError} selectable>
+                  Pending API {sync.pendingError}
+                </Text>
+              ) : null}
+              {(sync?.pushPendingIds ?? []).length === 0 ? (
+                <Text style={styles.muted}>None (native pending n/a or empty)</Text>
+              ) : (
+                (sync?.pushPendingIds ?? []).map((row) => (
+                  <Text key={`${row.collection}:${row.id}`} style={styles.path} selectable>
+                    {row.collection}/{row.id}
+                  </Text>
+                ))
+              )}
+              {sync?.pushInspect ? (
+                <Text style={styles.path} selectable>
+                  Push inspect {sync.pushInspect}
+                </Text>
+              ) : null}
+              {sync?.lastDocId && isOperatorCollection(sync.lastDocCollection ?? '') ? (
+                <Text style={styles.row}>
+                  Last doc {sync.lastDocCollection ?? '—'}/{sync.lastDocId}
+                  {sync.lastErrorClass ? ` · ${sync.lastErrorClass}` : ''}
+                </Text>
+              ) : null}
+              {sync?.lastErrorClass ? (
+                <Text style={styles.row}>
+                  Last HTTP {sync.lastErrorCode} ({sync.lastErrorClass})
+                </Text>
+              ) : null}
+              <Text style={styles.muted}>
+                Conflict resolvers are per collection (switch/case). CBL default today.
+              </Text>
+              <Text style={styles.muted}>
+                Demo never starts the replicator. Empty channel lists pull every channel the session
+                can access.
+              </Text>
+            </>
+          ) : null}
 
           <Pressable
             accessibilityRole="button"
@@ -514,6 +556,7 @@ const styles = StyleSheet.create({
   path: { fontSize: theme.type.sm, color: theme.color.text, marginBottom: theme.space.xs },
   muted: { fontSize: theme.type.sm, color: theme.color.muted, marginBottom: theme.space.md },
   result: { fontSize: theme.type.md, color: theme.color.accentDeep, marginBottom: theme.space.sm },
+  replError: { fontSize: theme.type.md, color: theme.color.danger, marginBottom: theme.space.sm },
   label: { fontSize: theme.type.sm, color: theme.color.muted, marginBottom: theme.space.xs, marginTop: theme.space.sm },
   input: {
     minHeight: 48,

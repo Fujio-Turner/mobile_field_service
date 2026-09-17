@@ -1,6 +1,8 @@
 import { FIELD_COLLECTIONS } from '../../src/db/collections';
+import { evalPushFilterSrc } from '../../src/sync/inspectPush';
 import {
   FIELD_PUSH_FILTERS,
+  WORKORDERSOUT_PUSH_FILTER_SRC,
   customersPushFilter,
   inventoryPushFilter,
   messagesPushFilter,
@@ -58,7 +60,12 @@ describe('push filters', () => {
     expect(customersPushFilter({ origin: 'field', readyToPush: true })).toBe(true);
     expect(customersPushFilter({ origin: 'dispatch', readyToPush: true })).toBe(false);
     for (const [name, fn] of Object.entries(FIELD_PUSH_FILTERS)) {
-      expect({ name, src: fn.toString().includes('show source') }).toEqual({ name, src: true });
+      const src = fn.toString();
+      expect({ name, evalable: src.startsWith('function(') }).toEqual({ name, evalable: true });
+      expect(src.includes('[native code]')).toBe(false);
     }
+    expect(workordersoutPushFilter.toString()).toContain('ready_to_push');
+    expect(evalPushFilterSrc(WORKORDERSOUT_PUSH_FILTER_SRC, { syncState: 'ready_to_push' })).toBe(true);
+    expect(evalPushFilterSrc(WORKORDERSOUT_PUSH_FILTER_SRC, { syncState: 'local_draft' })).toBe(false);
   });
 });
