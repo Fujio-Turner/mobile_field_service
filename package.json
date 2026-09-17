@@ -7,7 +7,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "start": "expo start",
+    "start": "expo start --dev-client",
+    "start:ios": "expo start --dev-client --localhost --ios",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "postinstall": "bash scripts/fetch-cbl-native.sh",

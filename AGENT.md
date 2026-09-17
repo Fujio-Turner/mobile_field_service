@@ -52,7 +52,7 @@ Canonical collection docs: **`docs/schema/SCHEMA_*.md`**. Index: `docs/schema/RE
 
 ## Code hygiene
 
-- Expo **development builds**, not Expo Go. `postinstall` (`scripts/fetch-cbl-native.sh`) fetches `ios/cbl-js-swift` + `src/cblite-js` (npm does not clone those). Missing `DatabaseManager.swift` → 50+ Swift “not in scope” errors; re-run the script, then rebuild.
+- Expo **development builds**, not Expo Go. `postinstall` (`scripts/fetch-cbl-native.sh`) fetches `ios/cbl-js-swift` + `src/cblite-js` (npm does not clone those). Missing `DatabaseManager.swift` → 50+ Swift “not in scope” errors; re-run the script, then rebuild. After the first `npx expo run:ios`, JS comes from Metro: `npm run start:ios` (simulator / localhost) or `npm start` (LAN). The Expo **Development servers** screen means Metro is down, not an app crash.
 - Local Expo plugins: `plugin.config.js` (CBL), `plugin.fmt.js` (Xcode 26.4+ `{fmt}` 11.0.2 consteval). `ios/` is gitignored; plugins re-inject on prebuild. Remove `plugin.fmt.js` after Expo SDK 56.
 - Version from `app.json` / Expo Application APIs — never hard-code in UI. Ship lockstep: `package.json`, `app.json` (`expo.version` + iOS `buildNumber` + Android `versionCode`), [RELEASE_NOTES.md](RELEASE_NOTES.md), and product-doc `Version` fields.
 - After Hub-style JS templates: no nested backticks (if any web/HTML strings appear).

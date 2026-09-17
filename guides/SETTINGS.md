@@ -131,6 +131,7 @@ Useful in the simulator: `xcrun simctl openurl booted 'mfs://…'`.
 
 | URL | Screen |
 | --- | --- |
+| `mfs://expo-development-client/?url=http://127.0.0.1:8081` | Load Metro (simulator). Use after `npm run start:ios`. Not a product route. |
 | `mfs://` | Today |
 | `mfs://notes` `map` `inventory` `chat` `profile` | Tabs |
 | `mfs://search` | FTS |
