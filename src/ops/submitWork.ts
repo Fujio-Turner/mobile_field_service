@@ -7,6 +7,7 @@ import { OutError } from './outError';
 import { loadOutboundRaw } from './outboundStore';
 import { setSyncState } from './setSyncState';
 import { listTasksForWork } from './tasks';
+import { cancelWork, completeWork } from './transitionStatus';
 
 export async function markJobChildrenReadyToPush(wooutId: string): Promise<void> {
   for (const t of await listTasksForWork(wooutId)) {
@@ -34,4 +35,19 @@ export async function submitWork(id: string, session: StartSession): Promise<voi
   await setSyncState(id, 'ready_to_push', session);
   await markJobChildrenReadyToPush(id);
   log.info('mfs.wo.submit', { op: 'SubmitWork', collection: 'workordersout', docId: id });
+}
+
+/** Freeze + queue push in one step so Complete is not a third tap after freeze. */
+export async function completeAndSubmitWork(id: string, session: StartSession): Promise<void> {
+  await completeWork(id, session);
+  await submitWork(id, session);
+}
+
+export async function cancelAndSubmitWork(
+  id: string,
+  session: StartSession,
+  cancelledReason: string,
+): Promise<void> {
+  await cancelWork(id, session, cancelledReason);
+  await submitWork(id, session);
 }

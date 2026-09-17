@@ -7,6 +7,7 @@ function badgeLabel(badge: TodayBadge): string | null {
   if (badge === 'started') return 'Started';
   if (badge === 'reassigned') return 'Reassigned';
   if (badge === 'amendment') return 'Amendment';
+  if (badge === 'done') return 'Done';
   return null;
 }
 
@@ -56,8 +57,23 @@ export const TodayRowView = memo(function TodayRowView({
         <Text style={styles.time}>{formatTime(row.startDt)}</Text>
         <Text style={styles.priority}>{row.priority}</Text>
         {label ? (
-          <View style={[styles.badge, row.badge === 'reassigned' ? styles.badgeWarn : styles.badgeAccent]}>
-            <Text style={row.badge === 'reassigned' ? styles.badgeTextWarn : styles.badgeTextAccent}>{label}</Text>
+          <View
+            style={[
+              styles.badge,
+              row.badge === 'reassigned' ? styles.badgeWarn : row.badge === 'done' ? styles.badgeDone : styles.badgeAccent,
+            ]}
+          >
+            <Text
+              style={
+                row.badge === 'reassigned'
+                  ? styles.badgeTextWarn
+                  : row.badge === 'done'
+                    ? styles.badgeTextDone
+                    : styles.badgeTextAccent
+              }
+            >
+              {label}
+            </Text>
           </View>
         ) : null}
       </View>
@@ -105,7 +121,9 @@ const styles = StyleSheet.create({
   },
   badgeWarn: { backgroundColor: theme.color.warnSoft },
   badgeAccent: { backgroundColor: theme.color.accentSoft },
+  badgeDone: { backgroundColor: theme.color.okSoft },
   badgeTextWarn: { fontSize: theme.type.sm, color: theme.color.warn, fontWeight: '600' },
   badgeTextAccent: { fontSize: theme.type.sm, color: theme.color.accent, fontWeight: '600' },
+  badgeTextDone: { fontSize: theme.type.sm, color: theme.color.ok, fontWeight: '600' },
   chevron: { fontSize: 22, color: theme.color.muted, marginLeft: theme.space.sm, fontWeight: '300' },
 });

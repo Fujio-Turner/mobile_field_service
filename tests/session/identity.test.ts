@@ -9,8 +9,15 @@ describe('resolveLoginIdentity', () => {
     expect(resolveLoginIdentity('priya.shah@example.com')?.workModes).toEqual(['sales']);
   });
 
-  it('rejects unknown emails', () => {
+  it('rejects a blank identifier', () => {
     expect(resolveLoginIdentity('')).toBeNull();
-    expect(resolveLoginIdentity('nobody@example.com')).toBeNull();
+    expect(resolveLoginIdentity('   ')).toBeNull();
+  });
+
+  it('passes through unknown emails for Capella / SG login', () => {
+    const id = resolveLoginIdentity('tech@capella.example');
+    expect(id?.email).toBe('tech@capella.example');
+    expect(id?.username).toBe('tech');
+    expect(id?.employeeId).toBe('tech@capella.example');
   });
 });

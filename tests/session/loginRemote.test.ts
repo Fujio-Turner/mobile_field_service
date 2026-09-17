@@ -26,7 +26,10 @@ describe('loginRemoteBasic', () => {
     expect(JSON.stringify(result.session)).not.toMatch(/secret/);
     expect(fetchMock).toHaveBeenCalledWith(
       'https://sg.example:4984/mfs/_session',
-      expect.objectContaining({ method: 'POST' }),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ name: 'jon.hale@example.com', password: 'secret' }),
+      }),
     );
   });
 

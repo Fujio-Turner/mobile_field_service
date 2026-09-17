@@ -27,6 +27,12 @@ export type SyncSnapshot = {
   lastOneshotAt?: number;
   activeCollections: string[];
   lastErrorClass?: string;
+  lastErrorMessage?: string;
+  pushInspect?: string;
+  pushSuccess?: Array<{ id: string; collection: string; dt?: number }>;
+  pushPendingIds?: Array<{ id: string; collection: string; dt?: number }>;
+  pendingError?: string;
+  cblLogDir?: string;
   docsCompleted: number;
   docsFailed: number;
   docsPushOk: number;

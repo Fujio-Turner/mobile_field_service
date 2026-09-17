@@ -1,4 +1,5 @@
 import { isDbEncryptionEnabled } from '../dev/dbEncryption';
+import { configureCblFileLogs } from '../log/cblSinks';
 import { dbNameForUser } from '../ids';
 import { log } from '../log/logger';
 import {
@@ -41,6 +42,15 @@ export type CblDatabase = {
   createQuery: (sql: string) => QueryLike;
   getPath?: () => Promise<string>;
   deleteDatabase?: () => Promise<void>;
+  log?: {
+    setFileConfig: (cfg: {
+      level: number;
+      directory: string;
+      maxRotateCount?: number;
+      maxSize?: number;
+      usePlaintext?: boolean;
+    }) => Promise<void>;
+  };
 };
 
 export type OpenedDatabase = {
@@ -103,12 +113,17 @@ export async function openFieldDatabase(employeeId: string): Promise<OpenedDatab
   const hex = await sha256Hex(employeeId);
   const name = dbNameForUser(employeeId, hex);
   if (opened && opened.name === name) return asOpened(opened);
+  try {
+    const { stopReplicator } = require('../sync/replicator') as { stopReplicator: () => Promise<void> };
+    await stopReplicator();
+  } catch {
+    /* replicator may not be running */
+  }
   if (opened) {
     await opened.db.close();
     opened = null;
     resetCollectionCache();
   }
-
   await closeLeftoverNative(employeeId);
 
   const directoryPath = await new FileSystem().getDefaultPath();
@@ -196,6 +211,7 @@ async function openAt(
   }
   if (!path) path = cblite2Folder(directoryPath, name);
   opened = { db, name, directory: directoryPath, path };
+  await configureCblFileLogs(db);
   log.info('mfs.db.open', { op: 'OpenFieldDatabase', encryption: encrypt });
   return asOpened(opened);
 }

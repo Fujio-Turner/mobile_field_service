@@ -19,7 +19,7 @@ export async function loginRemoteBasic(
     return { ok: false, error: "Can't reach the server. You can still open last session if it hasn't expired." };
   }
   const minted = await mintSgSession({
-    identifier: identity.email,
+    identifier: identifier.trim(),
     password,
     sgUrl,
     nowSec,

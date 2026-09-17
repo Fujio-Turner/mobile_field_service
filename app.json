@@ -19,7 +19,18 @@
       "buildNumber": "1",
       "infoPlist": {
         "NSCameraUsageDescription": "Take photos of work, parts, and proof of delivery.",
-        "NSLocationWhenInUseUsageDescription": "Stamp where work happened and record movement crumbs while you are using the app."
+        "NSLocationWhenInUseUsageDescription": "Stamp where work happened and record movement crumbs while you are using the app.",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": false,
+          "NSAllowsLocalNetworking": true,
+          "NSExceptionDomains": {
+            "apps.cloud.couchbase.com": {
+              "NSIncludesSubdomains": true,
+              "NSExceptionMinimumTLSVersion": "TLSv1.2",
+              "NSExceptionRequiresForwardSecrecy": false
+            }
+          }
+        }
       }
     },
     "android": {
@@ -53,6 +64,7 @@
       "@maplibre/maplibre-react-native",
       "./plugin.config.js",
       "./plugin.fmt.js",
+      "./plugin.capellaAts.js",
       [
         "expo-build-properties",
         {

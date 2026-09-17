@@ -3,9 +3,9 @@ import { seedInboundJobs } from '../../src/db/seedData';
 import { resetCopyOnWriteTotals } from '../../src/metrics/copyOnWrite';
 import { createNote, deleteNote, listNotes, updateNote } from '../../src/ops/notes';
 import { OutError } from '../../src/ops/outError';
-import { childReadyToPush, completeBlockedReason } from '../../src/ops/outStatus';
+import { childReadyToPush, completeBlockedReason, remainingCompleteItems } from '../../src/ops/outStatus';
 import { startWork } from '../../src/ops/startWork';
-import { submitWork } from '../../src/ops/submitWork';
+import { completeAndSubmitWork, submitWork } from '../../src/ops/submitWork';
 import {
   completeTask,
   cycleTaskStatus,
@@ -51,6 +51,11 @@ describe('completeBlockedReason tasks', () => {
         { type: 'task', required: true, status: 'open', title: 'Lockout / tagout' },
       ]),
     ).toMatch(/Lockout/);
+    expect(
+      remainingCompleteItems({ operations: [], checklist: [] }, [
+        { type: 'task', required: true, status: 'open', title: 'Lockout / tagout' },
+      ]),
+    ).toEqual(['Lockout / tagout']);
     expect(
       completeBlockedReason({ operations: [], checklist: [] }, [
         { type: 'task', required: true, status: 'skipped', title: 'Lockout / tagout' },
@@ -99,6 +104,17 @@ describe('tasks', () => {
     await completeTask(tasks[0].id, session);
     await completeWork(id, session);
     expect(memoryGet('workordersout', id)?.status).toBe('complete');
+  });
+
+  it('completeAndSubmitWork freezes and queues push', async () => {
+    const id = await started();
+    await startOrResumeWork(id, session);
+    memorySave('workordersout', id, markOpsChecklist(memoryGet('workordersout', id)!));
+    for (const t of await listTasksForWork(id)) await completeTask(t.id, session);
+    await completeAndSubmitWork(id, session);
+    const doc = memoryGet('workordersout', id);
+    expect(doc?.status).toBe('complete');
+    expect(doc?.syncState).toBe('ready_to_push');
   });
 
   it('cycles open → done → skipped', () => {
