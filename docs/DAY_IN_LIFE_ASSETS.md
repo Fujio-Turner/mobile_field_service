@@ -45,7 +45,7 @@ Not the center of this day: `orders`, `rates`, `taxes` (those are customer/sales
 | Chat | `app/(tabs)/chat.tsx` | `messages` | `SendMessage` |
 | Notes | `app/(tabs)/notes.tsx` | `notes` | `CreateNote` (general) |
 | Profile | `app/(tabs)/profile.tsx` | — | Thumb zone, crumbs count, Settings / debug |
-| Search | `app/search/index.tsx` | notes / products / assets FTS | |
+| Search | `app/search/index.tsx` | notes + assets FTS | |
 
 ---
 

@@ -8,7 +8,7 @@
 | Author | Fujio-Turner / mobile_field_service |
 | Date | 2026-09-06 |
 | Version | 0.1.0 ([RELEASE_NOTES.md](../RELEASE_NOTES.md)) |
-| Status | Demo login `priya.shah@example.com` (`E-8801`). Today is orders (ORD-3301). Map tab hidden. |
+| Status | Demo login `priya.shah@example.com` (`E-8801`). Today is orders (ORD-3301). Map plots customers / order sites. |
 | Index | [DAY_IN_LIFE.md](./DAY_IN_LIFE.md) |
 | Orders schema | [schema/SCHEMA_ORDERS.md](./schema/SCHEMA_ORDERS.md) |
 | Rates / taxes | [schema/SCHEMA_RATES.md](./schema/SCHEMA_RATES.md), [schema/SCHEMA_TAXES.md](./schema/SCHEMA_TAXES.md) |
@@ -40,7 +40,9 @@ Channel `emp:E-8801`. Today’s board is **orders** assigned to her (`role: inbo
 | Today | `app/(tabs)/index.tsx` (orders) | `orders` | `ListTodayOrders` |
 | Order | `app/order/[id].tsx` | KV | `GetOrder`, `StartOrder` |
 | Catalog | products search | `products`, `rates`, `taxes` | `AddOrderLine`, `PriceLines` |
-| Customer | `app/customer/[id].tsx` | `customers` | `GetCustomer`, `CreateCustomer` |
+| Customer | `app/customer/[id].tsx` | `customers` | `GetCustomer`, `CreateCustomer` (address / geo) |
+| Map | `app/(tabs)/map.tsx` | `customers`, `orders` | `QueryCustomersInBBox`, order `site.geo` |
+| Search | `app/search/index.tsx` | notes / products / customers FTS | |
 | Deliver | same order editor | blobs + inventory | `CommitPhoto`, `ConsumeInventoryOnWork` (order-scoped) |
 
 ---
@@ -97,7 +99,7 @@ Today badge **Reassigned**. Her working copy still submits. The new assignee may
 
 ## Beat sheet
 
-1. Login Priya, `workModes: ["sales"]`, Today is orders not WOs.
+1. Login Priya, `workModes: ["sales"]`, Today is orders not WOs. Map tab is on (customers / stops, not pumps).
 2. StartOrder copy; inbound JSON unchanged.
 3. Deliver + POD + CompleteOrder + SubmitOrder.
 4. Field `CreateOrder` priced from rates/taxes.
