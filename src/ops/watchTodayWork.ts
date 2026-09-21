@@ -1,6 +1,6 @@
 import { getOpenedDatabase, nativeDbAvailable } from '../db/database';
 import { attachLiveQuery, type LiveQueryHandle } from '../db/liveQuery';
-import { applyParams, normalizeResults } from '../db/query';
+import { applyParams } from '../db/query';
 import { deviceLocalDay } from '../ids';
 import { collapseTodayPage } from './collapseToday';
 import { findOutboundForSources, sourceIdsNeedingOutboundLookup } from './findOutboundForSources';
@@ -127,14 +127,7 @@ export async function watchTodayWork(
     return { stop: async () => undefined };
   }
 
-  try {
-    lastInbound = parseInboundHits(normalizeResults(await inboundQuery.execute()));
-    lastActive = parseOutboundHits(normalizeResults(await outboundQuery.execute()));
-    // Coalesce with the live listener's first snapshot instead of collapsing twice.
-    schedule();
-  } catch (e) {
-    onRows([], { preview: false, error: e instanceof Error ? e.message : 'Query failed' });
-  }
+  // addChangeListener delivers the current snapshot; do not execute the same SQL++ again.
 
   return {
     stop: async () => {

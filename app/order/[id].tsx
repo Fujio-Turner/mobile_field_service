@@ -2,17 +2,14 @@ import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { memorySave } from '@/src/db/memoryStore';
-import { nativeDbAvailable } from '@/src/db/database';
+import { ensureMemoryCatalog, ensureMemoryCustomers, ensureMemoryOrders } from '@/src/db/ensureMemoryDemo';
+import { deviceLocalDay } from '@/src/ids';
 import {
   SEED_PRODUCT_ID,
   SEED_RATE_ID,
   SEED_RATE_LABOR_ID,
   SEED_TAX_ID,
   SEED_VAN_ID,
-  seedCustomerDoc,
-  seedInboundOrders,
-  seedProductsRatesTaxes,
 } from '@/src/db/seedData';
 import { captureAndCommitOrderPhoto } from '@/src/ops/capturePhoto';
 import { createCustomer, getCustomer, searchCustomers, type CustomerItem } from '@/src/ops/customers';
@@ -48,16 +45,9 @@ import { FieldInput } from '@/src/ui/FieldInput';
 import { theme } from '@/src/theme';
 
 function ensureCatalog() {
-  if (nativeDbAvailable()) return;
-  const catalog = seedProductsRatesTaxes('0.1.0+1', 1_700_000_000);
-  for (const row of catalog.products) memorySave('products', row.id, row.doc as never);
-  for (const row of catalog.rates) memorySave('rates', row.id, row.doc as never);
-  for (const row of catalog.taxes) memorySave('taxes', row.id, row.doc as never);
-  for (const row of catalog.inventory) memorySave('inventory', row.id, row.doc as never);
-  memorySave('customers', 'cus:01K4Q6CCC00000000000000001', seedCustomerDoc('0.1.0+1', 1_700_000_000) as never);
-  for (const inbound of seedInboundOrders('0.1.0+1', 1_700_000_000)) {
-    memorySave('orders', inbound.id, inbound.doc as never);
-  }
+  ensureMemoryCatalog();
+  ensureMemoryCustomers();
+  ensureMemoryOrders(deviceLocalDay());
 }
 
 function showErr(e: unknown) {

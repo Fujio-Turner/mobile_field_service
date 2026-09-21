@@ -240,12 +240,26 @@ export async function listInventoryTxForWork(wooutId: string): Promise<Inventory
   return listTxRows({ wooutId });
 }
 
+async function productNamesByIds(ids: string[]): Promise<Map<string, string>> {
+  const names = new Map<string, string>();
+  const unique = [...new Set(ids.filter(Boolean))];
+  await Promise.all(
+    unique.map(async (id) => {
+      const raw = await loadChild('products', id);
+      if (!raw) return;
+      const parsed = parseProduct(id, raw);
+      if (parsed?.name) names.set(id, parsed.name);
+    }),
+  );
+  return names;
+}
+
 export async function listStockAtLocation(locationId: string): Promise<DisplayStock[]> {
   const stocks = await listStockRows(locationId);
   const txs = await listTxRows({ locationId });
-  const catalog = await searchProducts();
-  const names = new Map(catalog.map((p) => [p.id, p.name]));
-  return rebuildStock(stocks, txs, locationId).map((s) => ({
+  const rebuilt = rebuildStock(stocks, txs, locationId);
+  const names = await productNamesByIds(rebuilt.map((s) => s.productId));
+  return rebuilt.map((s) => ({
     ...s,
     productName: names.get(s.productId),
   }));

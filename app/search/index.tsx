@@ -4,9 +4,7 @@ import { useRouter } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { FieldInput } from '@/src/ui/FieldInput';
 import { Stack } from 'expo-router';
-import { memorySave } from '@/src/db/memoryStore';
-import { nativeDbAvailable } from '@/src/db/database';
-import { SEED_CUSTOMER_ID, seedAssets, seedCustomerDoc, seedProductsRatesTaxes } from '@/src/db/seedData';
+import { ensureMemoryAssets, ensureMemoryCatalog, ensureMemoryCustomers } from '@/src/db/ensureMemoryDemo';
 import { listOpenJobs } from '@/src/ops/assets';
 import { ftsSearch, type FtsHit } from '@/src/ops/ftsSearch';
 import { useAuth } from '@/src/session/AuthContext';
@@ -15,11 +13,9 @@ import { NativeBanner } from '@/src/ui/NativeBanner';
 import { theme } from '@/src/theme';
 
 function ensure() {
-  if (nativeDbAvailable()) return;
-  for (const row of seedAssets('0.1.0+1', 1_700_000_000)) memorySave('assets', row.id, row.doc as never);
-  const c = seedProductsRatesTaxes('0.1.0+1', 1_700_000_000);
-  for (const row of c.products) memorySave('products', row.id, row.doc as never);
-  memorySave('customers', SEED_CUSTOMER_ID, seedCustomerDoc('0.1.0+1', 1_700_000_000) as never);
+  ensureMemoryAssets();
+  ensureMemoryCatalog();
+  ensureMemoryCustomers();
 }
 
 function placeholderFor(kinds: string[]): string {
@@ -32,6 +28,7 @@ export default function SearchScreen() {
   const router = useRouter();
   const { session } = useAuth();
   const modes = workModesFromSession(session);
+  const needsKitJobs = modes.includes('customer') && !modes.includes('assets');
   const [q, setQ] = useState('');
   const [rows, setRows] = useState<FtsHit[]>([]);
   const [kitJob, setKitJob] = useState(false);
@@ -50,18 +47,22 @@ export default function SearchScreen() {
       let cancelled = false;
       (async () => {
         ensure();
-        if (session) {
+        if (session && needsKitJobs) {
           const jobs = await listOpenJobs(session.employeeId);
           if (!cancelled) setKitJob(jobs.some((j) => j.kit));
         }
         const needle = qRef.current.trim();
-        const hits = needle ? await ftsSearch(needle, kinds) : [];
+        if (!needle) {
+          if (!cancelled) setRows([]);
+          return;
+        }
+        const hits = await ftsSearch(needle, kinds);
         if (!cancelled) setRows(hits);
       })();
       return () => {
         cancelled = true;
       };
-    }, [kinds, session]),
+    }, [kinds, session, needsKitJobs]),
   );
 
   function openHit(item: FtsHit) {

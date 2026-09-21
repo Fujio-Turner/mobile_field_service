@@ -95,44 +95,56 @@ export default function TodayScreen() {
     if (!employeeId) return;
     setError(null);
     try {
-      let result = await listTodayWork({ employeeId, day, offset: 0 });
-      if (session && nativeDbAvailable() && getOpenedDatabase()) {
-        let applied = false;
-        for (const row of result.rows) {
-          if (row.openCollection !== 'workordersout') continue;
-          const out = await applyInboundDecision(row.openId, session, rules);
-          if (out.action === 'apply' || out.action === 'drop') applied = true;
+      if (showJobs) {
+        let result = await listTodayWork({ employeeId, day, offset: 0 });
+        if (session && nativeDbAvailable() && getOpenedDatabase()) {
+          let applied = false;
+          for (const row of result.rows) {
+            if (row.openCollection !== 'workordersout') continue;
+            const out = await applyInboundDecision(row.openId, session, rules);
+            if (out.action === 'apply' || out.action === 'drop') applied = true;
+          }
+          if (applied) result = await listTodayWork({ employeeId, day, offset: 0 });
         }
-        if (applied) result = await listTodayWork({ employeeId, day, offset: 0 });
+        applyPage0(result.rows, result.preview, result.inboundCount);
+      } else {
+        applyPage0([], false, 0);
       }
-      applyPage0(result.rows, result.preview, result.inboundCount);
-      if (!nativeDbAvailable()) await loadOrders();
+      if (!nativeDbAvailable() && showOrders) await loadOrders();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Query failed');
     }
-  }, [employeeId, day, applyPage0, loadOrders, session, rules]);
+  }, [employeeId, day, applyPage0, loadOrders, session, rules, showJobs, showOrders]);
 
   useEffect(() => {
     if (!employeeId) return;
     if (dbStatus === 'opening') return;
     let cancelled = false;
     (async () => {
-      const handle = await watchTodayWork({ employeeId, day }, (next, meta) => {
-        if (cancelled) return;
-        if (meta.error) {
-          setError(meta.error);
-          return;
-        }
-        applyPage0(next, meta.preview, meta.inboundCount ?? next.length);
-        setError(null);
-      });
-      watchRef.current = handle;
-      const ordersHandle = await watchTodayOrders({ employeeId, day }, (next, meta) => {
-        if (cancelled) return;
-        if (meta.error) return;
-        setOrders(next);
-      });
-      ordersWatchRef.current = ordersHandle;
+      if (showJobs) {
+        const handle = await watchTodayWork({ employeeId, day }, (next, meta) => {
+          if (cancelled) return;
+          if (meta.error) {
+            setError(meta.error);
+            return;
+          }
+          applyPage0(next, meta.preview, meta.inboundCount ?? next.length);
+          setError(null);
+        });
+        watchRef.current = handle;
+      } else {
+        applyPage0([], false, 0);
+      }
+      if (showOrders) {
+        const ordersHandle = await watchTodayOrders({ employeeId, day }, (next, meta) => {
+          if (cancelled) return;
+          if (meta.error) return;
+          setOrders(next);
+        });
+        ordersWatchRef.current = ordersHandle;
+      } else {
+        setOrders([]);
+      }
     })();
     return () => {
       cancelled = true;
@@ -141,7 +153,7 @@ export default function TodayScreen() {
       void ordersWatchRef.current?.stop();
       ordersWatchRef.current = null;
     };
-  }, [employeeId, day, dbStatus, applyPage0]);
+  }, [employeeId, day, dbStatus, applyPage0, showJobs, showOrders]);
 
   useFocusEffect(
     useCallback(() => {
@@ -152,7 +164,7 @@ export default function TodayScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      if (nativeDbAvailable() && dbStatus === 'ready' && session && rows.length > 0) {
+      if (showJobs && nativeDbAvailable() && dbStatus === 'ready' && session && rows.length > 0) {
         for (const row of rows) {
           if (row.openCollection !== 'workordersout') continue;
           await applyInboundDecision(row.openId, session, rules);
@@ -163,7 +175,7 @@ export default function TodayScreen() {
     } finally {
       setRefreshing(false);
     }
-  }, [dbStatus, loadPage0, rows, rules, session]);
+  }, [dbStatus, loadPage0, rows, rules, session, showJobs]);
 
   const openRow = useCallback(
     (row: TodayRow) => {

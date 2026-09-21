@@ -3,9 +3,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { FieldInput } from '@/src/ui/FieldInput';
-import { memorySave } from '@/src/db/memoryStore';
-import { SEED_RATE_ID, SEED_TAX_ID, SEED_VAN_ID, seedProductsRatesTaxes, seedUserDoc } from '@/src/db/seedData';
-import { nativeDbAvailable } from '@/src/db/database';
+import { ensureMemoryCatalog } from '@/src/db/ensureMemoryDemo';
+import { SEED_RATE_ID, SEED_TAX_ID, SEED_VAN_ID } from '@/src/db/seedData';
 import { VanStockConsume } from '@/src/features/inventory/VanStockConsume';
 import {
   DEFAULT_VAN_ID,
@@ -22,13 +21,7 @@ import { useAuth } from '@/src/session/AuthContext';
 import { NativeBanner } from '@/src/ui/NativeBanner';
 import { theme } from '@/src/theme';
 
-function ensureCatalog() {
-  if (nativeDbAvailable()) return;
-  const catalog = seedProductsRatesTaxes('0.1.0+1', 1_700_000_000);
-  for (const row of catalog.products) memorySave('products', row.id, row.doc as never);
-  for (const row of catalog.inventory) memorySave('inventory', row.id, row.doc as never);
-  memorySave('users', 'usr:demo', seedUserDoc('0.1.0+1', 1_700_000_000) as never);
-}
+
 
 export default function InventoryScreen() {
   const { wooutId, orderId } = useLocalSearchParams<{ wooutId?: string; orderId?: string }>();
@@ -43,7 +36,7 @@ export default function InventoryScreen() {
   qRef.current = q;
 
   const reload = useCallback(async () => {
-    ensureCatalog();
+    ensureMemoryCatalog();
     const loc = session ? await vanLocationIdForEmployee(session.employeeId) : DEFAULT_VAN_ID;
     setLocationId(loc);
     setStock(await listStockAtLocation(loc));

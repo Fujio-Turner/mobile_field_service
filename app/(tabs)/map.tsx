@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { ensureMemoryAssets } from '@/src/db/ensureMemoryDemo';
-import { memorySave } from '@/src/db/memoryStore';
-import { nativeDbAvailable } from '@/src/db/database';
-import { SEED_CUSTOMER_ID, seedCustomerDoc, seedInboundOrders } from '@/src/db/seedData';
+import { ensureMemoryAssets, ensureMemoryCustomers, ensureMemoryOrders } from '@/src/db/ensureMemoryDemo';
+import { deviceLocalDay } from '@/src/ids';
 import { clusterAssets, clusterCellM } from '@/src/geo/cluster';
 import { bboxAround, type BBox } from '@/src/geo/haversine';
 import { requestAndGetFix } from '@/src/geo/location';
@@ -28,12 +26,10 @@ const DEFAULT_RADIUS_M = 2000;
 
 type Mode = 'area' | 'job' | 'me';
 
-function ensureCustomers() {
-  if (nativeDbAvailable()) return;
-  memorySave('customers', SEED_CUSTOMER_ID, seedCustomerDoc('0.1.0+1', 1_700_000_000) as never);
-  for (const inbound of seedInboundOrders('0.1.0+1', 1_700_000_000)) {
-    memorySave('orders', inbound.id, inbound.doc as never);
-  }
+function ensureMapMemory() {
+  ensureMemoryAssets();
+  ensureMemoryCustomers();
+  ensureMemoryOrders(deviceLocalDay());
 }
 
 export default function MapScreen() {
@@ -69,8 +65,7 @@ export default function MapScreen() {
 
   const reload = useCallback(
     async (nextBox: BBox, nextCenter: { lat: number; lon: number }) => {
-      ensureMemoryAssets();
-      ensureCustomers();
+      ensureMapMemory();
       if (plotAssets) {
         const rows = await queryAssetsInBBox(nextBox, nextCenter, assetType ? { assetType } : undefined);
         setAssets(rows);
@@ -89,15 +84,20 @@ export default function MapScreen() {
   );
 
   useEffect(() => {
-    ensureMemoryAssets();
-    ensureCustomers();
-    if (session) void listOpenJobs(session.employeeId).then(setJobs);
     void styleReachable().then(setOnline);
-  }, [session]);
+  }, []);
+
+  useEffect(() => {
+    if (!session || !plotAssets) {
+      setJobs([]);
+      return;
+    }
+    void listOpenJobs(session.employeeId).then(setJobs);
+  }, [session, plotAssets]);
 
   useEffect(() => {
     void reload(box, center);
-  }, [assetType, box, center, reload]);
+  }, [assetType, box, reload, center]);
 
   useEffect(() => {
     return () => {

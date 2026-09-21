@@ -3,9 +3,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { FieldInput } from '@/src/ui/FieldInput';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { memorySave } from '@/src/db/memoryStore';
-import { nativeDbAvailable } from '@/src/db/database';
-import { SEED_DISPATCH_USER_ID, SEED_USER_ID, seedDispatchUserDoc, seedUserDoc } from '@/src/db/seedData';
+import { ensureMemoryEmployees } from '@/src/db/ensureMemoryDemo';
 import { ChatRefChips } from '@/src/features/chat/ChatRefChips';
 import {
   ChatError,
@@ -17,12 +15,6 @@ import {
 import { useAuth } from '@/src/session/AuthContext';
 import { theme } from '@/src/theme';
 
-function ensureEmployees() {
-  if (nativeDbAvailable()) return;
-  memorySave('users', SEED_USER_ID, seedUserDoc('0.1.0+1', 1_700_000_000) as never);
-  memorySave('users', SEED_DISPATCH_USER_ID, seedDispatchUserDoc('0.1.0+1', 1_700_000_000) as never);
-}
-
 export default function ChatThreadScreen() {
   const { threadId: raw } = useLocalSearchParams<{ threadId: string }>();
   const threadId = raw ? decodeURIComponent(raw) : '';
@@ -33,7 +25,7 @@ export default function ChatThreadScreen() {
 
   const reload = useCallback(async () => {
     if (!threadId) return;
-    ensureEmployees();
+    ensureMemoryEmployees();
     setMessages(await listMessages(threadId));
   }, [threadId]);
 

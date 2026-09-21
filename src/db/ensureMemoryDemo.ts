@@ -1,11 +1,13 @@
 import { nativeDbAvailable } from './database';
 import { memorySave } from './memoryStore';
 import {
+  SEED_CUSTOMER_ID,
   SEED_DISPATCH_USER_ID,
   SEED_MAYA_USER_ID,
   SEED_PRIYA_USER_ID,
   SEED_USER_ID,
   seedAssets,
+  seedCustomerDoc,
   seedDispatchUserDoc,
   seedInboundOrders,
   seedMayaUserDoc,
@@ -18,6 +20,7 @@ let assets = false;
 let catalog = false;
 let employees = false;
 let orders = false;
+let customers = false;
 
 /** Expo Go / tests: seed each demo slice at most once per process. */
 export function resetMemoryDemoFlags(): void {
@@ -25,6 +28,7 @@ export function resetMemoryDemoFlags(): void {
   catalog = false;
   employees = false;
   orders = false;
+  customers = false;
 }
 
 export function ensureMemoryAssets(): void {
@@ -62,4 +66,10 @@ export function ensureMemoryOrders(day: string): void {
   for (const inbound of seedInboundOrders('0.1.0+1', 1_700_000_000, day)) {
     memorySave('orders', inbound.id, inbound.doc as never);
   }
+}
+
+export function ensureMemoryCustomers(): void {
+  if (nativeDbAvailable() || customers) return;
+  customers = true;
+  memorySave('customers', SEED_CUSTOMER_ID, seedCustomerDoc('0.1.0+1', 1_700_000_000) as never);
 }
