@@ -2231,7 +2231,7 @@ Reopening `complete` → `in_progress` on the same id fights the backend that no
 | Inventory qty conflicts on shared vans | Medium | 1:1 van in v1 |
 | iOS background replicator killed | Medium | Restart replicator on foreground |
 | Expo Go used by mistake | Low | Missing native module screen |
-| Inbound auto-purge orphans outbound | Low | Keep outbound; active-outbound query (no day filter) |
+| Inbound auto-purge orphans outbound | Low | Keep outbound; active-outbound query. Reassigned rows only if `scheduled.day` is Today. |
 | Tracking map logged / leaked | High | Never log `tracking`; channel `emp:` only; no email in the id |
 | Location permission denied | Low | History still saves without lat/lon; crumbs simply skip |
 
