@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -7,8 +7,10 @@ import { Stack } from 'expo-router';
 import { memorySave } from '@/src/db/memoryStore';
 import { nativeDbAvailable } from '@/src/db/database';
 import { SEED_CUSTOMER_ID, seedAssets, seedCustomerDoc, seedProductsRatesTaxes } from '@/src/db/seedData';
-import { listCustomerHistory, type CustomerHistoryRow } from '@/src/ops/customerHistory';
+import { listOpenJobs } from '@/src/ops/assets';
 import { ftsSearch, type FtsHit } from '@/src/ops/ftsSearch';
+import { useAuth } from '@/src/session/AuthContext';
+import { searchKinds, workModesFromSession } from '@/src/session/workModes';
 import { NativeBanner } from '@/src/ui/NativeBanner';
 import { theme } from '@/src/theme';
 
@@ -20,40 +22,55 @@ function ensure() {
   memorySave('customers', SEED_CUSTOMER_ID, seedCustomerDoc('0.1.0+1', 1_700_000_000) as never);
 }
 
+function placeholderFor(kinds: string[]): string {
+  const labels = kinds.filter((k) => k !== 'note');
+  if (labels.length === 0) return 'Search notes';
+  return `Notes / ${labels.join(' / ')}`;
+}
+
 export default function SearchScreen() {
   const router = useRouter();
+  const { session } = useAuth();
+  const modes = workModesFromSession(session);
   const [q, setQ] = useState('');
   const [rows, setRows] = useState<FtsHit[]>([]);
-  const [history, setHistory] = useState<CustomerHistoryRow[]>([]);
+  const [kitJob, setKitJob] = useState(false);
   const qRef = useRef(q);
   qRef.current = q;
+  const kinds = useMemo(() => searchKinds(modes, { kitJob }), [modes, kitJob]);
 
   const search = useCallback(async () => {
     ensure();
     const needle = qRef.current.trim();
-    setRows(needle ? await ftsSearch(needle) : []);
-  }, []);
+    setRows(needle ? await ftsSearch(needle, kinds) : []);
+  }, [kinds]);
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
       (async () => {
         ensure();
-        const hist = await listCustomerHistory(SEED_CUSTOMER_ID);
-        if (!cancelled) setHistory(hist);
+        if (session) {
+          const jobs = await listOpenJobs(session.employeeId);
+          if (!cancelled) setKitJob(jobs.some((j) => j.kit));
+        }
         const needle = qRef.current.trim();
-        const hits = needle ? await ftsSearch(needle) : [];
+        const hits = needle ? await ftsSearch(needle, kinds) : [];
         if (!cancelled) setRows(hits);
       })();
       return () => {
         cancelled = true;
       };
-    }, []),
+    }, [kinds, session]),
   );
 
   function openHit(item: FtsHit) {
     if (item.kind === 'asset') router.push(`/asset/${item.id}`);
     else if (item.kind === 'note') router.push(`/note/${item.id}`);
+    else if (item.kind === 'customer') router.push(`/customer/${item.id}`);
+    else if (item.kind === 'product') {
+      router.push(`/order/new?productId=${encodeURIComponent(item.id)}`);
+    }
   }
 
   return (
@@ -65,7 +82,7 @@ export default function SearchScreen() {
           value={q}
           onChangeText={setQ}
           onEndEditing={() => void search()}
-          placeholder="Notes / products / assets"
+          placeholder={placeholderFor(kinds)}
           returnKeyType="search"
           placeholderTextColor={theme.color.muted}
           style={styles.input}
@@ -73,22 +90,6 @@ export default function SearchScreen() {
         <FlatList
           data={rows}
           keyExtractor={(item) => `${item.kind}:${item.id}`}
-          ListHeaderComponent={
-            history.length > 0 ? (
-              <View>
-                <Text style={styles.section}>Complete jobs (Hartford)</Text>
-                {history.map((h) => (
-                  <Pressable key={h.id} onPress={() => router.push(`/wo/out/${h.id}`)} style={styles.row}>
-                    <Text style={styles.kicker}>history</Text>
-                    <Text style={styles.title}>{h.number}</Text>
-                    <Text style={styles.muted} numberOfLines={1}>
-                      {h.summary}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            ) : null
-          }
           renderItem={({ item }) => (
             <Pressable onPress={() => openHit(item)} style={styles.row}>
               <Text style={styles.kicker}>{item.kind}</Text>
@@ -96,7 +97,9 @@ export default function SearchScreen() {
               {item.sub ? <Text style={styles.muted}>{item.sub}</Text> : null}
             </Pressable>
           )}
-          ListEmptyComponent={<Text style={styles.muted}>{q.trim() ? 'No hits' : 'Type to search notes, products, assets'}</Text>}
+          ListEmptyComponent={
+            <Text style={styles.muted}>{q.trim() ? 'No hits' : `Type to search ${placeholderFor(kinds).toLowerCase()}`}</Text>
+          }
         />
       </View>
     </>
@@ -116,12 +119,6 @@ const styles = StyleSheet.create({
     color: theme.color.text,
     minHeight: 48,
     marginBottom: theme.space.md,
-  },
-  section: {
-    fontSize: theme.type.sm,
-    color: theme.color.muted,
-    fontWeight: '600',
-    marginBottom: theme.space.sm,
   },
   row: { minHeight: 56, borderBottomWidth: 1, borderBottomColor: theme.color.border, justifyContent: 'center' },
   kicker: { fontSize: theme.type.sm, color: theme.color.muted },

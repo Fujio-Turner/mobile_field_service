@@ -8,13 +8,13 @@
 
 **Required:** `type`, `audit`, `name`. Field-created also `history[]`.
 
-**Optional:** `origin` (`dispatch` \| `field`), `accountNumber`, `contacts[]`, `sites[]`, `readyToPush`, `assignedTo`, **`routeId`**, **`region`**.
+**Optional:** `origin` (`dispatch` \| `field`), `accountNumber`, `contacts[]`, `sites[]`, **`geo`** (`{ lat, lon }` primary site, denormalized for `idx_cus_geo`), `readyToPush`, `assignedTo`, **`routeId`**, **`region`**.
 
 Channels: `emp:` `route:` `region:` `cus:{id}`.
 
 **Never patch** `origin: dispatch`. Walk-up → `CreateCustomer` new id, `origin: field`.
 
-**Indexes:** `idx_cus_name`; `idx_cus_account`; `idx_cus_origin`.
+**Indexes:** `idx_cus_name`; `idx_cus_account`; `idx_cus_origin`; `idx_cus_geo` (`geo.lat`, `geo.lon`); FTS `idx_cus_fts` (`name`, `accountNumber`).
 
 **Replication:** PULL master. PUSH if `origin == 'field' && readyToPush`.
 
@@ -45,7 +45,28 @@ Channels: `emp:` `route:` `region:` `cus:{id}`.
     "origin": { "type": "string", "enum": ["dispatch", "field"] },
     "accountNumber": { "type": "string" },
     "contacts": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
-    "sites": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "geo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lat", "lon"],
+      "properties": { "lat": { "type": "number" }, "lon": { "type": "number" } }
+    },
+    "sites": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "name": { "type": "string" },
+          "address": { "type": "object", "additionalProperties": true },
+          "geo": {
+            "type": "object",
+            "required": ["lat", "lon"],
+            "properties": { "lat": { "type": "number" }, "lon": { "type": "number" } }
+          }
+        }
+      }
+    },
     "readyToPush": { "type": "boolean" },
     "assignedTo": { "$ref": "#/$defs/assignedTo" }
   },

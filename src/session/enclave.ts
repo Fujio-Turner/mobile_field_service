@@ -1,5 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import { AUTH_KEYS, type Session } from './types';
+import { parseWorkModes } from './workModes';
 
 async function set(key: string, value: string): Promise<void> {
   await SecureStore.setItemAsync(key, value);
@@ -21,6 +22,11 @@ export async function writeSession(session: Session, password?: string): Promise
   await set(AUTH_KEYS.sessionId, session.sessionId);
   await set(AUTH_KEYS.cookieName, session.cookieName);
   await set(AUTH_KEYS.sessionExpiresAt, String(session.sessionExpiresAt));
+  if (session.workModes && session.workModes.length > 0) {
+    await set(AUTH_KEYS.workModes, JSON.stringify(session.workModes));
+  } else {
+    await del(AUTH_KEYS.workModes);
+  }
   if (session.strategy === 'basic' && password) {
     await set(AUTH_KEYS.password, password);
   }
@@ -39,7 +45,17 @@ export async function readSession(): Promise<Session | null> {
   }
   const sessionExpiresAt = Number(expiresRaw);
   if (!Number.isFinite(sessionExpiresAt)) return null;
-  return { strategy, username, email, employeeId, sessionId, cookieName, sessionExpiresAt };
+  const workModesRaw = await get(AUTH_KEYS.workModes);
+  let workModes: Session['workModes'];
+  if (workModesRaw) {
+    try {
+      const parsed = JSON.parse(workModesRaw) as unknown;
+      if (Array.isArray(parsed)) workModes = parseWorkModes(parsed);
+    } catch {
+      workModes = undefined;
+    }
+  }
+  return { strategy, username, email, employeeId, sessionId, cookieName, sessionExpiresAt, workModes };
 }
 
 export async function readPassword(): Promise<string | null> {

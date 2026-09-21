@@ -13,6 +13,7 @@ import { authStrategy, buildDemoSession, sessionIsLive } from './strategy';
 import { clearAuthKeys, clearPassword, readPassword, readSession, writeSession } from './enclave';
 import { loginRemoteBasic, refreshBasicSession } from './loginRemote';
 import type { Session } from './types';
+import { parseWorkModes, type WorkMode } from './workModes';
 
 type AuthState = {
   ready: boolean;
@@ -24,6 +25,7 @@ type AuthState = {
   logout: () => Promise<void>;
   refreshAuth: () => Promise<Session | null>;
   onAuthLost: () => void;
+  applyWorkModes: (modes: WorkMode[]) => void;
 };
 
 const Ctx = createContext<AuthState | null>(null);
@@ -130,6 +132,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })();
   }, []);
 
+  const applyWorkModes = useCallback((modes: WorkMode[]) => {
+    const nextModes = parseWorkModes(modes);
+    setSession((prev) => {
+      if (!prev) return prev;
+      if (JSON.stringify(prev.workModes ?? []) === JSON.stringify(nextModes)) return prev;
+      const next = { ...prev, workModes: nextModes };
+      void writeSession(next);
+      return next;
+    });
+  }, []);
+
   const logout = useCallback(async () => {
     setBusy(true);
     try {
@@ -143,8 +156,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ ready, session, error, busy, needsReauth, login, logout, refreshAuth, onAuthLost }),
-    [ready, session, error, busy, needsReauth, login, logout, refreshAuth, onAuthLost],
+    () => ({
+      ready,
+      session,
+      error,
+      busy,
+      needsReauth,
+      login,
+      logout,
+      refreshAuth,
+      onAuthLost,
+      applyWorkModes,
+    }),
+    [ready, session, error, busy, needsReauth, login, logout, refreshAuth, onAuthLost, applyWorkModes],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

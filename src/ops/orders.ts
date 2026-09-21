@@ -1,6 +1,8 @@
 import { nowSec, stampAuditCreate, stampAuditUpdate, stampHistory } from '../audit';
+import { bboxAround, haversineM, inBBox, type BBox } from '../geo/haversine';
 import { log } from '../log/logger';
 import { newDocId, ulid } from '../ids';
+import { timeQuery } from '../metrics';
 import { appVersion } from '../version';
 import { listChildrenMemory, loadChild, queryChildRowsIfNative, saveChild } from './childStore';
 import { assignedToFromSession, placeStamp, type StartSession } from './copyInbound';
@@ -474,4 +476,92 @@ export async function linkOrderToWork(ordId: string, wooutId: string, session: S
     changes: [{ path: 'orderId', to: ordId }],
   });
   await saveOutboundRaw(wooutId, woNext);
+}
+
+export const ORDER_SITES_BBOX_LIMIT = 500;
+
+export const ORDER_SITES_BBOX_SQL = `
+SELECT META().id AS id, number, status, role, customerId, site.name AS siteName, site.geo.lat AS lat, site.geo.lon AS lon
+FROM field.orders
+WHERE type = 'order'
+  AND status != 'cancelled'
+  AND site.geo.lat BETWEEN $minLat AND $maxLat
+  AND site.geo.lon BETWEEN $minLon AND $maxLon
+LIMIT ${ORDER_SITES_BBOX_LIMIT}
+`;
+
+export type OrderSitePin = {
+  id: string;
+  number: string;
+  status: string;
+  role: string;
+  customerId?: string;
+  siteName?: string;
+  geo: { lat: number; lon: number };
+};
+
+function parseOrderSite(id: string, raw: Record<string, unknown>): OrderSitePin | null {
+  if (String(raw.type ?? 'order') !== 'order') return null;
+  if (String(raw.status ?? '') === 'cancelled') return null;
+  const site = (raw.site ?? {}) as { name?: string; geo?: { lat?: unknown; lon?: unknown } };
+  const lat = Number(site.geo?.lat);
+  const lon = Number(site.geo?.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  return {
+    id,
+    number: String(raw.number ?? ''),
+    status: String(raw.status ?? ''),
+    role: String(raw.role ?? ''),
+    customerId: raw.customerId != null ? String(raw.customerId) : undefined,
+    siteName: site.name != null ? String(site.name) : undefined,
+    geo: { lat, lon },
+  };
+}
+
+export async function queryOrderSitesInBBox(
+  box: BBox,
+  center?: { lat: number; lon: number },
+): Promise<OrderSitePin[]> {
+  return timeQuery('ord_bbox', async () => {
+    const native = await queryChildRowsIfNative(ORDER_SITES_BBOX_SQL, {
+      minLat: box.minLat,
+      maxLat: box.maxLat,
+      minLon: box.minLon,
+      maxLon: box.maxLon,
+    });
+    let items: OrderSitePin[];
+    if (native) {
+      items = [];
+      for (const row of native) {
+        const lat = Number(row.lat);
+        const lon = Number(row.lon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+        items.push({
+          id: String(row.id ?? ''),
+          number: String(row.number ?? ''),
+          status: String(row.status ?? ''),
+          role: String(row.role ?? ''),
+          customerId: row.customerId != null ? String(row.customerId) : undefined,
+          siteName: row.siteName != null ? String(row.siteName) : undefined,
+          geo: { lat, lon },
+        });
+      }
+    } else {
+      items = listChildrenMemory('orders', (_id, doc) => String(doc.type ?? 'order') === 'order')
+        .map((row) => parseOrderSite(row.id, row.doc))
+        .filter((p): p is OrderSitePin => p != null)
+        .filter((p) => inBBox(p.geo, box));
+    }
+    if (center) {
+      items = [...items].sort((a, b) => haversineM(center, a.geo) - haversineM(center, b.geo));
+    }
+    return items.slice(0, ORDER_SITES_BBOX_LIMIT);
+  });
+}
+
+export async function queryOrderSitesNear(
+  center: { lat: number; lon: number },
+  radiusM = 2000,
+): Promise<OrderSitePin[]> {
+  return queryOrderSitesInBBox(bboxAround(center, radiusM), center);
 }

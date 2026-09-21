@@ -15,7 +15,7 @@ import {
   seedProductsRatesTaxes,
 } from '@/src/db/seedData';
 import { captureAndCommitOrderPhoto } from '@/src/ops/capturePhoto';
-import { createCustomer, getCustomer, listCustomers, type CustomerItem } from '@/src/ops/customers';
+import { createCustomer, getCustomer, searchCustomers, type CustomerItem } from '@/src/ops/customers';
 import { VanStockConsume } from '@/src/features/inventory/VanStockConsume';
 import {
   DEFAULT_VAN_ID,
@@ -79,7 +79,7 @@ function showErr(e: unknown) {
 }
 
 export default function OrderScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, productId: pendingProductId } = useLocalSearchParams<{ id: string; productId?: string }>();
   const { session } = useAuth();
   const router = useRouter();
   const [doc, setDoc] = useState<Record<string, unknown> | null>(null);
@@ -88,13 +88,15 @@ export default function OrderScreen() {
   const [stock, setStock] = useState<DisplayStock[]>([]);
   const [vanId, setVanId] = useState(DEFAULT_VAN_ID);
   const [walkUp, setWalkUp] = useState('');
+  const [customerQ, setCustomerQ] = useState('');
+  const [productQ, setProductQ] = useState('');
   const [busy, setBusy] = useState(false);
   const [customerName, setCustomerName] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     ensureCatalog();
-    setCustomers(await listCustomers());
-    setProducts(await searchProducts());
+    setCustomers([]);
+    setProducts([]);
     if (session) {
       const loc = await vanLocationIdForEmployee(session.employeeId);
       setVanId(loc);
@@ -158,6 +160,19 @@ export default function OrderScreen() {
         {session && (!id || id === 'new') ? (
           <>
             <Text style={styles.section}>Customer</Text>
+            <FieldInput
+              value={customerQ}
+              onChangeText={setCustomerQ}
+              placeholder="Find customer by name"
+              style={styles.input}
+              editable={!busy}
+              returnKeyType="search"
+              onEndEditing={() =>
+                void (async () => {
+                  setCustomers(customerQ.trim() ? await searchCustomers(customerQ) : []);
+                })()
+              }
+            />
             {customers.map((c) => (
               <Pressable
                 key={c.id}
@@ -166,6 +181,15 @@ export default function OrderScreen() {
                 onPress={() =>
                   void run(async () => {
                     const ordId = await createOrder(session, { customerId: c.id });
+                    if (pendingProductId) {
+                      const p = (await searchProducts()).find((row) => row.id === pendingProductId);
+                      await addOrderLine(ordId, session, {
+                        productId: pendingProductId,
+                        rateId: p?.defaultRateId ?? SEED_RATE_ID,
+                        qty: 1,
+                        taxIds: [SEED_TAX_ID],
+                      });
+                    }
                     router.replace(`/order/${ordId}`);
                   })
                 }
@@ -187,6 +211,15 @@ export default function OrderScreen() {
               onPress={() =>
                 void run(async () => {
                   const ordId = await createOrder(session, { customerName: walkUp.trim() || 'Walk-up' });
+                  if (pendingProductId) {
+                    const p = (await searchProducts()).find((row) => row.id === pendingProductId);
+                    await addOrderLine(ordId, session, {
+                      productId: pendingProductId,
+                      rateId: p?.defaultRateId ?? SEED_RATE_ID,
+                      qty: 1,
+                      taxIds: [SEED_TAX_ID],
+                    });
+                  }
                   router.replace(`/order/${ordId}`);
                 })
               }
@@ -262,6 +295,19 @@ export default function OrderScreen() {
             {writable ? (
               <>
                 <Text style={styles.section}>Catalog</Text>
+                <FieldInput
+                  value={productQ}
+                  onChangeText={setProductQ}
+                  placeholder="Find SKU or product name"
+                  style={styles.input}
+                  editable={!busy}
+                  returnKeyType="search"
+                  onEndEditing={() =>
+                    void (async () => {
+                      setProducts(productQ.trim() ? await searchProducts(productQ) : []);
+                    })()
+                  }
+                />
                 {products.map((p) => (
                   <Pressable
                     key={p.id}
@@ -336,9 +382,29 @@ export default function OrderScreen() {
                   session={session!}
                   onMutate={(fn) => void run(fn)}
                 />
-                {customers.length > 0 && !doc.customerId ? (
+                <Pressable
+                  disabled={busy}
+                  style={styles.secondary}
+                  onPress={() => router.push(`/(tabs)/inventory?orderId=${encodeURIComponent(String(id))}`)}
+                >
+                  <Text style={styles.secondaryLabel}>Search catalog on Stock</Text>
+                </Pressable>
+                {!doc.customerId ? (
                   <>
                     <Text style={styles.section}>Attach customer</Text>
+                    <FieldInput
+                      value={customerQ}
+                      onChangeText={setCustomerQ}
+                      placeholder="Find customer by name"
+                      style={styles.input}
+                      editable={!busy}
+                      returnKeyType="search"
+                      onEndEditing={() =>
+                        void (async () => {
+                          setCustomers(customerQ.trim() ? await searchCustomers(customerQ) : []);
+                        })()
+                      }
+                    />
                     {customers.map((c) => (
                       <Pressable
                         key={c.id}

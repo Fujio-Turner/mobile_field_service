@@ -32,6 +32,8 @@ export const VALUE_INDEXES: ValueIndexSpec[] = [
   { collection: 'customers', name: 'idx_cus_name', properties: ['name'] },
   { collection: 'customers', name: 'idx_cus_account', properties: ['accountNumber'] },
   { collection: 'customers', name: 'idx_cus_origin', properties: ['origin'] },
+  { collection: 'customers', name: 'idx_cus_geo', properties: ['geo.lat', 'geo.lon'] },
+  { collection: 'orders', name: 'idx_ord_site_geo', properties: ['site.geo.lat', 'site.geo.lon'] },
   { collection: 'tasks', name: 'idx_tsk_wo', properties: ['workOrderOutId', 'status'] },
   { collection: 'tasks', name: 'idx_tsk_type', properties: ['type'] },
   { collection: 'notes', name: 'idx_nte_wo', properties: ['workOrderOutId', 'audit.cr.dt'] },
@@ -48,6 +50,7 @@ export const FTS_INDEXES: FtsIndexSpec[] = [
   { collection: 'products', name: 'idx_prd_fts', properties: ['name', 'sku', 'description'] },
   { collection: 'assets', name: 'idx_ast_fts', properties: ['name', 'code', 'assetType'] },
   { collection: 'notes', name: 'idx_nte_fts', properties: ['body', 'title'] },
+  { collection: 'customers', name: 'idx_cus_fts', properties: ['name', 'accountNumber'] },
 ];
 
 export { FIELD_SCOPE };

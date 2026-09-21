@@ -22,7 +22,7 @@ LIMIT ${ASSETS_BBOX_LIMIT}
 `;
 
 const OPEN_JOBS_SQL = `
-SELECT META().id AS id, number, status, site.name AS siteName, site.geo.lat AS lat, site.geo.lon AS lon
+SELECT META().id AS id, number, status, kind, site.name AS siteName, site.geo.lat AS lat, site.geo.lon AS lon
 FROM field.workordersout
 WHERE assignedTo.employeeId = $employeeId
   AND (status = 'assigned' OR status = 'in_progress' OR status = 'blocked')
@@ -64,7 +64,7 @@ export function sortAssetsByDistance(items: AssetItem[], from?: { lat: number; l
 export async function queryAssetsInBBox(
   box: BBox,
   center?: { lat: number; lon: number },
-  filter?: { assetType?: string },
+  filter?: { assetType?: string; ownership?: string },
 ): Promise<AssetItem[]> {
   return timeQuery('bbox', () => runAssetsBBox(box, center, filter));
 }
@@ -72,7 +72,7 @@ export async function queryAssetsInBBox(
 async function runAssetsBBox(
   box: BBox,
   center?: { lat: number; lon: number },
-  filter?: { assetType?: string },
+  filter?: { assetType?: string; ownership?: string },
 ): Promise<AssetItem[]> {
   const native = await queryChildRowsIfNative(ASSETS_BBOX_SQL, {
     minLat: box.minLat,
@@ -104,6 +104,9 @@ async function runAssetsBBox(
   if (filter?.assetType) {
     items = items.filter((a) => a.assetType === filter.assetType);
   }
+  if (filter?.ownership) {
+    items = items.filter((a) => a.ownership === filter.ownership);
+  }
   return sortAssetsByDistance(items, center).slice(0, ASSETS_BBOX_LIMIT);
 }
 
@@ -126,7 +129,17 @@ export type OpenJobRef = {
   status: string;
   siteName: string;
   geo?: { lat: number; lon: number };
+  kind?: string;
+  kit?: boolean;
 };
+
+export function jobLooksLikeKit(raw: Record<string, unknown>): boolean {
+  const kind = String(raw.kind ?? '');
+  if (kind === 'deliver' || kind === 'install' || kind === 'move') return true;
+  if (Array.isArray(raw.assetIds) && raw.assetIds.length > 0) return true;
+  if (Array.isArray(raw.materials) && raw.materials.length > 0) return true;
+  return false;
+}
 
 function parseOpenJob(id: string, raw: Record<string, unknown>): OpenJobRef | null {
   const status = String(raw.status ?? '');
@@ -142,6 +155,8 @@ function parseOpenJob(id: string, raw: Record<string, unknown>): OpenJobRef | nu
     status,
     siteName: String(site.name ?? ''),
     geo,
+    kind: raw.kind != null ? String(raw.kind) : undefined,
+    kit: jobLooksLikeKit(raw),
   };
 }
 
@@ -151,12 +166,15 @@ export async function listOpenJobs(employeeId: string): Promise<OpenJobRef[]> {
     return native.map((row) => {
       const lat = row.lat != null ? Number(row.lat) : NaN;
       const lon = row.lon != null ? Number(row.lon) : NaN;
+      const kind = row.kind != null ? String(row.kind) : undefined;
       return {
         id: String(row.id ?? ''),
         number: String(row.number ?? ''),
         status: String(row.status ?? ''),
         siteName: String(row.siteName ?? ''),
         geo: Number.isFinite(lat) && Number.isFinite(lon) ? { lat, lon } : undefined,
+        kind,
+        kit: jobLooksLikeKit({ kind }),
       };
     });
   }

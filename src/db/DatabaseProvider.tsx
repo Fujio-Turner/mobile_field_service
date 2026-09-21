@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { getUserProfile } from '../ops/users';
 import { useAuth } from '../session/AuthContext';
 import { startReplicator, stopReplicator } from '../sync/replicator';
 import { closeFieldDatabase, nativeDbAvailable, openFieldDatabase } from './database';
@@ -26,7 +27,7 @@ type DbState = {
 const Ctx = createContext<DbState | null>(null);
 
 export function DatabaseProvider({ children }: { children: ReactNode }) {
-  const { session, refreshAuth, onAuthLost } = useAuth();
+  const { session, refreshAuth, onAuthLost, applyWorkModes } = useAuth();
   const [status, setStatus] = useState<DbStatus>('idle');
   const [dbName, setDbName] = useState<string | null>(null);
   const [dbPath, setDbPath] = useState<string | null>(null);
@@ -72,6 +73,19 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, [session, nativeAvailable, refreshAuth, onAuthLost, retryTick]);
+
+  const employeeId = session?.employeeId;
+  useEffect(() => {
+    if (!employeeId) return;
+    if (status !== 'ready' && status !== 'unavailable') return;
+    let cancelled = false;
+    void getUserProfile(employeeId).then((profile) => {
+      if (!cancelled && profile) applyWorkModes(profile.workModes);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [employeeId, status, applyWorkModes]);
 
   const value = useMemo(
     () => ({ status, nativeAvailable, dbName, dbPath, dbDirectory, error, retry }),

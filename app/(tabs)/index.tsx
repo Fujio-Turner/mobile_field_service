@@ -26,7 +26,12 @@ import type { LiveQueryHandle } from '@/src/db/liveQuery';
 import { applyInboundDecision } from '@/src/ops/inboundApply';
 import { useAuth } from '@/src/session/AuthContext';
 import { useJobRules } from '@/src/dev/JobRulesContext';
-import { showsTodayJobs, showsTodayOrders, workModesForEmployee } from '@/src/session/workModes';
+import {
+  showsTodayJobs,
+  showsTodayOrders,
+  showsWalkUpJob,
+  workModesFromSession,
+} from '@/src/session/workModes';
 import { NativeBanner } from '@/src/ui/NativeBanner';
 import { useSyncStatus } from '@/src/ui/SyncStatusBar';
 import { FieldInput } from '@/src/ui/FieldInput';
@@ -55,9 +60,10 @@ export default function TodayScreen() {
   const ordersWatchRef = useRef<LiveQueryHandle | null>(null);
 
   const employeeId = session?.employeeId;
-  const modes = workModesForEmployee(employeeId);
+  const modes = workModesFromSession(session);
   const showJobs = showsTodayJobs(modes);
   const showOrders = showsTodayOrders(modes);
+  const showWalkUpJob = showsWalkUpJob(modes);
 
   const applyPage0 = useCallback((next: TodayRow[], isPreview: boolean, inboundCount: number) => {
     skipRef.current = sourceIdsFromRows(next);
@@ -234,49 +240,51 @@ export default function TodayScreen() {
                 </Pressable>
               </View>
             ) : null}
-            <View style={styles.ordersCard}>
-              <Text style={styles.section}>Walk-up job</Text>
-              <FieldInput
-                value={walkUp}
-                onChangeText={setWalkUp}
-                placeholder="Summary"
-                style={styles.input}
-                editable={!creating}
-                returnKeyType="done"
-              />
-              <Pressable
-                disabled={creating || !session}
-                onPress={() => {
-                  if (!session) return;
-                  setCreating(true);
-                  void (async () => {
-                    try {
-                      const { woinId } = await createWorkOrderIn({
-                        session: {
-                          employeeId: session.employeeId,
-                          email: session.email,
-                          username: session.username,
-                        },
-                        summary: walkUp,
-                        kind: 'service',
-                      });
-                      setWalkUp('');
-                      router.push(`/wo/in/${woinId}`);
-                    } catch (e) {
-                      Alert.alert(
-                        'Field job',
-                        e instanceof CreateWorkOrderInError ? 'Type a summary first.' : 'Could not create the job.',
-                      );
-                    } finally {
-                      setCreating(false);
-                    }
-                  })();
-                }}
-                style={styles.orderCta}
-              >
-                <Text style={styles.retry}>{creating ? 'Creating…' : 'Create field job'}</Text>
-              </Pressable>
-            </View>
+            {showWalkUpJob ? (
+              <View style={styles.ordersCard}>
+                <Text style={styles.section}>Walk-up job</Text>
+                <FieldInput
+                  value={walkUp}
+                  onChangeText={setWalkUp}
+                  placeholder="Summary"
+                  style={styles.input}
+                  editable={!creating}
+                  returnKeyType="done"
+                />
+                <Pressable
+                  disabled={creating || !session}
+                  onPress={() => {
+                    if (!session) return;
+                    setCreating(true);
+                    void (async () => {
+                      try {
+                        const { woinId } = await createWorkOrderIn({
+                          session: {
+                            employeeId: session.employeeId,
+                            email: session.email,
+                            username: session.username,
+                          },
+                          summary: walkUp,
+                          kind: 'service',
+                        });
+                        setWalkUp('');
+                        router.push(`/wo/in/${woinId}`);
+                      } catch (e) {
+                        Alert.alert(
+                          'Field job',
+                          e instanceof CreateWorkOrderInError ? 'Type a summary first.' : 'Could not create the job.',
+                        );
+                      } finally {
+                        setCreating(false);
+                      }
+                    })();
+                  }}
+                  style={styles.orderCta}
+                >
+                  <Text style={styles.retry}>{creating ? 'Creating…' : 'Create field job'}</Text>
+                </Pressable>
+              </View>
+            ) : null}
             {showJobs && rows.length > 0 ? <Text style={styles.section}>Jobs</Text> : null}
           </View>
         }

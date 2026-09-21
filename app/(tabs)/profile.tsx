@@ -6,7 +6,7 @@ import { useDatabase } from '@/src/db/DatabaseProvider';
 import { deviceLocalDay } from '@/src/ids';
 import { getTrackingDay, getTrackingLastNDays } from '@/src/ops/tracking';
 import { useAuth } from '@/src/session/AuthContext';
-import { workModesForEmployee } from '@/src/session/workModes';
+import { workModesFromSession } from '@/src/session/workModes';
 import { NativeBanner } from '@/src/ui/NativeBanner';
 import { useHandedness, useThumbActionStyle } from '@/src/ui/HandednessContext';
 import { theme } from '@/src/theme';
@@ -41,7 +41,7 @@ export default function ProfileScreen() {
       <Text style={styles.name}>{session?.username ?? '—'}</Text>
       <Text style={styles.muted}>{session?.email ?? '—'}</Text>
       <Text style={styles.muted}>Employee {session?.employeeId ?? '—'}</Text>
-      <Text style={styles.muted}>Modes {workModesForEmployee(session?.employeeId).join(', ')}</Text>
+      <Text style={styles.muted}>Modes {workModesFromSession(session).join(', ')}</Text>
       <Text style={styles.muted}>Strategy: {session?.strategy ?? '—'}</Text>
       <Text style={styles.muted}>Database: {dbName ?? status}</Text>
       <Text style={styles.label}>App version</Text>

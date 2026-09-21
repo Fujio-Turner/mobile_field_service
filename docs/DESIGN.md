@@ -1423,7 +1423,7 @@ Movement required: `type`, `audit`, `productId`, `locationId`, `qtyDelta`, `reas
 }
 ```
 
-**Indexes:** `idx_cus_name` (`name`); `idx_cus_account` (`accountNumber`); `idx_cus_origin` (`origin`).
+**Indexes:** `idx_cus_name` (`name`); `idx_cus_account` (`accountNumber`); `idx_cus_origin` (`origin`); `idx_cus_geo` (`geo.lat`, `geo.lon`); FTS `idx_cus_fts` (`name`, `accountNumber`). Primary map pin is first-class `geo` (copy of `sites[0].geo`).
 
 **Replication:** PULL for `origin !== 'field'`. PUSH_AND_PULL for `origin === 'field' && readyToPush` (push filter).
 

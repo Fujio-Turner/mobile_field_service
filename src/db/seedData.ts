@@ -157,6 +157,20 @@ export function seedCustomerDoc(ver: string, dt: number) {
       routeId: SEED_ROUTE_ID,
       region: SEED_REGION,
       assignedTo: assignedJon,
+      geo: { ...SEED_SITE_GEO },
+      sites: [
+        {
+          name: 'Riverside Pump Station',
+          address: {
+            line1: '410 River Rd',
+            city: 'Hartford',
+            region: 'CT',
+            postal: '06103',
+            country: 'US',
+          },
+          geo: { ...SEED_SITE_GEO },
+        },
+      ],
     },
     { by: 'seed', ver, dt },
   );

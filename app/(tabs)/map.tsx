@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ensureMemoryAssets } from '@/src/db/ensureMemoryDemo';
+import { memorySave } from '@/src/db/memoryStore';
+import { nativeDbAvailable } from '@/src/db/database';
+import { SEED_CUSTOMER_ID, seedCustomerDoc, seedInboundOrders } from '@/src/db/seedData';
 import { clusterAssets, clusterCellM } from '@/src/geo/cluster';
 import { bboxAround, type BBox } from '@/src/geo/haversine';
 import { requestAndGetFix } from '@/src/geo/location';
@@ -12,8 +15,11 @@ import {
   type AssetItem,
   type OpenJobRef,
 } from '@/src/ops/assets';
+import { queryCustomersInBBox, type CustomerItem } from '@/src/ops/customers';
+import { queryOrderSitesInBBox, type OrderSitePin } from '@/src/ops/orders';
 import { useAuth } from '@/src/session/AuthContext';
-import { canRenderLibreMap, LibreAssetMap } from '@/src/ui/LibreAssetMap';
+import { mapPlotsAssets, mapPlotsCustomers, workModesFromSession } from '@/src/session/workModes';
+import { canRenderLibreMap, LibreAssetMap, type MapPin } from '@/src/ui/LibreAssetMap';
 import { NativeBanner } from '@/src/ui/NativeBanner';
 import { theme } from '@/src/theme';
 
@@ -22,11 +28,25 @@ const DEFAULT_RADIUS_M = 2000;
 
 type Mode = 'area' | 'job' | 'me';
 
+function ensureCustomers() {
+  if (nativeDbAvailable()) return;
+  memorySave('customers', SEED_CUSTOMER_ID, seedCustomerDoc('0.1.0+1', 1_700_000_000) as never);
+  for (const inbound of seedInboundOrders('0.1.0+1', 1_700_000_000)) {
+    memorySave('orders', inbound.id, inbound.doc as never);
+  }
+}
+
 export default function MapScreen() {
   const router = useRouter();
   const { wooutId } = useLocalSearchParams<{ wooutId?: string }>();
   const { session } = useAuth();
+  const modes = workModesFromSession(session);
+  const [kitFilter, setKitFilter] = useState(false);
+  const plotAssets = mapPlotsAssets(modes, { kitFilter });
+  const plotCustomers = mapPlotsCustomers(modes);
   const [assets, setAssets] = useState<AssetItem[]>([]);
+  const [customers, setCustomers] = useState<CustomerItem[]>([]);
+  const [orderSites, setOrderSites] = useState<OrderSitePin[]>([]);
   const [jobs, setJobs] = useState<OpenJobRef[]>([]);
   const [mode, setMode] = useState<Mode>('area');
   const [assetType, setAssetType] = useState<string | null>(null);
@@ -42,17 +62,35 @@ export default function MapScreen() {
     return jobs[0];
   }, [jobs, wooutId]);
 
+  const stop = useMemo(() => {
+    const withGeo = orderSites[0] ?? customers.find((c) => c.geo);
+    return withGeo?.geo ?? job?.geo ?? SITE;
+  }, [orderSites, customers, job]);
+
   const reload = useCallback(
     async (nextBox: BBox, nextCenter: { lat: number; lon: number }) => {
       ensureMemoryAssets();
-      const rows = await queryAssetsInBBox(nextBox, nextCenter, assetType ? { assetType } : undefined);
-      setAssets(rows);
+      ensureCustomers();
+      if (plotAssets) {
+        const rows = await queryAssetsInBBox(nextBox, nextCenter, assetType ? { assetType } : undefined);
+        setAssets(rows);
+      } else {
+        setAssets([]);
+      }
+      if (plotCustomers) {
+        setCustomers(await queryCustomersInBBox(nextBox, nextCenter));
+        setOrderSites(await queryOrderSitesInBBox(nextBox, nextCenter));
+      } else {
+        setCustomers([]);
+        setOrderSites([]);
+      }
     },
-    [assetType],
+    [assetType, plotAssets, plotCustomers],
   );
 
   useEffect(() => {
     ensureMemoryAssets();
+    ensureCustomers();
     if (session) void listOpenJobs(session.employeeId).then(setJobs);
     void styleReachable().then(setOnline);
   }, [session]);
@@ -68,19 +106,39 @@ export default function MapScreen() {
   }, []);
 
   const types = [...new Set(assets.map((a) => a.assetType))].sort();
-  const clusters = clusterAssets(assets, nativeMap ? 0 : clusterCellM(box));
+  const pins: MapPin[] = [
+    ...assets.map((a) => ({ id: a.id, name: a.name, sub: a.assetType, geo: a.geo })),
+    ...customers
+      .filter((c) => c.geo)
+      .map((c) => ({ id: c.id, name: c.name, sub: 'customer', geo: c.geo! })),
+    ...orderSites.map((o) => ({
+      id: `ord:${o.id}`,
+      name: o.number,
+      sub: o.siteName ?? 'order',
+      geo: o.geo,
+    })),
+  ];
+  const clusters = clusterAssets(pins, nativeMap ? 0 : clusterCellM(box));
+  const title = plotCustomers && !plotAssets ? 'Customers map' : plotCustomers ? 'Sites map' : 'Assets map';
 
-  function openAsset(id: string) {
+  function openPin(id: string) {
+    if (id.startsWith('ord:')) {
+      router.push(`/order/${id.slice(4)}`);
+      return;
+    }
+    if (id.startsWith('cus:')) {
+      router.push(`/customer/${id}`);
+      return;
+    }
     const q = job?.id ? `?wooutId=${encodeURIComponent(job.id)}` : '';
     router.push(`/asset/${id}${q}`);
   }
 
   async function nearJob() {
-    const geo = job?.geo ?? SITE;
+    const geo = plotCustomers ? stop : (job?.geo ?? SITE);
     setMode('job');
     setCenter(geo);
-    const next = bboxAround(geo, 250);
-    setBox(next);
+    setBox(bboxAround(geo, 250));
   }
 
   async function nearMe() {
@@ -97,17 +155,18 @@ export default function MapScreen() {
 
   function areaAll() {
     setMode('area');
-    setCenter(job?.geo ?? SITE);
-    setBox(bboxAround(job?.geo ?? SITE, DEFAULT_RADIUS_M));
+    const geo = plotCustomers ? stop : (job?.geo ?? SITE);
+    setCenter(geo);
+    setBox(bboxAround(geo, DEFAULT_RADIUS_M));
   }
 
   return (
     <View style={styles.wrap}>
       <NativeBanner />
-      <Text style={styles.title}>Assets map</Text>
+      <Text style={styles.title}>{title}</Text>
       <Text style={styles.muted}>
         {online
-          ? 'Basemap: OpenFreeMap Liberty when online. Pins always from local assets (work offline).'
+          ? 'Basemap: OpenFreeMap Liberty when online. Pins always from local data (work offline).'
           : 'Airplane / no tiles: pins still show from local data. Basemap may be empty.'}
       </Text>
       {!nativeMap ? (
@@ -117,28 +176,41 @@ export default function MapScreen() {
 
       <View style={styles.chips}>
         <Chip label="Area" active={mode === 'area'} onPress={areaAll} />
-        <Chip label="Near job" active={mode === 'job'} onPress={() => void nearJob()} />
+        <Chip
+          label={plotCustomers ? 'Near stop' : 'Near job'}
+          active={mode === 'job'}
+          onPress={() => void nearJob()}
+        />
         <Chip label="Near me" active={mode === 'me'} onPress={() => void nearMe()} />
-        <Chip label="All types" active={assetType == null} onPress={() => setAssetType(null)} />
-        {types.map((t) => (
-          <Chip key={t} label={t} active={assetType === t} onPress={() => setAssetType(t)} />
-        ))}
+        {modes.includes('customer') && !modes.includes('assets') ? (
+          <Chip label="Kit" active={kitFilter} onPress={() => setKitFilter((v) => !v)} />
+        ) : null}
+        {plotAssets ? (
+          <>
+            <Chip label="All types" active={assetType == null} onPress={() => setAssetType(null)} />
+            {types.map((t) => (
+              <Chip key={t} label={t} active={assetType === t} onPress={() => setAssetType(t)} />
+            ))}
+          </>
+        ) : null}
       </View>
-      {job ? (
+      {plotAssets && job ? (
         <Text style={styles.muted}>
           Open job {job.number} · {job.siteName}
         </Text>
-      ) : (
+      ) : plotAssets ? (
         <Text style={styles.muted}>Start a job from Today to use an asset on it.</Text>
+      ) : (
+        <Text style={styles.muted}>Customers and order sites from the local database.</Text>
       )}
 
       {nativeMap ? (
         <LibreAssetMap
           key={`${mode}-${center.lat.toFixed(4)}-${center.lon.toFixed(4)}`}
-          assets={assets}
+          pins={pins}
           center={center}
           showUser={mode === 'me'}
-          onPressAsset={openAsset}
+          onPressPin={openPin}
           onRegion={(next, zoom) => {
             if (zoom < 11) return;
             if (regionTimer.current) clearTimeout(regionTimer.current);
@@ -151,11 +223,11 @@ export default function MapScreen() {
           {clusters.map((c) =>
             c.count === 1 ? (
               <Text key={c.key} style={styles.pin}>
-                ● {c.assets[0].code ?? c.assets[0].name}
+                ● {c.assets[0].sub ?? c.assets[0].name}
               </Text>
             ) : (
               <Text key={c.key} style={styles.pin}>
-                ◉ {c.count} assets
+                ◉ {c.count} pins
               </Text>
             ),
           )}
@@ -165,13 +237,13 @@ export default function MapScreen() {
       <ScrollView contentContainerStyle={styles.list}>
         {clusters.flatMap((c) =>
           c.assets.map((a) => (
-            <Pressable key={a.id} style={styles.row} onPress={() => openAsset(a.id)}>
+            <Pressable key={a.id} style={styles.row} onPress={() => openPin(a.id)}>
               <Text style={styles.rowTitle}>
-                {a.name} · {a.assetType}
+                {a.name}
+                {a.sub ? ` · ${a.sub}` : ''}
               </Text>
               <Text style={styles.muted}>
                 {a.geo.lat.toFixed(4)}, {a.geo.lon.toFixed(4)}
-                {a.distanceM != null ? ` · ${Math.round(a.distanceM)} m` : ''}
               </Text>
             </Pressable>
           )),
