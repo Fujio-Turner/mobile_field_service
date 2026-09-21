@@ -65,17 +65,23 @@ This is the home list. The teal header is a **live clock** plus a seconds countd
 
 Demo has no replicator, so Today shows a **yellow dot** and no elapsed/count (nothing has synced, nothing is queued). Other tabs (Notes, Map, Stock, Chat, Profile) keep a one-line bar: **Connected**, **Not connected · last synced …**, **N waiting to send**, or **Local only** in demo.
 
-**Walk-up job** creates a field inbound ticket (`CreateWorkOrderIn`) assigned to you — still a ticket, not labor. Labor starts after **Start work** on that inbound screen.
+**Walk-up** depends on `workModes`. **Assets** and **customer** get **Walk-up job** (`CreateWorkOrderIn`) — still a ticket, not labor; labor starts after **Start work**. **Sales** does not show that card; Priya’s walk-up is **New field order** (customer + order). Customer mode keeps both.
 
-**Jobs** are one row per work order: number · kind, site, summary, time, priority stripe. Badges: **Started** (you already have a copy), **Reassigned** (inbound went to someone else; your copy is still yours), **Amendment**. Tap is a KV get: inbound if you have not started, outbound copy if you have. Assets-mode Today does not show commercial orders; customer and sales logins do.
+**Jobs** are one row per work order: number · kind, site, summary, time, priority stripe. Badges: **Started** (you already have a copy), **Reassigned** (inbound went to someone else **today**; your copy is still yours), **Amendment**. A reassigned leftover from an earlier day does not stay on Today. Tap is a KV get: inbound if you have not started, outbound copy if you have. Assets-mode Today does not show commercial orders; customer and sales logins do.
 
 ### Map
 
 ![Map: Hartford assets, Area/Near job/Near me chips, pump and valve pins, list of P-12 M-7 P-14](images/Maps-Assets-Jobs.png)
 
-**Assets map** is company kit, not the route. Pins always come from local `field.assets` (bbox query), so they still show in airplane mode. The basemap (OpenFreeMap Liberty) needs network.
+The Map tab is on for **every** mode. Pins always come from local Couchbase Lite, so they still show in airplane mode. The basemap (OpenFreeMap Liberty) needs network.
 
-**Area / Near job / Near me** change the box. **All types** plus **pump** / **valve** filter the same local set. If you have a started job, the map names it (here WO-10470 at Riverside). Tap a pin or a row to open the asset; **Use on {job}** links it to your outbound copy. Completing a job does not write the asset master.
+| Mode | What you plot | Chips |
+| --- | --- | --- |
+| **Assets** (Jon) | Company kit (`field.assets`) | Area / Near job / Near me, type (pump / valve) |
+| **Sales** (Priya) | Customers and order `site.geo` | Area / Near stop / Near me |
+| **Customer** (Maya) | Customers and order sites by default | Same as sales, plus **Kit** for company assets |
+
+Tap a pin or a row to open the asset, customer, or order. On the assets map, **Use on {job}** links kit to your outbound copy. Completing a job does not write the asset master.
 
 ### Chat
 
@@ -91,7 +97,7 @@ Type a **DM employeeId** (or `@` them in the body) and a message. Tag a job with
 
 Who you are on this device: username, email, **employeeId**, **workModes**, auth strategy, DB name, app version. **Crumbs today** is a count of tracking points (no map dump).
 
-The **sync bar** at the top is the same status as Today’s HUD, in words (demo: **Local only**). **Large screen optimize** (off by default) moves primary buttons into the thumb zone; **Left hand** appears when that is on. **Settings / debug** is versions, DB path, replicator URL/status, collection counts, optional channel filters, **job rules**, and **DB encryption** (default off). Full list: [guides/SETTINGS.md](guides/SETTINGS.md). **Search** is FTS over notes, products, and assets. **Sign out** drops the session, not the database key.
+The **sync bar** at the top is the same status as Today’s HUD, in words (demo: **Local only**). **Large screen optimize** (off by default) moves primary buttons into the thumb zone; **Left hand** appears when that is on. **Settings / debug** is versions, DB path, replicator URL/status, collection counts, optional channel filters, **job rules**, and **DB encryption** (default off). Full list: [guides/SETTINGS.md](guides/SETTINGS.md). **Search** follows `workModes`: Jon gets notes + assets; Priya and Maya get notes + products + customers (Maya also gets assets when the open job is kit). Product and customer hits open. **Sign out** drops the session, not the database key.
 
 ---
 
@@ -99,7 +105,7 @@ The **sync bar** at the top is the same status as Today’s HUD, in words (demo:
 
 Dispatch — or you, on the phone — can **create** a job ticket. You **never edit a ticket the office already sent**. You copy it, work the copy, and sync that.
 
-If they reassign the job while you are in a basement, Today shows **Reassigned**. Your copy still goes up. Two documents for one job number is expected.
+If they reassign the job while you are in a basement **on a job scheduled for today**, Today shows **Reassigned**. Your copy still goes up. Two documents for one job number is expected. A leftover from an earlier day does not stay on Today.
 
 ![Copy-on-write: inbound ticket, your copy, freeze on complete, amendment if you forgot something](images/copy-on-write.svg)
 

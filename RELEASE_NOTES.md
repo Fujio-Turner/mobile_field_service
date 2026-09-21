@@ -6,6 +6,38 @@ How to bump: [guides/RELEASE.md](guides/RELEASE.md).
 
 ---
 
+## 2026-09-21 — Phase 12 (mode-aware chrome)
+
+Shipped on app **`0.1.0+1`** in [PR #25](https://github.com/Fujio-Turner/mobile_field_service/pull/25) (`issue/12`). Closes [#7](https://github.com/Fujio-Turner/mobile_field_service/issues/7)–[#12](https://github.com/Fujio-Turner/mobile_field_service/issues/12). Device chrome now follows `users.workModes[]` on the session (seed employeeId is fallback only).
+
+### New Features
+
+- **Today** — sales hides Walk-up job (customer + order instead); customer keeps job **and** order walk-ups; assets keeps Walk-up job only. Live queries skip lists the login does not show.
+- **Search** — collections follow the day: assets → notes + assets; sales/customer → notes + products + customers (Maya also gets assets when the open job is kit). Product and customer hits open. Hartford complete-jobs dump removed.
+- **Map** — tab visible for sales. Jon keeps the assets map. Priya and Maya plot **customers** and order `site.geo` (Area / Near stop / Near me). Maya has a **Kit** chip for company assets.
+- **Customers** — typeahead lookup (no button dump). Field create records address and/or lat/lon. First-class `geo` + `idx_cus_geo` / `idx_cus_fts`. Dispatch customers stay pull-only.
+- **Catalog picker** — type a SKU on the order editor; Stock can add a line when an order or job is in context.
+
+### Bug Fixes
+
+- **Reassigned** leftovers (e.g. WO-10460) only appear on Today when `scheduled.day` is today. Your own in-progress copy can still stay overnight.
+
+### Changes
+
+- Session stores `workModes` in Keychain; after the DB opens, `field.users.workModes` wins.
+- Live Today queries no longer `execute()` the same SQL++ on attach (the listener’s first snapshot is the paint).
+- Van stock names load by product id, not a 50-row catalog dump.
+- Memory/demo seed is once per process.
+
+### Known
+
+- Vector / CLIP (S15) is off
+- POD is a photo; signature pad later
+- No credit card payment
+- Order editor still has no “come back Tuesday” `scheduled.day` / `needsWorkOrder` (called out on #11)
+
+---
+
 ## v0.1.0 — 2026-09-16
 
 First tracked build. App **`0.1.0+1`**. Expo SDK 52 / React Native 0.76.9. Development builds only (not Expo Go).
@@ -32,7 +64,7 @@ First tracked build. App **`0.1.0+1`**. Expo SDK 52 / React Native 0.76.9. Devel
 
 ### Known
 
-- Device chrome is still an assets app with an orders sidecar (sales Search/Map). Follow-up: [docs/ROADMAP.md](docs/ROADMAP.md)
 - Vector / CLIP (S15) is off
 - POD is a photo; signature pad later
 - No credit card payment
+- Mode-aware Search / Map / Today shipped 2026-09-21 — see the Phase 12 section above

@@ -41,7 +41,9 @@ Channel `emp:E-7703`. Dispatch sends **delivery / service** work orders that poi
 | Today | `app/(tabs)/index.tsx` | workorders + working orders | `ListTodayWork`, `ListTodayOrders` |
 | Delivery WO | `app/wo/out/[id]` | `workordersout` | `StartWork`, `CompleteWork` |
 | Catalog | `app/(tabs)/inventory.tsx` / products | `products`, `rates`, `taxes` | `SearchProducts`, `PriceLines` |
-| New / existing customer | `app/customer/[id].tsx` (`new` or KV) | `customers` | `GetCustomer`, `CreateCustomer` |
+| New / existing customer | `app/customer/[id].tsx` (`new` or KV) | `customers` | `GetCustomer`, `CreateCustomer` (address / geo) |
+| Map | `app/(tabs)/map.tsx` | `customers`, `orders`; **Kit** → `assets` | customers / order sites |
+| Search | `app/search/index.tsx` | notes / products / customers FTS | |
 | New order | `app/order/[id].tsx` | `orders` | `CreateOrder`, `AddOrderLine`, `SubmitOrder` |
 
 ---

@@ -64,7 +64,7 @@ Persisted in SecureStore. Sign-out does **not** clear these (or the DB encryptio
 
 Also on Profile (read-only): username, email, `employeeId`, `workModes`, auth strategy, encrypted DB name, app version, **Crumbs today** (point count, not a map), sync activity.
 
-**Search** (Profile button) is FTS over notes, products, and assets — not a setting.
+**Search** (Profile button) is FTS whose collections follow `workModes` (assets → notes + assets; sales/customer → notes + products + customers). Not a setting.
 
 ---
 
