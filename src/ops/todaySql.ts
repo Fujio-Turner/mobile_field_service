@@ -41,6 +41,7 @@ SELECT
   site.name AS siteName,
   scheduled.startDt AS startDt,
   scheduled.endDt AS endDt,
+  scheduled.day AS day,
   source.dropped AS dropped
 FROM field.workordersout
 WHERE assignedTo.employeeId = $employeeId

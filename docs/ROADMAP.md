@@ -81,7 +81,7 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 - [x] `ListTodayWork`: inbound `assignedTo.employeeId = $employeeId`, `status != 'cancelled' AND status != 'superseded'`, `scheduled.day = $day`, `ORDER BY scheduled.startDt DESC` with **numeric** `LIMIT`/`OFFSET` (CBL Mobile rejects `IN [...]` and `$limit`)
 - [x] **Reassigned** / **Assignment changed** badge when inbound assignee ≠ session but local outbound exists
-- [x] Page 0 merge of active outbound: `workordersout` `status = 'assigned' OR status = 'in_progress' OR status = 'blocked'` — **no** `day` filter; unpaged; collapse one row per `source.id` preferring outbound
+- [x] Page 0 merge of active outbound: `workordersout` `status = 'assigned' OR status = 'in_progress' OR status = 'blocked'` — unpaged; collapse one row per `source.id` preferring outbound. **Reassigned** rows only when `scheduled.day` is Today (same span as inbound)
 - [x] Infinite scroll (offset += 20) on inbound only
 - [x] Live query on inbound **and** active outbound page 0; coalesce (~50 ms); skip `FindOutboundForSources` for sources already in the active-outbound set
 - [x] Empty / error / stale-sync states (stale-sync waits on replicator)

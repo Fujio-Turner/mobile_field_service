@@ -62,7 +62,7 @@ export function seedActiveOutboundAsHits(employeeId: string): OutboundHit[] {
     priority: string;
     summary: string;
     site: { name: string };
-    scheduled: { startDt: number; endDt?: number };
+    scheduled: { startDt: number; endDt?: number; day?: string };
   };
   return [
     {
@@ -76,6 +76,7 @@ export function seedActiveOutboundAsHits(employeeId: string): OutboundHit[] {
       siteName: doc.site.name,
       startDt: Number(doc.scheduled.startDt ?? 0),
       endDt: doc.scheduled.endDt != null ? Number(doc.scheduled.endDt) : undefined,
+      day: doc.scheduled.day,
       role: 'primary',
       assignedEmployeeId: SEED_EMPLOYEE_ID,
     },

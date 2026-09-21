@@ -77,6 +77,7 @@ export async function watchTodayWork(
         }
         const rows = collapseTodayPage({
           employeeId: input.employeeId,
+          day,
           inbound: lastInbound,
           activeOutbound: lastActive,
           outboundBySource: cachedRefs,

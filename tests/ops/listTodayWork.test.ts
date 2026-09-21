@@ -1,4 +1,4 @@
-import { collapseTodayPage, sourceIdsFromRows } from '../../src/ops/collapseToday';
+import { collapseTodayPage, outboundScheduledDay, sourceIdsFromRows } from '../../src/ops/collapseToday';
 import { parseOutboundRefs, sourceIdsNeedingOutboundLookup } from '../../src/ops/findOutboundForSources';
 import { TODAY_ORDERS_SQL } from '../../src/ops/orders';
 import { ASSETS_BBOX_SQL } from '../../src/ops/assets';
@@ -17,6 +17,8 @@ const inn = (over: Partial<InboundHit> & Pick<InboundHit, 'id'>): InboundHit => 
   ...over,
 });
 
+const TODAY = '2026-09-21';
+
 const out = (over: Partial<OutboundHit> & Pick<OutboundHit, 'id' | 'sourceId'>): OutboundHit => ({
   number: 'WO-1',
   priority: 'normal',
@@ -24,19 +26,31 @@ const out = (over: Partial<OutboundHit> & Pick<OutboundHit, 'id' | 'sourceId'>):
   summary: 'job',
   siteName: 'Site',
   startDt: 100,
+  day: TODAY,
   role: 'primary',
   assignedEmployeeId: 'E-4412',
   ...over,
 });
 
+function collapse(over: Omit<Parameters<typeof collapseTodayPage>[0], 'employeeId' | 'day' | 'includeActiveOutbound'> & {
+  employeeId?: string;
+  day?: string;
+  includeActiveOutbound?: boolean;
+}) {
+  return collapseTodayPage({
+    employeeId: 'E-4412',
+    day: TODAY,
+    includeActiveOutbound: true,
+    ...over,
+  });
+}
+
 describe('collapseTodayPage', () => {
   it('prefers outbound for the same source.id', () => {
-    const rows = collapseTodayPage({
-      employeeId: 'E-4412',
+    const rows = collapse({
       inbound: [inn({ id: 'woin:a', startDt: 50 })],
       activeOutbound: [out({ id: 'woout:a', sourceId: 'woin:a', startDt: 50 })],
       outboundBySource: new Map(),
-      includeActiveOutbound: true,
     });
     expect(rows).toHaveLength(1);
     expect(rows[0].openCollection).toBe('workordersout');
@@ -45,31 +59,45 @@ describe('collapseTodayPage', () => {
   });
 
   it('badges Reassigned when outbound exists and inbound is gone or assigned elsewhere', () => {
-    const rows = collapseTodayPage({
-      employeeId: 'E-4412',
+    const rows = collapse({
       inbound: [],
       activeOutbound: [out({ id: 'woout:a', sourceId: 'woin:a' })],
       outboundBySource: new Map(),
-      includeActiveOutbound: true,
     });
     expect(rows[0].badge).toBe('reassigned');
     expect(rows[0].openCollection).toBe('workordersout');
   });
 
+  it('omits Reassigned leftovers whose scheduled day is not Today', () => {
+    const rows = collapse({
+      inbound: [],
+      activeOutbound: [out({ id: 'woout:old', sourceId: 'woin:old', day: '2026-09-16', number: 'WO-10460' })],
+      outboundBySource: new Map(),
+    });
+    expect(rows).toHaveLength(0);
+  });
+
+  it('keeps a started copy from another day (still your paper)', () => {
+    const rows = collapse({
+      inbound: [inn({ id: 'woin:a', assignedEmployeeId: 'E-4412' })],
+      activeOutbound: [out({ id: 'woout:a', sourceId: 'woin:a', day: '2026-09-16' })],
+      outboundBySource: new Map(),
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].badge).toBe('started');
+  });
+
   it('badges Amendment on role=amendment', () => {
-    const rows = collapseTodayPage({
-      employeeId: 'E-4412',
+    const rows = collapse({
       inbound: [inn({ id: 'woin:a' })],
       activeOutbound: [out({ id: 'woout:b', sourceId: 'woin:a', role: 'amendment' })],
       outboundBySource: new Map(),
-      includeActiveOutbound: true,
     });
     expect(rows[0].badge).toBe('amendment');
   });
 
   it('badges Done when the outbound copy is complete', () => {
-    const rows = collapseTodayPage({
-      employeeId: 'E-4412',
+    const rows = collapse({
       inbound: [inn({ id: 'woin:a' })],
       activeOutbound: [],
       outboundBySource: new Map([
@@ -78,7 +106,6 @@ describe('collapseTodayPage', () => {
           { id: 'woout:a', sourceId: 'woin:a', status: 'complete', role: 'primary' },
         ],
       ]),
-      includeActiveOutbound: true,
     });
     expect(rows).toHaveLength(1);
     expect(rows[0].badge).toBe('done');
@@ -86,12 +113,10 @@ describe('collapseTodayPage', () => {
   });
 
   it('inbound-only rows open workordersin', () => {
-    const rows = collapseTodayPage({
-      employeeId: 'E-4412',
+    const rows = collapse({
       inbound: [inn({ id: 'woin:a' })],
       activeOutbound: [],
       outboundBySource: new Map(),
-      includeActiveOutbound: true,
     });
     expect(rows[0].openCollection).toBe('workordersin');
     expect(rows[0].openId).toBe('woin:a');
@@ -99,16 +124,13 @@ describe('collapseTodayPage', () => {
   });
 
   it('pages 1+ skip sources already on page 0', () => {
-    const page0 = collapseTodayPage({
-      employeeId: 'E-4412',
+    const page0 = collapse({
       inbound: [inn({ id: 'woin:a', startDt: 200 })],
       activeOutbound: [out({ id: 'woout:a', sourceId: 'woin:a', startDt: 200 })],
       outboundBySource: new Map(),
-      includeActiveOutbound: true,
     });
     const skip = sourceIdsFromRows(page0);
-    const page1 = collapseTodayPage({
-      employeeId: 'E-4412',
+    const page1 = collapse({
       inbound: [inn({ id: 'woin:a' }), inn({ id: 'woin:b', number: 'WO-2', startDt: 10 })],
       activeOutbound: [],
       outboundBySource: new Map(),
@@ -119,14 +141,16 @@ describe('collapseTodayPage', () => {
   });
 
   it('sorts by startDt DESC', () => {
-    const rows = collapseTodayPage({
-      employeeId: 'E-4412',
+    const rows = collapse({
       inbound: [inn({ id: 'woin:old', startDt: 10, number: 'WO-old' }), inn({ id: 'woin:new', startDt: 90, number: 'WO-new' })],
       activeOutbound: [],
       outboundBySource: new Map(),
-      includeActiveOutbound: true,
     });
     expect(rows.map((r) => r.number)).toEqual(['WO-new', 'WO-old']);
+  });
+
+  it('reads scheduled.day from the outbound hit', () => {
+    expect(outboundScheduledDay({ day: '2026-09-16', startDt: 1_700_000_000 })).toBe('2026-09-16');
   });
 });
 
