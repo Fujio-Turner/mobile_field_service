@@ -7,7 +7,7 @@
 | Author | Fujio-Turner / mobile_field_service |
 | Date | 2026-09-16 |
 | Version | 0.1.0 ([RELEASE_NOTES.md](../RELEASE_NOTES.md)) |
-| Status | S01–S16 except S15 (vector) implemented. Demo three modes on iOS. Device chrome is still an assets app with an orders sidecar — Phase 12. |
+| Status | S01–S16 except S15 (vector) implemented. Phase 12 mode-aware device UX (Search / Map / customer geo / catalog picker / Today chrome). |
 | Architecture | [DESIGN.md](./DESIGN.md) |
 | Use cases | [DAY_IN_LIFE.md](./DAY_IN_LIFE.md) |
 
@@ -81,7 +81,7 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 
 - [x] `ListTodayWork`: inbound `assignedTo.employeeId = $employeeId`, `status != 'cancelled' AND status != 'superseded'`, `scheduled.day = $day`, `ORDER BY scheduled.startDt DESC` with **numeric** `LIMIT`/`OFFSET` (CBL Mobile rejects `IN [...]` and `$limit`)
 - [x] **Reassigned** / **Assignment changed** badge when inbound assignee ≠ session but local outbound exists
-- [x] Page 0 merge of active outbound: `workordersout` `status = 'assigned' OR status = 'in_progress' OR status = 'blocked'` — **no** `day` filter; unpaged; collapse one row per `source.id` preferring outbound
+- [x] Page 0 merge of active outbound: `workordersout` `status = 'assigned' OR status = 'in_progress' OR status = 'blocked'` — unpaged; collapse one row per `source.id` preferring outbound. **Reassigned** rows only when `scheduled.day` is Today (same span as inbound)
 - [x] Infinite scroll (offset += 20) on inbound only
 - [x] Live query on inbound **and** active outbound page 0; coalesce (~50 ms); skip `FindOutboundForSources` for sources already in the active-outbound set
 - [x] Empty / error / stale-sync states (stale-sync waits on replicator)
@@ -180,7 +180,7 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 - [x] “Use asset on this job” writes `assetIds` on `woout` (needs PR-05+)
 - [x] Location permission
 - [ ] Follow-up (not this phase): region MBTiles pack
-- [ ] Mode-aware map (Phase 12): sales/customer plot **customers / order sites**, not only `field.assets`
+- [x] Mode-aware map (Phase 12): sales/customer plot **customers / order sites**, not only `field.assets`
 
 **Exit:** map shows seed pumps/sites; pin opens KV detail; airplane mode still shows pins.
 
@@ -223,7 +223,7 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 - [x] `CreateCustomer` `origin: field` (do not patch pulled customers)
 - [x] Optional `orderId` on delivery WOs; `workOrderOutId` on orders taken on site
 - [x] Seed: one inbound order, two rates, one tax, Hartford customer
-- [ ] Customer **lookup** (not a dump of `listCustomers` buttons) and catalog **picker** — Phase 12
+- [x] Customer **lookup** (not a dump of `listCustomers` buttons) and catalog **picker** — Phase 12
 
 **Exit:** sales-mode Today lists an inbound order; copy + complete does not change inbound JSON; walk-up creates `cus:` + `ord:`.
 
@@ -260,26 +260,26 @@ PRs **00–05 are a linear spine**. After that, photos / tasks / map / inventory
 - [x] Database compact on idle after photo deletes
 - [x] Customer history (local complete `workordersout`)
 
-Search chrome is **not** mode-aware (same notes / products / **assets** index for all three demos; product hits are not tappable; no customers). Follow-up: Phase 12.
+Search chrome follows `workModes` (Phase 12a). Product and customer hits open. Hartford complete-jobs is no longer hardcoded onto Search.
 
 ---
 
 ## Phase 12 — Mode-aware device UX
 
-Review 2026-09-16. The **data model** covers all three days ([DAY_IN_LIFE.md](./DAY_IN_LIFE.md)). The **device chrome** is still an assets field app with an orders sidecar. Only Today’s cards and whether Map exists change with `workModes`; Search, Stock, Notes, Chat, walk-up job, and map *contents* do not.
+Review 2026-09-21. Device chrome follows `users.workModes[]` on the session (seed employeeId is fallback only).
 
-Gating today (`src/session/workModes.ts` — hardcoded from demo `employeeId`, not live `users.workModes[]`):
+Gating (`src/session/workModes.ts`):
 
 | Surface | Assets (Jon) | Customer (Maya) | Sales (Priya) |
 | --- | --- | --- | --- |
 | Today jobs | yes | yes | no |
 | Today orders | no | yes | yes |
-| Map tab | yes (**assets**) | yes (**assets**) | **hidden** |
-| Search (Profile) | notes / products / **assets** | same | same |
-| Stock | van + catalog | same | same |
-| Walk-up **job** | yes | yes | **yes** (labor ticket on a sales day) |
+| Map tab | yes (**assets**) | yes (**customers / sites**; kit filter) | yes (**customers / sites**) |
+| Search (Profile) | notes + **assets** | notes + products + customers | notes + products + customers |
+| Stock | van + catalog picker | same | same |
+| Walk-up **job** | yes | yes | **no** (customer + order) |
 
-Sales does **not** need closest pumps. They need **find SKU** and **find / see customers (and next stops) near them**. Hiding Map is consistent with an assets-only map, not with the sales day. Customer mode should keep jobs **and** orders, but map/search default to **site / customer**, with assets as a filter when the job is about kit. Assets mode stays as built; strip commercial search noise.
+Sales finds SKUs and customers/stops near them. Customer mode keeps jobs **and** orders; map/search default to site/customer, with a kit filter for assets. Assets mode stays as built, with quieter commercial search.
 
 Tracking: [#12](https://github.com/Fujio-Turner/mobile_field_service/issues/12). PRs **17–21**.
 
@@ -287,10 +287,10 @@ Tracking: [#12](https://github.com/Fujio-Turner/mobile_field_service/issues/12).
 
 Issue [#7](https://github.com/Fujio-Turner/mobile_field_service/issues/7).
 
-- [ ] Search collections follow `workModes`: assets → notes + **assets**; sales → notes + **products** + **customers**; customer → notes + products + customers (+ assets when the open job is kit)
-- [ ] Product hits **open** (or add-to-current-order); today they list and do nothing
-- [ ] Customer FTS (`idx_cus_name` / account) — not in Search today
-- [ ] Drop hardcoded Hartford complete-jobs history on Search for every login
+- [x] Search collections follow `workModes`: assets → notes + **assets**; sales → notes + **products** + **customers**; customer → notes + products + customers (+ assets when the open job is kit)
+- [x] Product hits **open** (or add-to-current-order); today they list and do nothing
+- [x] Customer FTS (`idx_cus_name` / account) — not in Search today
+- [x] Drop hardcoded Hartford complete-jobs history on Search for every login
 
 **Exit:** Priya’s Search never returns pumps. Jon’s Search does not lead with catalog SKUs.
 
@@ -298,10 +298,10 @@ Issue [#7](https://github.com/Fujio-Turner/mobile_field_service/issues/7).
 
 Issue [#8](https://github.com/Fujio-Turner/mobile_field_service/issues/8).
 
-- [ ] Assets mode: keep current Assets map (bbox, near job / near me, type chips, link to `woout`)
-- [ ] Sales (and customer default): plot **customers / order `site.geo`**, chips Area / Near stop / Near me — **not** pump/valve
-- [ ] Customer mode: site/customer default; optional **kit** filter for `assets.ownership`
-- [ ] Do not “fix” sales by leaving Map hidden
+- [x] Assets mode: keep current Assets map (bbox, near job / near me, type chips, link to `woout`)
+- [x] Sales (and customer default): plot **customers / order `site.geo`**, chips Area / Near stop / Near me — **not** pump/valve
+- [x] Customer mode: site/customer default; optional **kit** filter for `assets.ownership`
+- [x] Do not “fix” sales by leaving Map hidden
 
 **Exit:** Priya sees customers/stops near her. Maya’s map is not “closest company pump” unless she asks. Jon unchanged.
 
@@ -309,10 +309,10 @@ Issue [#8](https://github.com/Fujio-Turner/mobile_field_service/issues/8).
 
 Issue [#9](https://github.com/Fujio-Turner/mobile_field_service/issues/9).
 
-- [ ] Lookup UI (typeahead / Search) over `listCustomers` — stop dumping every name as a button on `/order/new`
-- [ ] `CreateCustomer` takes more than a name (site address and/or lat/lon)
-- [ ] Persist geo so 12b can query it (`customers.sites[].geo` or a first-class geo field + index). Schema `sites[]` is untyped today; no `idx_cus_geo`
-- [ ] Never patch `origin: dispatch` customers
+- [x] Lookup UI (typeahead / Search) over `listCustomers` — stop dumping every name as a button on `/order/new`
+- [x] `CreateCustomer` takes more than a name (site address and/or lat/lon)
+- [x] Persist geo so 12b can query it (`customers.sites[].geo` or a first-class geo field + index). Schema `sites[]` is untyped today; no `idx_cus_geo`
+- [x] Never patch `origin: dispatch` customers
 
 **Exit:** walk-up has a place on the map; find Hartford by name without scrolling a flat list.
 
@@ -320,10 +320,10 @@ Issue [#9](https://github.com/Fujio-Turner/mobile_field_service/issues/9).
 
 Issue [#10](https://github.com/Fujio-Turner/mobile_field_service/issues/10).
 
-- [ ] Typeahead / FTS on the order editor (not an unfiltered `Add {name}` dump, LIMIT 50)
-- [ ] Stock “Search catalog” can **add a line** when an order (or job) is in context
-- [ ] Profile Search product hits are tappable (see 12a)
-- [ ] No barcode / reservation / card capture (still non-goals)
+- [x] Typeahead / FTS on the order editor (not an unfiltered `Add {name}` dump, LIMIT 50)
+- [x] Stock “Search catalog” can **add a line** when an order (or job) is in context
+- [x] Profile Search product hits are tappable (see 12a)
+- [x] No barcode / reservation / card capture (still non-goals)
 
 **Exit:** add a SKU to ORD-3301 without scanning a full catalog list.
 
@@ -331,10 +331,10 @@ Issue [#10](https://github.com/Fujio-Turner/mobile_field_service/issues/10).
 
 Issue [#11](https://github.com/Fujio-Turner/mobile_field_service/issues/11).
 
-- [ ] Read `workModes` from the user doc / session, not `workModesForEmployee(employeeId)` seed switch
-- [ ] Sales Today: walk-up is **customer + order**, not `CreateWorkOrderIn`. Hide or demote Walk-up job
-- [ ] Customer Today: keep Walk-up job **and** New field order
-- [ ] Assets Today: Walk-up job only (orders card already hidden)
+- [x] Read `workModes` from the user doc / session, not `workModesForEmployee(employeeId)` seed switch
+- [x] Sales Today: walk-up is **customer + order**, not `CreateWorkOrderIn`. Hide or demote Walk-up job
+- [x] Customer Today: keep Walk-up job **and** New field order
+- [x] Assets Today: Walk-up job only (orders card already hidden)
 - [ ] Optional later: `scheduled.day` + `needsWorkOrder` on the order editor (Maya “come back Tuesday”)
 
 **Exit:** Priya’s Today does not create a labor ticket as the default walk-up.

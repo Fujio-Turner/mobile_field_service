@@ -1423,7 +1423,7 @@ Movement required: `type`, `audit`, `productId`, `locationId`, `qtyDelta`, `reas
 }
 ```
 
-**Indexes:** `idx_cus_name` (`name`); `idx_cus_account` (`accountNumber`); `idx_cus_origin` (`origin`).
+**Indexes:** `idx_cus_name` (`name`); `idx_cus_account` (`accountNumber`); `idx_cus_origin` (`origin`); `idx_cus_geo` (`geo.lat`, `geo.lon`); FTS `idx_cus_fts` (`name`, `accountNumber`). Primary map pin is first-class `geo` (copy of `sites[0].geo`).
 
 **Replication:** PULL for `origin !== 'field'`. PUSH_AND_PULL for `origin === 'field' && readyToPush` (push filter).
 
@@ -2231,7 +2231,7 @@ Reopening `complete` → `in_progress` on the same id fights the backend that no
 | Inventory qty conflicts on shared vans | Medium | 1:1 van in v1 |
 | iOS background replicator killed | Medium | Restart replicator on foreground |
 | Expo Go used by mistake | Low | Missing native module screen |
-| Inbound auto-purge orphans outbound | Low | Keep outbound; active-outbound query (no day filter) |
+| Inbound auto-purge orphans outbound | Low | Keep outbound; active-outbound query. Reassigned rows only if `scheduled.day` is Today. |
 | Tracking map logged / leaked | High | Never log `tracking`; channel `emp:` only; no email in the id |
 | Location permission denied | Low | History still saves without lat/lon; crumbs simply skip |
 

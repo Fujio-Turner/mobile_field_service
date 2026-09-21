@@ -43,6 +43,7 @@ export type OutboundHit = {
   siteName: string;
   startDt: number;
   endDt?: number;
+  day?: string;
   role: string;
   assignedEmployeeId: string;
   dropped?: boolean;

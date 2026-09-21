@@ -48,7 +48,7 @@ export function memoryActiveOutbound(employeeId: string): OutboundHit[] {
     .map((row) => {
       const source = row.doc.source as { id?: string } | undefined;
       const site = row.doc.site as { name?: string } | undefined;
-      const scheduled = row.doc.scheduled as { startDt?: number; endDt?: number } | undefined;
+      const scheduled = row.doc.scheduled as { startDt?: number; endDt?: number; day?: string } | undefined;
       const assigned = row.doc.assignedTo as { employeeId?: string };
       return {
         id: row.id,
@@ -61,6 +61,7 @@ export function memoryActiveOutbound(employeeId: string): OutboundHit[] {
         siteName: String(site?.name ?? ''),
         startDt: Number(scheduled?.startDt ?? 0),
         endDt: scheduled?.endDt != null ? Number(scheduled.endDt) : undefined,
+        day: scheduled?.day != null && String(scheduled.day) !== '' ? String(scheduled.day) : undefined,
         role: String(row.doc.role ?? 'primary'),
         assignedEmployeeId: String(assigned.employeeId ?? ''),
       };

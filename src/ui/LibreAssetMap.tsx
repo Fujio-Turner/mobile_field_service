@@ -1,6 +1,5 @@
 import type { ComponentType } from 'react';
 import { StyleSheet, View } from 'react-native';
-import type { AssetItem } from '@/src/ops/assets';
 import { visibleBoundsToBBox, type BBox } from '@/src/geo/haversine';
 import { mapStyleUrl } from '@/src/geo/mapStyle';
 import { mapLibreNativeAvailable } from '@/src/ui/mapLibreNative';
@@ -37,25 +36,32 @@ export function canRenderLibreMap(): boolean {
   return loadMapLibre() != null;
 }
 
+export type MapPin = {
+  id: string;
+  name: string;
+  sub?: string;
+  geo: { lat: number; lon: number };
+};
+
 type Props = {
-  assets: AssetItem[];
+  pins: MapPin[];
   center: { lat: number; lon: number };
   zoomLevel?: number;
   showUser?: boolean;
-  onPressAsset: (id: string) => void;
+  onPressPin: (id: string) => void;
   onRegion?: (box: BBox, zoom: number) => void;
 };
 
-export function LibreAssetMap({ assets, center, zoomLevel = 14, showUser, onPressAsset, onRegion }: Props) {
+export function LibreAssetMap({ pins, center, zoomLevel = 14, showUser, onPressPin, onRegion }: Props) {
   const ml = loadMapLibre();
   if (!ml) return null;
   const { MapView, Camera, ShapeSource, CircleLayer, SymbolLayer, UserLocation } = ml;
   const shape = {
     type: 'FeatureCollection',
-    features: assets.map((a) => ({
+    features: pins.map((a) => ({
       type: 'Feature',
       id: a.id,
-      properties: { id: a.id, name: a.name, code: a.code ?? '', assetType: a.assetType },
+      properties: { id: a.id, name: a.name, sub: a.sub ?? '' },
       geometry: { type: 'Point', coordinates: [a.geo.lon, a.geo.lat] },
     })),
   };
@@ -93,7 +99,7 @@ export function LibreAssetMap({ assets, center, zoomLevel = 14, showUser, onPres
             const props = f?.properties ?? {};
             if (props.cluster) return;
             const id = String(props.id ?? '');
-            if (id) onPressAsset(id);
+            if (id) onPressPin(id);
           }}
         >
           <CircleLayer

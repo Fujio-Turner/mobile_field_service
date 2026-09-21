@@ -1,3 +1,5 @@
+import type { WorkMode } from './workModes';
+
 export type AuthStrategy = 'basic' | 'oidc_implicit' | 'oidc_code' | 'demo';
 
 export type Session = {
@@ -8,6 +10,7 @@ export type Session = {
   sessionId: string;
   cookieName: string;
   sessionExpiresAt: number; // unix seconds
+  workModes?: WorkMode[];
   routeId?: string;
   routeIds?: string[];
   region?: string;
@@ -23,4 +26,5 @@ export const AUTH_KEYS = {
   sessionId: 'mfs.auth.sessionId',
   cookieName: 'mfs.auth.cookieName',
   sessionExpiresAt: 'mfs.auth.sessionExpiresAt',
+  workModes: 'mfs.auth.workModes',
 } as const;

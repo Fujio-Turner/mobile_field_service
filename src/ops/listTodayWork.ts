@@ -60,6 +60,7 @@ export function parseOutboundHits(rows: Record<string, unknown>[]): OutboundHit[
     siteName: String(r.siteName ?? ''),
     startDt: Number(r.startDt ?? 0),
     endDt: r.endDt == null ? undefined : Number(r.endDt),
+    day: r.day != null && String(r.day) !== '' ? String(r.day) : undefined,
     role: String(r.role ?? 'primary'),
     assignedEmployeeId: String(r.assignedEmployeeId ?? ''),
     dropped: r.dropped === true,
@@ -112,6 +113,7 @@ export async function listTodayWork(input: ListTodayInput): Promise<ListTodayRes
       inboundCount: sliced.length,
       rows: collapseTodayPage({
         employeeId: input.employeeId,
+        day,
         inbound: sliced,
         activeOutbound,
         outboundBySource,
@@ -151,6 +153,7 @@ export async function listTodayWork(input: ListTodayInput): Promise<ListTodayRes
     inboundCount: inbound.length,
     rows: collapseTodayPage({
       employeeId: input.employeeId,
+      day,
       inbound,
       activeOutbound,
       outboundBySource,

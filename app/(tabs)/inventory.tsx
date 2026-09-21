@@ -3,33 +3,28 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { FieldInput } from '@/src/ui/FieldInput';
-import { memorySave } from '@/src/db/memoryStore';
-import { SEED_VAN_ID, seedProductsRatesTaxes, seedUserDoc } from '@/src/db/seedData';
-import { nativeDbAvailable } from '@/src/db/database';
+import { ensureMemoryCatalog } from '@/src/db/ensureMemoryDemo';
+import { SEED_RATE_ID, SEED_TAX_ID, SEED_VAN_ID } from '@/src/db/seedData';
 import { VanStockConsume } from '@/src/features/inventory/VanStockConsume';
 import {
   DEFAULT_VAN_ID,
+  consumeInventoryOnWork,
   listStockAtLocation,
   searchProducts,
   vanLocationIdForEmployee,
   type DisplayStock,
   type ProductItem,
 } from '@/src/ops/inventory';
+import { addOrderLine } from '@/src/ops/orders';
 import { OutError } from '@/src/ops/outError';
 import { useAuth } from '@/src/session/AuthContext';
 import { NativeBanner } from '@/src/ui/NativeBanner';
 import { theme } from '@/src/theme';
 
-function ensureCatalog() {
-  if (nativeDbAvailable()) return;
-  const catalog = seedProductsRatesTaxes('0.1.0+1', 1_700_000_000);
-  for (const row of catalog.products) memorySave('products', row.id, row.doc as never);
-  for (const row of catalog.inventory) memorySave('inventory', row.id, row.doc as never);
-  memorySave('users', 'usr:demo', seedUserDoc('0.1.0+1', 1_700_000_000) as never);
-}
+
 
 export default function InventoryScreen() {
-  const { wooutId } = useLocalSearchParams<{ wooutId?: string }>();
+  const { wooutId, orderId } = useLocalSearchParams<{ wooutId?: string; orderId?: string }>();
   const router = useRouter();
   const { session } = useAuth();
   const [q, setQ] = useState('');
@@ -41,11 +36,11 @@ export default function InventoryScreen() {
   qRef.current = q;
 
   const reload = useCallback(async () => {
-    ensureCatalog();
+    ensureMemoryCatalog();
     const loc = session ? await vanLocationIdForEmployee(session.employeeId) : DEFAULT_VAN_ID;
     setLocationId(loc);
     setStock(await listStockAtLocation(loc));
-    setProducts(await searchProducts(qRef.current));
+    setProducts(qRef.current.trim() ? await searchProducts(qRef.current) : []);
   }, [session]);
 
   useFocusEffect(
@@ -97,9 +92,10 @@ export default function InventoryScreen() {
         keyExtractor={(item) => item.id}
         ListHeaderComponent={
           <>
-            {wooutId && session ? (
+            {(wooutId || orderId) && session ? (
               <VanStockConsume
                 wooutId={wooutId}
+                orderId={orderId}
                 locationId={locationId}
                 stock={stock}
                 editable
@@ -118,19 +114,45 @@ export default function InventoryScreen() {
               ))
             )}
             {stock.length === 0 ? <Text style={styles.muted}>No stock snapshots</Text> : null}
-            {!wooutId ? (
-              <Text style={styles.muted}>Open a job to consume parts onto that copy.</Text>
+            {!wooutId && !orderId ? (
+              <Text style={styles.muted}>Open a job or order to consume parts or add a catalog line.</Text>
             ) : null}
             <Text style={styles.section}>Catalog</Text>
           </>
         }
         renderItem={({ item }) => (
-          <View style={styles.row}>
+          <Pressable
+            disabled={busy || !(wooutId || orderId) || !session}
+            style={styles.row}
+            onPress={() => {
+              if (!session || !(wooutId || orderId)) return;
+              void run(async () => {
+                if (orderId) {
+                  await addOrderLine(orderId, session, {
+                    productId: item.id,
+                    rateId: item.defaultRateId ?? SEED_RATE_ID,
+                    qty: 1,
+                    taxIds: [SEED_TAX_ID],
+                  });
+                  return;
+                }
+                if (wooutId) {
+                  await consumeInventoryOnWork(session, {
+                    wooutId,
+                    productId: item.id,
+                    locationId,
+                    qty: 1,
+                  });
+                }
+              });
+            }}
+          >
             <Text style={styles.rowTitle}>
               {item.name} · {item.sku}
             </Text>
             {item.description ? <Text style={styles.muted}>{item.description}</Text> : null}
-          </View>
+            {wooutId || orderId ? <Text style={styles.secondaryLabel}>Add line</Text> : null}
+          </Pressable>
         )}
         ListFooterComponent={
           <Pressable onPress={() => void reload()} style={styles.secondary}>
@@ -139,9 +161,9 @@ export default function InventoryScreen() {
         }
         ListEmptyComponent={q ? <Text style={styles.muted}>No catalog hits</Text> : null}
       />
-      {wooutId ? (
+      {wooutId || orderId ? (
         <Pressable onPress={() => router.back()} style={styles.secondary}>
-          <Text style={styles.secondaryLabel}>Back to job</Text>
+          <Text style={styles.secondaryLabel}>{orderId ? 'Back to order' : 'Back to job'}</Text>
         </Pressable>
       ) : null}
     </View>

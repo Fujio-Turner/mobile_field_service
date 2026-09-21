@@ -49,6 +49,14 @@ describe('collections', () => {
     expect(geo?.properties).toEqual(['geo.lat', 'geo.lon']);
   });
 
+  it('defines customer geo and FTS indexes', () => {
+    const geo = VALUE_INDEXES.find((i) => i.name === 'idx_cus_geo');
+    expect(geo?.collection).toBe('customers');
+    expect(geo?.properties).toEqual(['geo.lat', 'geo.lon']);
+    const fts = FTS_INDEXES.find((i) => i.name === 'idx_cus_fts');
+    expect(fts?.properties).toEqual(['name', 'accountNumber']);
+  });
+
   it('defines product FTS on name sku description', () => {
     const fts = FTS_INDEXES.find((i) => i.name === 'idx_prd_fts');
     expect(fts?.collection).toBe('products');

@@ -1,7 +1,9 @@
 import { bboxAround } from '../geo/haversine';
 import { timeQuery } from '../metrics';
+import type { SearchKind } from '../session/workModes';
 import { parseAsset, queryAssetsInBBox, type AssetItem } from './assets';
 import { queryChildRowsIfNative } from './childStore';
+import { searchCustomers } from './customers';
 import { listNotes } from './notes';
 import { searchProducts } from './products';
 
@@ -14,11 +16,13 @@ LIMIT 50
 `;
 
 export type FtsHit = {
-  kind: 'note' | 'product' | 'asset';
+  kind: SearchKind;
   id: string;
   title: string;
   sub?: string;
 };
+
+const ALL_KINDS: SearchKind[] = ['note', 'product', 'asset', 'customer'];
 
 export async function searchAssetsFts(q: string): Promise<AssetItem[]> {
   const query = q.trim();
@@ -43,14 +47,16 @@ export async function searchAssetsFts(q: string): Promise<AssetItem[]> {
   return near.filter((a) => `${a.name} ${a.code ?? ''} ${a.assetType}`.toLowerCase().includes(needle));
 }
 
-export async function ftsSearch(q: string): Promise<FtsHit[]> {
+export async function ftsSearch(q: string, kinds: SearchKind[] = ALL_KINDS): Promise<FtsHit[]> {
   const needle = q.trim();
   if (!needle) return [];
+  const want = new Set(kinds);
   return timeQuery('fts', async () => {
-    const [products, notes, assets] = await Promise.all([
-      searchProducts(needle),
-      listNotes({ q: needle }),
-      searchAssetsFts(needle),
+    const [products, notes, assets, customers] = await Promise.all([
+      want.has('product') ? searchProducts(needle) : Promise.resolve([]),
+      want.has('note') ? listNotes({ q: needle }) : Promise.resolve([]),
+      want.has('asset') ? searchAssetsFts(needle) : Promise.resolve([]),
+      want.has('customer') ? searchCustomers(needle) : Promise.resolve([]),
     ]);
     const out: FtsHit[] = [];
     for (const p of products) {
@@ -61,6 +67,9 @@ export async function ftsSearch(q: string): Promise<FtsHit[]> {
     }
     for (const a of assets) {
       out.push({ kind: 'asset', id: a.id, title: a.name, sub: a.code });
+    }
+    for (const c of customers) {
+      out.push({ kind: 'customer', id: c.id, title: c.name, sub: c.accountNumber });
     }
     return out;
   });

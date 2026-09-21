@@ -8,13 +8,16 @@ describe('sessionIsLive', () => {
 });
 
 describe('buildDemoSession', () => {
-  it('maps Maya and Priya; unknown emails become Jon', () => {
+  it('maps Maya and Priya; unknown emails keep assets workModes', () => {
     const maya = buildDemoSession('maya.chen@example.com', 1);
     const priya = buildDemoSession('priya.shah@example.com', 1);
     const other = buildDemoSession('anyone@example.com', 1);
     expect(maya.ok && maya.session.employeeId).toBe('E-7703');
+    expect(maya.ok && maya.session.workModes).toEqual(['customer']);
     expect(priya.ok && priya.session.employeeId).toBe('E-8801');
-    expect(other.ok && other.session.employeeId).toBe('E-4412');
+    expect(priya.ok && priya.session.workModes).toEqual(['sales']);
+    expect(other.ok && other.session.employeeId).toBe('anyone@example.com');
+    expect(other.ok && other.session.workModes).toEqual(['assets']);
   });
 });
 

@@ -1,5 +1,5 @@
 import { memoryReset, memorySave } from '../../src/db/memoryStore';
-import { seedAssets, seedProductsRatesTaxes } from '../../src/db/seedData';
+import { SEED_CUSTOMER_ID, seedAssets, seedCustomerDoc, seedProductsRatesTaxes } from '../../src/db/seedData';
 import { resetMetrics, metricSnapshot } from '../../src/metrics';
 import { resetCopyOnWriteTotals } from '../../src/metrics/copyOnWrite';
 import { createNote } from '../../src/ops/notes';
@@ -15,6 +15,7 @@ beforeEach(() => {
   for (const row of seedProductsRatesTaxes('0.1.0+1', 1_700_000_000).products) {
     memorySave('products', row.id, row.doc as never);
   }
+  memorySave('customers', SEED_CUSTOMER_ID, seedCustomerDoc('0.1.0+1', 1_700_000_000) as never);
 });
 
 describe('ftsSearch memory fallback', () => {
@@ -36,5 +37,18 @@ describe('ftsSearch memory fallback', () => {
 
     const snap = metricSnapshot();
     expect(snap.samples.some((s) => s.name === 'mfs_query_latency_ms' && s.labels?.query === 'fts')).toBe(true);
+  });
+
+  it('sales search skips pumps; assets search skips catalog SKUs', async () => {
+    const sales = await ftsSearch('valve', ['note', 'product', 'customer']);
+    expect(sales.some((h) => h.kind === 'product')).toBe(true);
+    expect(sales.some((h) => h.kind === 'asset')).toBe(false);
+    expect((await ftsSearch('Hartford', ['note', 'product', 'customer'])).some((h) => h.kind === 'customer')).toBe(
+      true,
+    );
+
+    const assets = await ftsSearch('valve', ['note', 'asset']);
+    expect(assets.some((h) => h.kind === 'asset')).toBe(true);
+    expect(assets.some((h) => h.kind === 'product')).toBe(false);
   });
 });

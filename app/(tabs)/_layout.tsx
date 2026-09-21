@@ -1,7 +1,7 @@
 import { Redirect, Tabs } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { useAuth } from '@/src/session/AuthContext';
-import { showsMapTab, workModesForEmployee } from '@/src/session/workModes';
+import { showsMapTab, workModesFromSession } from '@/src/session/workModes';
 import { theme } from '@/src/theme';
 import { useLeftHand } from '@/src/ui/HandednessContext';
 import { thumbBarDirection } from '@/src/ui/handedness';
@@ -9,7 +9,7 @@ import { thumbBarDirection } from '@/src/ui/handedness';
 export default function TabsLayout() {
   const { ready, session } = useAuth();
   const leftHand = useLeftHand();
-  const showMap = showsMapTab(workModesForEmployee(session?.employeeId));
+  const showMap = showsMapTab(workModesFromSession(session));
   if (ready && !session) return <Redirect href="/login" />;
 
   return (

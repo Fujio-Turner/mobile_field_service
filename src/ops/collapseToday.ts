@@ -1,4 +1,12 @@
+import { deviceLocalDay } from '../ids';
 import type { InboundHit, OutboundHit, OutboundRef, TodayRow } from './todayTypes';
+
+/** Prefer `scheduled.day`; fall back to the device-local date of `startDt`. */
+export function outboundScheduledDay(hit: Pick<OutboundHit, 'day' | 'startDt'>): string {
+  if (hit.day && /^\d{4}-\d{2}-\d{2}$/.test(hit.day)) return hit.day;
+  if (hit.startDt > 0) return deviceLocalDay(new Date(hit.startDt * 1000));
+  return '';
+}
 
 function inboundRow(hit: InboundHit, open: { openId: string; openCollection: TodayRow['openCollection']; badge: TodayRow['badge'] }): TodayRow {
   return {
@@ -43,6 +51,8 @@ function outboundRow(hit: OutboundHit, badge: TodayRow['badge']): TodayRow {
  */
 export function collapseTodayPage(input: {
   employeeId: string;
+  /** Device-local day for Today (`YYYY-MM-DD`). Reassigned leftovers from other days are omitted. */
+  day: string;
   inbound: InboundHit[];
   activeOutbound: OutboundHit[];
   outboundBySource: Map<string, OutboundRef>;
@@ -64,6 +74,7 @@ export function collapseTodayPage(input: {
       else if (!inboundHit || inboundHit.assignedEmployeeId !== input.employeeId) {
         badge = 'reassigned';
       }
+      if (badge === 'reassigned' && outboundScheduledDay(out) !== input.day) continue;
       rows.push(outboundRow(out, badge));
       used.add(sourceId);
     }

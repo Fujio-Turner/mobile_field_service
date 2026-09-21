@@ -110,6 +110,7 @@ describe('consume', () => {
     const display = await listStockAtLocation(SEED_VAN_ID);
     expect(display[0].displayQty).toBe(Number(before.qtyOnHand) - 1);
     expect(display[0].qtyOnHand).toBe(Number(before.qtyOnHand));
+    expect(display[0].productName).toBe('Check valve 4in');
   });
 
   it('consumes onto an order without a work order copy', async () => {

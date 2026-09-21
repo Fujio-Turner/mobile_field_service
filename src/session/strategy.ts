@@ -25,6 +25,7 @@ export function buildDemoSession(identifier: string, nowSec: number): {
       username: identity.username,
       email: identity.email,
       employeeId: identity.employeeId,
+      workModes: identity.workModes,
       routeId: identity.routeId,
       routeIds: identity.routeIds,
       region: identity.region,
